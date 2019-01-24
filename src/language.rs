@@ -5,6 +5,7 @@ Test:
 -Closing of block comments with * not followed by /
 -Opening block comment vs division + multiplication... I guess both would be correct.
 -Difference between int.int and float.
+-All possible errors in a float
 
 */
 use std::fmt;
@@ -35,34 +36,33 @@ pub const RESERVED_WORDS: [&str; 11] = [
     "if", "then", "else", "for", "class", "integer", "float", "read", "write", "return", "main",
 ];
 
-// const ID: &str = "id";
-// const KEYWORD: &str = "keyword";
-// const INTEGER: &str = "integer";
-// const FLOAT: &str = "float";
-// const LINE_COMMENT: &str = "line_comment";
-// const BLOCK_COMMENT: &str = "block_comment";
-// const SMALLER: &str = "smaller";
-// const SMALLER_OR_EQUAL: &str = "smaller_or_equal";
-// const NOT_EQUAL: &str = "not_equal";
-// const GREATER: &str = "greater";
-// const GREATER_OR_EQUAL: &str = "greater_or_equal";
-// const ASSIGNMENT: &str = "assignment";
-// const EQUAL: &str = "equal";
-
 #[derive(Debug, Clone, Copy)]
 pub enum LexicalError {
     InvalidCharacter,
     InvalidToken,
+    IncompleteFloat,
+    IncompleteAnd,
+    IncompleteOr,
     UnterminatedBlockComment,
 }
+
 impl fmt::Display for LexicalError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             LexicalError::InvalidCharacter => write!(f, "Lexical Error: Invalid Character"),
             LexicalError::InvalidToken => write!(f, "Lexical Error: Invalid Token"),
-            LexicalError::UnterminatedBlockComment => {
-                write!(f, "Lexical Error: Unterminated Block Comment")
+            LexicalError::IncompleteFloat => write!(f, "Lexical Error: Incomplete Float"),
+            LexicalError::IncompleteAnd => {
+                write!(f, "Lexical Error: Incomplete And (did you mean '&&'?)")
             }
+            LexicalError::IncompleteOr => {
+                write!(f, "Lexical Error: Incomplete Or (did you mean '||'?)")
+            }
+
+            LexicalError::UnterminatedBlockComment => write!(
+                f,
+                "Lexical Error: Unterminated Block Comment (you are missing '*/')"
+            ),
         }
     }
 }
@@ -149,7 +149,7 @@ pub enum TokenType {
     Operator(Operator),
     Separator(Separator),
     Comment(Comment),
-    InvalidToken,
+    LexicalError(LexicalError),
 }
 
 impl fmt::Display for TokenType {
@@ -163,16 +163,7 @@ impl fmt::Display for TokenType {
             TokenType::Operator(operator) => write!(f, "operator: {:?}", operator),
             TokenType::Separator(separator) => write!(f, "separator: {:?}", separator),
             TokenType::Comment(comment) => write!(f, "{:?}", comment),
-            TokenType::InvalidToken => unreachable!(),
-            // match operator {
-            //     Smaller => write!(f, "smaller"),
-            //     SmallerOrEqual => write!(f, "smaller_or_equal"),
-            //     NotEqual => write!(f, "not_equal"),
-            //     Greater => write!(f, "greater"),
-            //     GreaterOrEqual => write!(f, "greater_or_equal"),
-            //     Assignment => write!(f, "assignment"),
-            //     Equal => write!(f, "equal"),
-            // },
+            TokenType::LexicalError(_) => unreachable!(),
         }
     }
 }

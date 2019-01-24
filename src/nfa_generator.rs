@@ -4,27 +4,27 @@ use super::language::*;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
-fn add_final_state(
-    final_states: &mut HashSet<usize>,
-    tokens: &mut HashMap<usize, TokenType>,
-    state: usize,
-    token: TokenType,
-) {
-    final_states.insert(state);
-    tokens.insert(state, token);
-}
-
-fn add_group(
-    function: &mut HashMap<(usize, char), Vec<usize>>,
-    current_state: usize,
-    group: &[char],
-    next_states: Vec<usize>,
-) {
-    //I wonder if there is a way to avoid copying the whole next states vector.
-    for &symbol in group {
-        function.insert((current_state, symbol), next_states.clone());
-    }
-}
+// fn add_final_state(
+//     final_states: &mut HashSet<usize>,
+//     tokens: &mut HashMap<usize, TokenType>,
+//     state: usize,
+//     token: TokenType,
+// ) {
+//     final_states.insert(state);
+//     tokens.insert(state, token);
+// }
+//
+// fn set_transition(
+//     function: &mut HashMap<(usize, char), Vec<usize>>,
+//     current_state: usize,
+//     group: &[char],
+//     next_states: Vec<usize>,
+// ) {
+//     //I wonder if there is a way to avoid copying the whole next states vector.
+//     for &symbol in group {
+//         function.insert((current_state, symbol), next_states.clone());
+//     }
+// }
 
 fn add_reserved_words(
     function: &mut HashMap<(usize, char), Vec<usize>>,
@@ -34,32 +34,57 @@ fn add_reserved_words(
     words: &[&'static str],
     state_id: usize,
 ) -> Vec<usize> {
+    use Input::*;
     let mut current_state = state_id;
     let mut initial_states = Vec::new();
+    let mut set_transition = |current_state: usize, input: Input, next_states: usize| {
+        match input {
+            Input::Char(char) => {
+                function.insert((current_state, char), vec![next_states]);
+            }
+            Input::Array(array) => {
+                for &char in array {
+                    function.insert((current_state, char), vec![next_states]);
+                }
+            }
+        };
+    };
+    let mut add_final_state = |state: usize, token: TokenType, add_backtrack: bool| {
+        final_states.insert(state);
+        tokens.insert(state, token);
+        if add_backtrack {
+            backtrack.insert(state);
+        }
+    };
     for word in words {
         initial_states.push(current_state);
         for letter in word.chars() {
-            function.insert((current_state, letter), vec![current_state + 1]);
+            set_transition(current_state, Char(letter), current_state + 1);
+            //function.insert((current_state, letter), vec![current_state + 1]);
             current_state += 1;
         }
-        add_group(function, current_state, &SYMBOL, vec![current_state + 1]);
-        add_group(
-            function,
-            current_state,
-            &WHITESPACE,
-            vec![current_state + 1],
-        );
+        set_transition(current_state, Array(&SYMBOL), current_state + 1);
+        set_transition(current_state, Array(&WHITESPACE), current_state + 1);
         current_state += 1;
         add_final_state(
-            final_states,
-            tokens,
             current_state,
             TokenType::Keyword(Keyword::from_str(word)),
+            true,
         );
-        backtrack.insert(current_state);
+        //backtrack.insert(current_state);
         current_state += 1;
     }
     initial_states
+}
+
+enum Input {
+    Char(char),
+    Array(&'static [char]),
+}
+
+enum BacktrackEnum {
+    Backtrack,
+    NoBacktrack,
 }
 
 pub fn define_nfa_table() -> (
@@ -67,6 +92,13 @@ pub fn define_nfa_table() -> (
     HashMap<usize, TokenType>,
     HashSet<usize>,
 ) {
+    use BacktrackEnum::*;
+    use Comment::*;
+    use Input::*;
+    use LexicalError::*;
+    use Operator::*;
+    use Separator::*;
+
     let mut function: HashMap<(usize, char), Vec<usize>> = HashMap::new();
     let mut final_states: HashSet<usize> = HashSet::new();
     let mut tokens: HashMap<usize, TokenType> = HashMap::new();
@@ -79,14 +111,14 @@ pub fn define_nfa_table() -> (
 
     //This needs to go before id to make sure it has priority.
     //There is probably a better way to do this.
-    //Start at 2, after the error state: 1
+    //ADD RESERVED WORDS
     let mut reserved_words_states = add_reserved_words(
         &mut function,
         &mut final_states,
         &mut tokens,
         &mut backtrack,
         &RESERVED_WORDS,
-        2,
+        1,
     );
     initial_states.append(&mut reserved_words_states);
 
@@ -94,301 +126,221 @@ pub fn define_nfa_table() -> (
     let mut epsilon_closure: HashMap<usize, Vec<usize>> = HashMap::new();
     epsilon_closure.insert(0, initial_states);
 
-    //Invalid token
-    add_final_state(&mut final_states, &mut tokens, 1, TokenType::InvalidToken);
-    backtrack.insert(1);
+    let mut set_transition = |current_state: usize, input: Input, next_states: usize| {
+        match input {
+            Input::Char(char) => {
+                function.insert((current_state, char), vec![next_states]);
+            }
+            Input::Array(array) => {
+                for &char in array {
+                    function.insert((current_state, char), vec![next_states]);
+                }
+            }
+        };
+    };
+    let mut add_final_state = |state: usize, token: TokenType, add_backtrack: BacktrackEnum| {
+        final_states.insert(state);
+        tokens.insert(state, token);
+        if let Backtrack = add_backtrack {
+            backtrack.insert(state);
+        };
+    };
+
+    // fn add_final_state(
+    //     final_states: &mut HashSet<usize>,
+    //     tokens: &mut HashMap<usize, TokenType>,
+    //     state: usize,
+    //     token: TokenType,
+    // ) {
+    //     final_states.insert(state);
+    //     tokens.insert(state, token);
+    // }
 
     //IMPORTANT: Here, we assume that we did not go over 100 when adding keywords.
     //To avoid state number collision, jump by 100 for each regular expression
 
+    //TODO: I'm not really hard coding the NFA.
+    //In fact, I'm almost defining the DFA since I have to consider all cases.
+
     //id::=letter alphanum*
-    add_group(&mut function, 100, &LETTER, vec![101]);
-    add_group(&mut function, 101, &SIGMA, vec![102]);
-    add_group(&mut function, 101, &DIGIT, vec![101]);
-    add_group(&mut function, 101, &LETTER, vec![101]);
-    // add_group(&mut function, 101, &SYMBOL, vec![102]);
-    // add_group(&mut function, 101, &WHITESPACE, vec![102]);
-    add_final_state(&mut final_states, &mut tokens, 102, TokenType::Id);
-    //final_states.insert(102, ID);
-    backtrack.insert(102);
+    set_transition(100, Array(&LETTER), 101);
+    set_transition(101, Array(&SIGMA), 102);
+    set_transition(101, Array(&DIGIT), 101);
+    set_transition(101, Array(&LETTER), 101);
+    set_transition(101, Char('_'), 101);
+    //function.insert((101, '_'), 101);
+    add_final_state(102, TokenType::Id, Backtrack);
+    //backtrack.insert(102);
 
     //integer::=nonzero digit* |0
-    add_group(&mut function, 200, &NONZERO, vec![201]);
-    add_group(&mut function, 201, &DIGIT, vec![201]);
-    add_group(&mut function, 201, &LETTER, vec![202]);
-    add_group(&mut function, 201, &SYMBOL, vec![202]);
-    add_group(&mut function, 201, &WHITESPACE, vec![202]);
-    add_final_state(&mut final_states, &mut tokens, 202, TokenType::Integer);
-    //final_states.insert(202, INTEGER);
-    backtrack.insert(202);
+    set_transition(200, Array(&NONZERO), 201);
+    set_transition(201, Array(&SIGMA), 202);
+    set_transition(201, Char('.'), 400);
+    //function.insert((201, '.'), 400);
+    set_transition(201, Array(&DIGIT), 201);
+    add_final_state(202, TokenType::Integer, Backtrack);
+    //backtrack.insert(202);
 
-    function.insert((300, '0'), vec![301]);
-    add_final_state(&mut final_states, &mut tokens, 301, TokenType::Integer);
-    //final_states.insert(301, INTEGER);
+    set_transition(300, Char('0'), 301);
+    set_transition(301, Array(&SIGMA), 302);
+    set_transition(301, Char('.'), 400);
+    add_final_state(302, TokenType::Integer, Backtrack);
+    //backtrack.insert(302);
+
+    set_transition(400, Array(&SIGMA), 401);
+    add_final_state(401, TokenType::LexicalError(IncompleteFloat), Backtrack);
+    //backtrack.insert(401);
+    set_transition(400, Char('0'), 400);
+    set_transition(400, Array(&NONZERO), 402);
+    set_transition(402, Array(&SIGMA), 403);
+    set_transition(402, Char('0'), 400);
+    //function.insert((402, '0'), 400);
+    set_transition(402, Array(&NONZERO), 402);
+    add_final_state(403, TokenType::Float, Backtrack);
+    //backtrack.insert(403);
+    set_transition(402, Char('e'), 404);
+    //function.insert((402, 'e'), 404);
+    set_transition(404, Array(&SIGMA), 405);
+    add_final_state(405, TokenType::LexicalError(IncompleteFloat), Backtrack);
+    //backtrack.insert(405);
+    set_transition(404, Char('0'), 407);
+    set_transition(404, Char('+'), 406);
+    set_transition(404, Char('-'), 406);
+    // function.insert((404, '0'), 407);
+    // function.insert((404, '+'), 406);
+    // function.insert((404, '-'), 406);
+    set_transition(406, Array(&SIGMA), 408);
+    add_final_state(408, TokenType::LexicalError(IncompleteFloat), Backtrack);
+    //backtrack.insert(408);
+    set_transition(406, Char('0'), 407);
+    // function.insert((406, '0'), 407);
+    add_final_state(407, TokenType::Float, NoBacktrack);
+    set_transition(406, Array(&NONZERO), 409);
+    set_transition(409, Array(&SIGMA), 410);
+    set_transition(409, Array(&DIGIT), 409);
+    add_final_state(410, TokenType::Float, Backtrack);
+    //backtrack.insert(410);
 
     // /
-    function.insert((500, '/'), vec![501]);
-    add_group(&mut function, 501, &SIGMA, vec![502]);
-    add_final_state(
-        &mut final_states,
-        &mut tokens,
-        502,
-        TokenType::Operator(Operator::Division),
-    );
-    backtrack.insert(502);
+    set_transition(500, Char('/'), 501);
+    set_transition(501, Array(&SIGMA), 502);
+    add_final_state(502, TokenType::Operator(Division), Backtrack);
+    //backtrack.insert(502);
     //Line comment
-    function.insert((501, '/'), vec![503]);
-    add_group(&mut function, 503, &SIGMA, vec![503]);
-    function.insert((503, '\n'), vec![504]);
-    add_final_state(
-        &mut final_states,
-        &mut tokens,
-        504,
-        TokenType::Comment(Comment::LineComment),
-    );
-    //final_states.insert(503, LINE_COMMENT);
-    backtrack.insert(504);
+    set_transition(501, Char('/'), 503);
+    set_transition(503, Array(&SIGMA), 503);
+    set_transition(503, Char('\n'), 504);
+    add_final_state(504, TokenType::Comment(LineComment), Backtrack);
+    //backtrack.insert(504);
     //Block comment
-    function.insert((501, '*'), vec![505]);
-    add_group(&mut function, 505, &SIGMA, vec![505]);
-    function.insert((505, '*'), vec![506]);
-    add_group(&mut function, 506, &SIGMA, vec![505]);
-    function.insert((506, '*'), vec![506]);
-    function.insert((506, '/'), vec![507]);
-    add_final_state(
-        &mut final_states,
-        &mut tokens,
-        507,
-        TokenType::Comment(Comment::BlockComment),
-    );
+    set_transition(501, Char('*'), 505);
+    set_transition(505, Array(&SIGMA), 505);
+    set_transition(505, Char('*'), 506);
+    set_transition(506, Array(&SIGMA), 505);
+    set_transition(506, Char('*'), 506);
+    set_transition(506, Char('/'), 507);
+    add_final_state(507, TokenType::Comment(BlockComment), NoBacktrack);
 
     //OPERATORS
     // < ><= <>
-    function.insert((600, '<'), vec![601]);
-    add_group(&mut function, 601, &SIGMA, vec![602]);
-    add_final_state(
-        &mut final_states,
-        &mut tokens,
-        602,
-        TokenType::Operator(Operator::Smaller),
-    );
-    //final_states.insert(602, SMALLER);
-    backtrack.insert(602);
-    function.insert((601, '='), vec![603]);
-    add_final_state(
-        &mut final_states,
-        &mut tokens,
-        603,
-        TokenType::Operator(Operator::SmallerOrEqual),
-    );
-    //final_states.insert(603, SMALLER_OR_EQUAL);
-    function.insert((601, '>'), vec![604]);
-    add_final_state(
-        &mut final_states,
-        &mut tokens,
-        604,
-        TokenType::Operator(Operator::NotEqual),
-    );
-    //final_states.insert(604, NOT_EQUAL);
+    set_transition(600, Char('<'), 601);
+    set_transition(601, Array(&SIGMA), 602);
+    add_final_state(602, TokenType::Operator(Smaller), Backtrack);
+    //backtrack.insert(602);
+    set_transition(601, Char('='), 603);
+    add_final_state(603, TokenType::Operator(SmallerOrEqual), NoBacktrack);
+    set_transition(601, Char('>'), 604);
+    add_final_state(604, TokenType::Operator(NotEqual), NoBacktrack);
 
     // > >=
-    function.insert((700, '>'), vec![701]);
-    add_group(&mut function, 701, &SIGMA, vec![702]);
-    add_final_state(
-        &mut final_states,
-        &mut tokens,
-        702,
-        TokenType::Operator(Operator::Greater),
-    );
-    //final_states.insert(702, GREATER);
-    backtrack.insert(702);
-    function.insert((701, '='), vec![703]);
-    add_final_state(
-        &mut final_states,
-        &mut tokens,
-        703,
-        TokenType::Operator(Operator::GreaterOrEqual),
-    );
-    //final_states.insert(703, GREATER_OR_EQUAL);
+    set_transition(700, Char('>'), 701);
+    set_transition(701, Array(&SIGMA), 702);
+    add_final_state(702, TokenType::Operator(Greater), Backtrack);
+    //backtrack.insert(702);
+    set_transition(701, Char('='), 703);
+    add_final_state(703, TokenType::Operator(GreaterOrEqual), NoBacktrack);
 
     // = ==
-    function.insert((800, '='), vec![801]);
-    add_group(&mut function, 801, &SIGMA, vec![802]);
-    add_final_state(
-        &mut final_states,
-        &mut tokens,
-        802,
-        TokenType::Operator(Operator::Assignment),
-    );
-    //final_states.insert(802, ASSIGNMENT);
-    backtrack.insert(802);
-    function.insert((801, '='), vec![803]);
-    add_final_state(
-        &mut final_states,
-        &mut tokens,
-        803,
-        TokenType::Operator(Operator::Equal),
-    );
-    //final_states.insert(803, EQUAL);
+    set_transition(800, Char('='), 801);
+    set_transition(801, Array(&SIGMA), 802);
+    add_final_state(802, TokenType::Operator(Assignment), Backtrack);
+    //backtrack.insert(802);
+    set_transition(801, Char('='), 803);
+    add_final_state(803, TokenType::Operator(Equal), NoBacktrack);
 
     // +
-    function.insert((900, '+'), vec![901]);
-    add_final_state(
-        &mut final_states,
-        &mut tokens,
-        901,
-        TokenType::Operator(Operator::Addition),
-    );
+    set_transition(900, Char('+'), 901);
+    add_final_state(901, TokenType::Operator(Addition), NoBacktrack);
 
     // -
-    function.insert((1000, '-'), vec![1001]);
-    add_final_state(
-        &mut final_states,
-        &mut tokens,
-        1001,
-        TokenType::Operator(Operator::Substraction),
-    );
+    set_transition(1000, Char('-'), 1001);
+    add_final_state(1001, TokenType::Operator(Substraction), NoBacktrack);
 
     // *
-    function.insert((1100, '*'), vec![1101]);
-    add_final_state(
-        &mut final_states,
-        &mut tokens,
-        1101,
-        TokenType::Operator(Operator::Multiplication),
-    );
+    set_transition(1100, Char('*'), 1101);
+    add_final_state(1101, TokenType::Operator(Multiplication), NoBacktrack);
 
     // &&
-    //FIXME: Need some way to deal with just & and send an error
-    function.insert((1200, '&'), vec![1201]);
-    add_group(&mut function, 1201, &SIGMA, vec![1]);
-    function.insert((1201, '&'), vec![1202]);
-    add_final_state(
-        &mut final_states,
-        &mut tokens,
-        1202,
-        TokenType::Operator(Operator::And),
-    );
+    set_transition(1200, Char('&'), 1201);
+    set_transition(1201, Array(&SIGMA), 1202);
+    add_final_state(1202, TokenType::LexicalError(IncompleteAnd), NoBacktrack);
+    set_transition(1201, Char('&'), 1203);
+    add_final_state(1203, TokenType::Operator(And), NoBacktrack);
 
     // !
-    function.insert((1300, '!'), vec![1301]);
-    add_final_state(
-        &mut final_states,
-        &mut tokens,
-        1301,
-        TokenType::Operator(Operator::Not),
-    );
+    set_transition(1300, Char('!'), 1301);
+    add_final_state(1301, TokenType::Operator(Not), NoBacktrack);
 
     // &&
-    //FIXME: Need some way to deal with just | and send an error
-    function.insert((1400, '|'), vec![1401]);
-    add_group(&mut function, 1401, &SIGMA, vec![1]);
-    function.insert((1401, '|'), vec![1402]);
-    add_final_state(
-        &mut final_states,
-        &mut tokens,
-        1402,
-        TokenType::Operator(Operator::Or),
-    );
+    set_transition(1400, Char('|'), 1401);
+    set_transition(1401, Array(&SIGMA), 1402);
+    add_final_state(1402, TokenType::LexicalError(IncompleteOr), NoBacktrack);
+    set_transition(1401, Char('|'), 1403);
+    add_final_state(1403, TokenType::Operator(Or), NoBacktrack);
 
     // ;
-    function.insert((1500, ';'), vec![1501]);
-    add_final_state(
-        &mut final_states,
-        &mut tokens,
-        1501,
-        TokenType::Separator(Separator::SemiColon),
-    );
+    set_transition(1500, Char(';'), 1501);
+    add_final_state(1501, TokenType::Separator(SemiColon), NoBacktrack);
 
     // ,
-    function.insert((1600, ','), vec![1601]);
-    add_final_state(
-        &mut final_states,
-        &mut tokens,
-        1601,
-        TokenType::Separator(Separator::Coma),
-    );
+    set_transition(1600, Char(','), 1601);
+    add_final_state(1601, TokenType::Separator(Coma), NoBacktrack);
 
     // .
-    function.insert((1700, '.'), vec![1701]);
-    add_final_state(
-        &mut final_states,
-        &mut tokens,
-        1701,
-        TokenType::Separator(Separator::Period),
-    );
+    set_transition(1700, Char('.'), 1701);
+    add_final_state(1701, TokenType::Separator(Period), NoBacktrack);
 
     // : ::
-    function.insert((1800, ':'), vec![1801]);
-    add_group(&mut function, 1801, &SIGMA, vec![1802]);
-    add_final_state(
-        &mut final_states,
-        &mut tokens,
-        1802,
-        TokenType::Separator(Separator::Colon),
-    );
-    backtrack.insert(1802);
-    function.insert((1801, ':'), vec![1803]);
-    add_final_state(
-        &mut final_states,
-        &mut tokens,
-        1803,
-        TokenType::Separator(Separator::ScopeResolution),
-    );
+    set_transition(1800, Char(':'), 1801);
+    set_transition(1801, Array(&SIGMA), 1802);
+    add_final_state(1802, TokenType::Separator(Colon), Backtrack);
+    //backtrack.insert(1802);
+    set_transition(1801, Char(':'), 1803);
+    add_final_state(1803, TokenType::Separator(ScopeResolution), NoBacktrack);
 
     // (
-    function.insert((1900, '('), vec![1901]);
-    add_final_state(
-        &mut final_states,
-        &mut tokens,
-        1901,
-        TokenType::Separator(Separator::LeftParenthesis),
-    );
+    set_transition(1900, Char('('), 1901);
+    add_final_state(1901, TokenType::Separator(LeftParenthesis), NoBacktrack);
 
     // )
-    function.insert((2000, ')'), vec![2001]);
-    add_final_state(
-        &mut final_states,
-        &mut tokens,
-        2001,
-        TokenType::Separator(Separator::RightParenthesis),
-    );
+    set_transition(2000, Char(')'), 2001);
+    add_final_state(2001, TokenType::Separator(RightParenthesis), NoBacktrack);
 
     // {
-    function.insert((2100, '{'), vec![2101]);
-    add_final_state(
-        &mut final_states,
-        &mut tokens,
-        2101,
-        TokenType::Separator(Separator::LeftCurlyBracket),
-    );
+    set_transition(2100, Char('{'), 2101);
+    add_final_state(2101, TokenType::Separator(LeftCurlyBracket), NoBacktrack);
 
     // }
-    function.insert((2200, '}'), vec![2201]);
-    add_final_state(
-        &mut final_states,
-        &mut tokens,
-        2201,
-        TokenType::Separator(Separator::RightCurlyBracket),
-    );
+    set_transition(2200, Char('}'), 2201);
+    add_final_state(2201, TokenType::Separator(RightCurlyBracket), NoBacktrack);
 
     // [
-    function.insert((2300, '['), vec![2301]);
-    add_final_state(
-        &mut final_states,
-        &mut tokens,
-        2301,
-        TokenType::Separator(Separator::LeftSquareBracket),
-    );
+    set_transition(2300, Char('['), 2301);
+    add_final_state(2301, TokenType::Separator(LeftSquareBracket), NoBacktrack);
 
     // ]
-    function.insert((2400, ']'), vec![2401]);
-    add_final_state(
-        &mut final_states,
-        &mut tokens,
-        2401,
-        TokenType::Separator(Separator::RightSquareBracket),
-    );
+    set_transition(2400, Char(']'), 2401);
+    add_final_state(2401, TokenType::Separator(RightSquareBracket), NoBacktrack);
 
     let states: HashSet<usize> = epsilon_closure
         .keys()

@@ -170,8 +170,8 @@ impl<'a> LexicalAnalyzer<'a> {
         let token_type = self.table.get_token_type(state);
         if let Some(token_type) = token_type {
             match token_type {
-                TokenType::InvalidToken => Some(Err(Error::new(
-                    LexicalError::InvalidToken,
+                TokenType::LexicalError(error_type) => Some(Err(Error::new(
+                    error_type,
                     &string,
                     location.expect("No location."),
                 ))),
@@ -183,7 +183,11 @@ impl<'a> LexicalAnalyzer<'a> {
             }
         //println!("Token: {} {}.", token_type.unwrap(), string);
         } else {
-            unreachable!(&string);
+            Some(Err(Error::new(
+                LexicalError::InvalidToken,
+                &string,
+                location.expect("No location."),
+            )))
         }
     }
 

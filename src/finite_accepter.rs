@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
-//use std::str::Chars;
 
 pub struct NonDeterministicFiniteAccepter {
     pub states: HashSet<usize>,
@@ -11,6 +10,7 @@ pub struct NonDeterministicFiniteAccepter {
     pub final_states: HashSet<usize>,
 }
 
+#[allow(dead_code)]
 pub struct DeterministicFiniteAccepter {
     states: HashSet<usize>,
     alphabet: HashSet<char>,

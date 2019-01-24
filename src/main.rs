@@ -18,8 +18,9 @@ fn main() {
     //
     // let source = fs::read_to_string(filename).expect("Something went wrong reading tokenthe file.");
 
-    let source =
-        String::from("Teést é<><= == if ][][][][]{}{}{}{][][[[[]]()()9)()()]]}\n// \n \n 000000555 \nReed//sdfsfs\nfora\n&& || & | ");
+    let source = String::from(
+        "0.1e+5660 r1 é<><= == if 9)()()]]}\n// \n \n 000000555 \nReed//sdfsfs\nfora\n&& || & | ",
+    );
     println!("SOURCE {}", source);
 
     {
