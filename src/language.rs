@@ -1,20 +1,11 @@
-/*
-Test:
--InvalidCharacter in the middle of tockens.
--UnterminatedBlockComment
--Closing of block comments with * not followed by /
--Opening block comment vs division + multiplication... I guess both would be correct.
--Difference between int.int and float.
--All possible errors in a float
 
-*/
 use std::fmt;
 
-pub const SIGMA: [char; 85] = [
+pub const SIGMA: [char; 86] = [
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i',
     'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B',
     'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U',
-    'V', 'W', 'X', 'Y', 'Z', '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<', '=', '>', '[',
+    'V', 'W', 'X', 'Y', 'Z', '!', '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<', '=', '>', '[',
     ']', '_', '{', '}', '&', '|', ' ', '\t', '\n',
 ];
 
@@ -40,6 +31,7 @@ pub const RESERVED_WORDS: [&str; 11] = [
 pub enum LexicalError {
     InvalidCharacter,
     InvalidToken,
+    InvalidId,
     IncompleteFloat,
     IncompleteAnd,
     IncompleteOr,
@@ -51,6 +43,7 @@ impl fmt::Display for LexicalError {
         match self {
             LexicalError::InvalidCharacter => write!(f, "Lexical Error: Invalid Character"),
             LexicalError::InvalidToken => write!(f, "Lexical Error: Invalid Token"),
+            LexicalError::InvalidId => write!(f, "Lexical Error: Invalid Id"),
             LexicalError::IncompleteFloat => write!(f, "Lexical Error: Incomplete Float"),
             LexicalError::IncompleteAnd => {
                 write!(f, "Lexical Error: Incomplete And (did you mean '&&'?)")

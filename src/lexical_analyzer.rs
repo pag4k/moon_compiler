@@ -26,7 +26,7 @@ pub struct Token {
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(lexeme) = &self.lexeme {
-            write!(f, "[{}: {}, {}]", self.token_type, lexeme, self.location)
+            write!(f, "[{}: '{}', {}]", self.token_type, lexeme, self.location)
         } else {
             write!(f, "[{}, {}]", self.token_type, self.location)
         }
@@ -53,7 +53,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "[{}: {}, {}]",
+            "[{}: '{}', {}]",
             self.error_type, self.lexeme, self.location
         )
     }

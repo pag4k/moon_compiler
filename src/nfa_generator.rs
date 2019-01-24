@@ -106,7 +106,7 @@ pub fn define_nfa_table() -> (
 
     let mut initial_states = vec![
         100, 200, 300, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700,
-        1800, 1900, 2000, 2100, 2200, 2300, 2400,
+        1800, 1900, 2000, 2100, 2200, 2300, 2400, 2500,
     ];
 
     //This needs to go before id to make sure it has priority.
@@ -204,6 +204,7 @@ pub fn define_nfa_table() -> (
     add_final_state(405, TokenType::LexicalError(IncompleteFloat), Backtrack);
     //backtrack.insert(405);
     set_transition(404, Char('0'), 407);
+    set_transition(404, Array(&NONZERO), 409);
     set_transition(404, Char('+'), 406);
     set_transition(404, Char('-'), 406);
     // function.insert((404, '0'), 407);
@@ -242,7 +243,7 @@ pub fn define_nfa_table() -> (
     add_final_state(507, TokenType::Comment(BlockComment), NoBacktrack);
 
     //OPERATORS
-    // < ><= <>
+    // < <= <>
     set_transition(600, Char('<'), 601);
     set_transition(601, Array(&SIGMA), 602);
     add_final_state(602, TokenType::Operator(Smaller), Backtrack);
@@ -283,7 +284,7 @@ pub fn define_nfa_table() -> (
     // &&
     set_transition(1200, Char('&'), 1201);
     set_transition(1201, Array(&SIGMA), 1202);
-    add_final_state(1202, TokenType::LexicalError(IncompleteAnd), NoBacktrack);
+    add_final_state(1202, TokenType::LexicalError(IncompleteAnd), Backtrack);
     set_transition(1201, Char('&'), 1203);
     add_final_state(1203, TokenType::Operator(And), NoBacktrack);
 
@@ -294,7 +295,7 @@ pub fn define_nfa_table() -> (
     // &&
     set_transition(1400, Char('|'), 1401);
     set_transition(1401, Array(&SIGMA), 1402);
-    add_final_state(1402, TokenType::LexicalError(IncompleteOr), NoBacktrack);
+    add_final_state(1402, TokenType::LexicalError(IncompleteOr), Backtrack);
     set_transition(1401, Char('|'), 1403);
     add_final_state(1403, TokenType::Operator(Or), NoBacktrack);
 
@@ -341,6 +342,9 @@ pub fn define_nfa_table() -> (
     // ]
     set_transition(2400, Char(']'), 2401);
     add_final_state(2401, TokenType::Separator(RightSquareBracket), NoBacktrack);
+
+    set_transition(2500, Char('_'), 2501);
+    add_final_state(2501, TokenType::LexicalError(InvalidId), NoBacktrack);
 
     let states: HashSet<usize> = epsilon_closure
         .keys()
