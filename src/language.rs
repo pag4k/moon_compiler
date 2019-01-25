@@ -1,12 +1,11 @@
-
 use std::fmt;
 
 pub const SIGMA: [char; 86] = [
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i',
     'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B',
     'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U',
-    'V', 'W', 'X', 'Y', 'Z', '!', '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<', '=', '>', '[',
-    ']', '_', '{', '}', '&', '|', ' ', '\t', '\n',
+    'V', 'W', 'X', 'Y', 'Z', '!', '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<', '=', '>',
+    '[', ']', '_', '{', '}', '&', '|', ' ', '\t', '\n',
 ];
 
 pub const NONZERO: [char; 9] = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
@@ -32,7 +31,9 @@ pub enum LexicalError {
     InvalidCharacter,
     InvalidToken,
     InvalidId,
-    IncompleteFloat,
+    FloatMissingFraction,
+    FloatTrailingZeros,
+    FloatMissingExponent,
     IncompleteAnd,
     IncompleteOr,
     UnterminatedBlockComment,
@@ -44,7 +45,13 @@ impl fmt::Display for LexicalError {
             LexicalError::InvalidCharacter => write!(f, "Lexical Error: Invalid Character"),
             LexicalError::InvalidToken => write!(f, "Lexical Error: Invalid Token"),
             LexicalError::InvalidId => write!(f, "Lexical Error: Invalid Id"),
-            LexicalError::IncompleteFloat => write!(f, "Lexical Error: Incomplete Float"),
+            LexicalError::FloatMissingFraction => {
+                write!(f, "Lexical Error: Float Missing Fraction")
+            }
+            LexicalError::FloatTrailingZeros => write!(f, "Lexical Error: Float Trailing Zeros"),
+            LexicalError::FloatMissingExponent => {
+                write!(f, "Lexical Error: Float Missing Exponent")
+            }
             LexicalError::IncompleteAnd => {
                 write!(f, "Lexical Error: Incomplete And (did you mean '&&'?)")
             }

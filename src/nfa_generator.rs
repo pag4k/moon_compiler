@@ -188,8 +188,11 @@ pub fn define_nfa_table() -> (
     //backtrack.insert(302);
 
     set_transition(400, Array(&SIGMA), 401);
-    add_final_state(401, TokenType::LexicalError(IncompleteFloat), Backtrack);
-    //backtrack.insert(401);
+    add_final_state(
+        401,
+        TokenType::LexicalError(FloatMissingFraction),
+        Backtrack,
+    );
     set_transition(400, Char('0'), 400);
     set_transition(400, Array(&NONZERO), 402);
     set_transition(402, Array(&SIGMA), 403);
@@ -197,11 +200,14 @@ pub fn define_nfa_table() -> (
     //function.insert((402, '0'), 400);
     set_transition(402, Array(&NONZERO), 402);
     add_final_state(403, TokenType::Float, Backtrack);
-    //backtrack.insert(403);
     set_transition(402, Char('e'), 404);
     //function.insert((402, 'e'), 404);
     set_transition(404, Array(&SIGMA), 405);
-    add_final_state(405, TokenType::LexicalError(IncompleteFloat), Backtrack);
+    add_final_state(
+        405,
+        TokenType::LexicalError(FloatMissingExponent),
+        Backtrack,
+    );
     //backtrack.insert(405);
     set_transition(404, Char('0'), 407);
     set_transition(404, Array(&NONZERO), 409);
@@ -211,7 +217,7 @@ pub fn define_nfa_table() -> (
     // function.insert((404, '+'), 406);
     // function.insert((404, '-'), 406);
     set_transition(406, Array(&SIGMA), 408);
-    add_final_state(408, TokenType::LexicalError(IncompleteFloat), Backtrack);
+    add_final_state(408, TokenType::LexicalError(FloatTrailingZeros), Backtrack);
     //backtrack.insert(408);
     set_transition(406, Char('0'), 407);
     // function.insert((406, '0'), 407);

@@ -71,8 +71,11 @@ if123
 12.
 12..
 12.340              //Problematic case. Cannot divide in two tokens.
+12.3400000004
+12.3404000
 12.34e
 12.34ee
+12.34ef
 12.34e+
 12.34e-
 12.34e-+
