@@ -43,13 +43,13 @@ impl Token {
     }
 }
 
-pub struct Error {
+pub struct TokenError {
     error_type: LexicalError,
     lexeme: String,
     location: Location,
 }
 
-impl fmt::Display for Error {
+impl fmt::Display for TokenError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -59,9 +59,9 @@ impl fmt::Display for Error {
     }
 }
 
-impl Error {
+impl TokenError {
     fn new(error_type: LexicalError, lexeme: &str, location: Location) -> Self {
-        Error {
+        TokenError {
             error_type,
             lexeme: lexeme.to_string(),
             location,
@@ -84,7 +84,7 @@ impl<'a> LexicalAnalyzer<'a> {
         }
     }
 
-    pub fn next_token(&mut self) -> Option<Result<Token, Error>> {
+    pub fn next_token(&mut self) -> Option<Result<Token, TokenError>> {
         let mut state = self.table.get_initial_state();
         let mut string = String::new();
         let mut location: Option<Location> = None;
@@ -104,7 +104,7 @@ impl<'a> LexicalAnalyzer<'a> {
                     continue;
                 }
                 (Some(c), _) => {
-                    //dbg!(c);
+                    dbg!(c);
                     //dbg!(string.clone());
                     c
                 }
@@ -112,14 +112,13 @@ impl<'a> LexicalAnalyzer<'a> {
                     //println!("End");
                     return None;
                 }
-                //No char is like a space?
                 (None, _) => match self.table.abort(state) {
                     Ok(new_state) => {
                         state = new_state;
                         break;
                     }
                     Err(error_type) => {
-                        return Some(Err(Error::new(
+                        return Some(Err(TokenError::new(
                             error_type,
                             &string,
                             location.expect("No location."),
@@ -128,6 +127,7 @@ impl<'a> LexicalAnalyzer<'a> {
                 },
             };
 
+            // It is starting a new string, set the location.
             if string.is_empty() {
                 location = Some(self.get_location());
             }
@@ -139,17 +139,25 @@ impl<'a> LexicalAnalyzer<'a> {
                         //dbg!("Error");
                         string.push(lookup);
                         self.next_char();
-                        return Some(Err(Error::new(
+                        return Some(Err(TokenError::new(
                             error_type,
                             &string,
                             location.expect("No location."),
                         )));
                     } else {
-                        //This does not work for block comment since they can have multiple lines.
-                        //I could add a force end symbol.
-                        //This is a bad way to force to get a final state.
-                        state = self.table.next(state, '\n').unwrap();
-                        break;
+                        match self.table.abort(state) {
+                            Ok(new_state) => {
+                                state = new_state;
+                                break;
+                            }
+                            Err(error_type) => {
+                                return Some(Err(TokenError::new(
+                                    error_type,
+                                    &string,
+                                    location.expect("No location."),
+                                )));
+                            }
+                        };
                     }
                 }
             }
@@ -170,7 +178,7 @@ impl<'a> LexicalAnalyzer<'a> {
         let token_type = self.table.get_token_type(state);
         if let Some(token_type) = token_type {
             match token_type {
-                TokenType::LexicalError(error_type) => Some(Err(Error::new(
+                TokenType::LexicalError(error_type) => Some(Err(TokenError::new(
                     error_type,
                     &string,
                     location.expect("No location."),
@@ -183,7 +191,7 @@ impl<'a> LexicalAnalyzer<'a> {
             }
         //println!("Token: {} {}.", token_type.unwrap(), string);
         } else {
-            Some(Err(Error::new(
+            Some(Err(TokenError::new(
                 LexicalError::InvalidToken,
                 &string,
                 location.expect("No location."),
@@ -214,7 +222,7 @@ pub struct LexicalAnalyzerIntoIterator<'a> {
 }
 
 impl<'a> Iterator for LexicalAnalyzerIntoIterator<'a> {
-    type Item = Result<Token, Error>;
+    type Item = Result<Token, TokenError>;
     fn next(&mut self) -> Option<<Self as Iterator>::Item> {
         self.index += 1;
         self.lexical_analyzer.next_token()
@@ -222,7 +230,7 @@ impl<'a> Iterator for LexicalAnalyzerIntoIterator<'a> {
 }
 
 impl<'a> IntoIterator for LexicalAnalyzer<'a> {
-    type Item = Result<Token, Error>;
+    type Item = Result<Token, TokenError>;
     type IntoIter = LexicalAnalyzerIntoIterator<'a>;
     fn into_iter(self) -> Self::IntoIter {
         LexicalAnalyzerIntoIterator {

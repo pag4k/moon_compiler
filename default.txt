@@ -62,16 +62,15 @@ main
 //Test combined cases
 0123
 01.23
+12.340
 12.34e01
 123abc
 123if
 if123
 
-//Test float
+//Test float errors
 12.
 12..
-12.340              //Problematic case. Cannot divide in two tokens.
-12.3400000004
 12.3404000
 12.34e
 12.34ee

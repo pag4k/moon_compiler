@@ -1,0 +1,54 @@
+digraph finite_state_machine {
+	rankdir=LR;
+	size="8,5"
+
+	node [shape = rectangle, label="413 -> float", fontsize=12] token413;
+	node [shape = rectangle, label="410 -> float", fontsize=12] token410;
+	node [shape = rectangle, label="409 -> Lexical Error: Float Missing Exponent", fontsize=12] token409;
+	node [shape = rectangle, label="407 -> Lexical Error: Float Trailing Zeros", fontsize=12] token407;
+	node [shape = rectangle, label="405 -> float", fontsize=12] token405;
+	node [shape = rectangle, label="403 -> float", fontsize=12] token403;
+	node [shape = rectangle, label="401 -> Lexical Error: Float Missing Fraction", fontsize=12] token401;
+
+	node [shape = circle, label="400", fontsize=12, color=black] 400;
+	node [shape = doublecircle, label="401", fontsize=12, color=red] 401;
+	node [shape = circle, label="402", fontsize=12, color=black] 402;
+	node [shape = doublecircle, label="403", fontsize=12, color=red] 403;
+	node [shape = circle, label="404", fontsize=12, color=black] 404;
+	node [shape = doublecircle, label="405", fontsize=12, color=red] 405;
+	node [shape = circle, label="406", fontsize=12, color=black] 406;
+	node [shape = doublecircle, label="407", fontsize=12, color=red] 407;
+	node [shape = circle, label="408", fontsize=12, color=black] 408;
+	node [shape = doublecircle, label="409", fontsize=12, color=red] 409;
+	node [shape = doublecircle, label="410", fontsize=12, color=black] 410;
+	node [shape = circle, label="411", fontsize=12, color=black] 411;
+	node [shape = circle, label="412", fontsize=12, color=black] 412;
+	node [shape = doublecircle, label="413", fontsize=12, color=red] 413;
+
+	node [shape = point, color=black] q0;
+	q0	->	400;
+
+	404	->	404	[ label = "N" ];
+	412	->	411	[ label = "N" ];
+	408	->	411	[ label = "N" ];
+	402	->	404	[ label = "N" ];
+	400	->	402	[ label = "0" ];
+	412	->	409	[ label = "Σ" ];
+	402	->	403	[ label = "Σ" ];
+	400	->	404	[ label = "N" ];
+	400	->	401	[ label = "Σ" ];
+	408	->	410	[ label = "0" ];
+	404	->	405	[ label = "Σ" ];
+	402	->	406	[ label = "0" ];
+	411	->	413	[ label = "Σ" ];
+	406	->	407	[ label = "Σ" ];
+	411	->	411	[ label = "D" ];
+	406	->	404	[ label = "N" ];
+	408	->	412	[ label = "+" ];
+	408	->	409	[ label = "Σ" ];
+	406	->	406	[ label = "0" ];
+	412	->	410	[ label = "0" ];
+	408	->	412	[ label = "-" ];
+	404	->	406	[ label = "0" ];
+	404	->	408	[ label = "e" ];
+}

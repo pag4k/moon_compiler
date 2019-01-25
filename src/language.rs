@@ -1,26 +1,26 @@
 use std::fmt;
 
-pub const SIGMA: [char; 86] = [
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i',
-    'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B',
-    'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U',
-    'V', 'W', 'X', 'Y', 'Z', '!', '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<', '=', '>',
-    '[', ']', '_', '{', '}', '&', '|', ' ', '\t', '\n',
+pub const SIGMA: [char; 87] = [
+    'Σ', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h',
+    'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A',
+    'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T',
+    'U', 'V', 'W', 'X', 'Y', 'Z', '!', '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<', '=',
+    '>', '[', ']', '_', '{', '}', '&', '|', ' ', '\t', '\n',
 ];
 
-pub const NONZERO: [char; 9] = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
-pub const DIGIT: [char; 10] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-pub const LETTER: [char; 52] = [
-    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's',
-    't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L',
-    'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+pub const NONZERO: [char; 10] = ['N', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+pub const DIGIT: [char; 11] = ['D', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+pub const LETTER: [char; 53] = [
+    'L', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
+    's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K',
+    'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
 ];
-pub const SYMBOL: [char; 20] = [
-    '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<', '=', '>', '[', ']', '_', '{', '}', '&',
-    '|',
+pub const SYMBOL: [char; 21] = [
+    'S', '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<', '=', '>', '[', ']', '_', '{', '}',
+    '&', '|',
 ];
 
-pub const WHITESPACE: [char; 3] = [' ', '\t', '\n'];
+pub const WHITESPACE: [char; 4] = ['W', ' ', '\t', '\n'];
 
 pub const RESERVED_WORDS: [&str; 11] = [
     "if", "then", "else", "for", "class", "integer", "float", "read", "write", "return", "main",
@@ -111,7 +111,7 @@ pub enum Operator {
     Assignment,
     Equal,
     Addition,
-    Substraction,
+    Subtraction,
     Multiplication,
     Division,
     And,
@@ -163,7 +163,7 @@ impl fmt::Display for TokenType {
             TokenType::Operator(operator) => write!(f, "operator: {:?}", operator),
             TokenType::Separator(separator) => write!(f, "separator: {:?}", separator),
             TokenType::Comment(comment) => write!(f, "{:?}", comment),
-            TokenType::LexicalError(_) => unreachable!(),
+            TokenType::LexicalError(error) => write!(f, "{}", error),
         }
     }
 }

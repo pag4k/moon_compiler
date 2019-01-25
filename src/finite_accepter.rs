@@ -19,12 +19,6 @@ pub struct DeterministicFiniteAccepter {
     final_states: HashSet<usize>,
 }
 
-// trait FiniteAccepter {
-//     fn get_initial_state(&self) -> usize;
-//     fn next(&self, state: usize, input: char) -> usize;
-//     fn is_final_state(&self, state: usize) -> bool;
-// }
-
 impl DeterministicFiniteAccepter {
     pub fn get_initial_state(&self) -> usize {
         self.initial_state

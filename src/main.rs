@@ -1,3 +1,4 @@
+mod dot_generator;
 mod finite_accepter;
 mod language;
 mod lexical_analyzer;
@@ -6,6 +7,8 @@ mod nfa_generator;
 
 use std::env;
 use std::fs;
+
+use lexical_analyzer::*;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -24,9 +27,8 @@ fn main() {
     println!("File content:\n{}", source);
 
     {
-        let lexical_analyzer = lexical_analyzer::LexicalAnalyzer::from_string(&source);
-        let tokens: Vec<Result<lexical_analyzer::Token, lexical_analyzer::Error>> =
-            lexical_analyzer.into_iter().collect();
+        let lexical_analyzer = LexicalAnalyzer::from_string(&source);
+        let tokens: Vec<Result<Token, TokenError>> = lexical_analyzer.into_iter().collect();
         for token in tokens {
             match token {
                 Ok(token) => println!("{}", token),
