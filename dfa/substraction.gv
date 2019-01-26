@@ -1,0 +1,14 @@
+digraph finite_state_machine {
+	rankdir=LR;
+	size="8,5"
+
+	node [shape = rectangle, label="1001 -> Subtraction", fontsize=12] token1001;
+
+	node [shape = circle, label="1000", fontsize=12, color=black] 1000;
+	node [shape = doublecircle, label="1001", fontsize=12, color=black] 1001;
+
+	node [shape = point, color=black] q0;
+	q0	->	1000;
+
+	1000	->	1001	[ label = "-" ];
+}

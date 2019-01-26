@@ -1,0 +1,14 @@
+digraph finite_state_machine {
+	rankdir=LR;
+	size="8,5"
+
+	node [shape = rectangle, label="2501 -> Lexical Error: Invalid Id", fontsize=12] token2501;
+
+	node [shape = circle, label="2500", fontsize=12, color=black] 2500;
+	node [shape = doublecircle, label="2501", fontsize=12, color=black] 2501;
+
+	node [shape = point, color=black] q0;
+	q0	->	2500;
+
+	2500	->	2501	[ label = "_" ];
+}

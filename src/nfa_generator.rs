@@ -2,10 +2,22 @@ use super::dot_generator::*;
 use super::finite_accepter::*;
 use super::language::*;
 
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+
+/// Input enum to describe the two types of transitions.
+enum Input {
+    Char(char),
+    Array(&'static [char]),
+}
+
+/// BacktrackEnum to make the code more explicit.
+enum BacktrackEnum {
+    Backtrack,
+    NoBacktrack,
+}
 
 impl NonDeterministicFiniteAccepter {
+    /// Set NFA transitions.
     fn set_transition(
         &mut self,
         transtions: &mut HashMap<(usize, char), usize>,
@@ -14,13 +26,16 @@ impl NonDeterministicFiniteAccepter {
         next_states: usize,
     ) {
         match input {
+            // If the input is only one character, set it.
             Input::Char(char) => {
                 transtions.insert((current_state, char), next_states);
                 self.function
                     .insert((current_state, char), vec![next_states]);
             }
+            // If the input is a slice of char, iterate over them to set them.
             Input::Array(array) => {
                 transtions.insert((current_state, array[0]), next_states);
+                // Skip the first char.
                 for &char in array.iter().skip(1) {
                     self.function
                         .insert((current_state, char), vec![next_states]);
@@ -28,6 +43,7 @@ impl NonDeterministicFiniteAccepter {
             }
         };
     }
+    // Add a final state with its corresponding token and backtrack.
     fn add_final_state(
         &mut self,
         tokens: &mut HashMap<usize, TokenType>,
@@ -43,58 +59,9 @@ impl NonDeterministicFiniteAccepter {
             backtrack.insert(state);
         };
     }
-
-    fn add_reserved_words(
-        &mut self,
-        transtions: &mut HashMap<(usize, char), usize>,
-        tokens: &mut HashMap<usize, TokenType>,
-        backtrack: &mut HashSet<usize>,
-        words: &[&'static str],
-        state_id: usize,
-    ) -> Vec<usize> {
-        use BacktrackEnum::*;
-        use Input::*;
-
-        let mut current_state = state_id;
-        let mut initial_states = Vec::new();
-
-        for word in words {
-            initial_states.push(current_state);
-            for letter in word.chars() {
-                self.set_transition(transtions, current_state, Char(letter), current_state + 1);
-                current_state += 1;
-            }
-            self.set_transition(transtions, current_state, Array(&SYMBOL), current_state + 1);
-            self.set_transition(
-                transtions,
-                current_state,
-                Array(&WHITESPACE),
-                current_state + 1,
-            );
-            current_state += 1;
-            self.add_final_state(
-                tokens,
-                backtrack,
-                current_state,
-                TokenType::Keyword(Keyword::from_str(word)),
-                Backtrack,
-            );
-            current_state += 1;
-        }
-        initial_states
-    }
 }
 
-enum Input {
-    Char(char),
-    Array(&'static [char]),
-}
-
-enum BacktrackEnum {
-    Backtrack,
-    NoBacktrack,
-}
-
+/// Returns a NFA and the tokens and backtack corresponding to its final state.
 pub fn define_nfa_table() -> (
     NonDeterministicFiniteAccepter,
     HashMap<usize, TokenType>,
@@ -115,47 +82,32 @@ pub fn define_nfa_table() -> (
         initial_state: 0,
         final_states: HashSet::new(),
     };
-
-    let mut transtions: HashMap<(usize, char), usize> = HashMap::new();
     let mut tokens: HashMap<usize, TokenType> = HashMap::new();
     let mut backtrack: HashSet<usize> = HashSet::new();
+    // The transitions map is only used for the generation of DOT files.
+    let mut transtions: HashMap<(usize, char), usize> = HashMap::new();
 
-    let mut initial_states = vec![
-        100, 200, 300, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700,
-        1800, 1900, 2000, 2100, 2200, 2300, 2400, 2500,
-    ];
+    let mut initial_states = Vec::new();
 
-    //This needs to go before id to make sure it has priority.
-    //There is probably a better way to do this.
-    //ADD RESERVED WORDS
-    let mut reserved_words_states = nfa.add_reserved_words(
-        &mut transtions,
-        &mut tokens,
-        &mut backtrack,
-        &RESERVED_WORDS,
-        1,
-    );
-    initial_states.append(&mut reserved_words_states);
-
-    //Need to add epsilon closure
-    //let mut epsilon_closure: HashMap<usize, Vec<usize>> = HashMap::new();
-    nfa.epsilon_closure.insert(0, initial_states);
-
-    //IMPORTANT: Here, we assume that we did not go over 100 when adding keywords.
-    //To avoid state number collision, jump by 100 for each regular expression
-
-    //TODO: I'm not really hard coding the NFA.
-    //In fact, I'm almost defining the DFA since I have to consider all cases.
-
-    //id::=letter alphanum*
+    // TokenType::Id
+    initial_states.push(100);
     nfa.set_transition(&mut transtions, 100, Array(&LETTER), 101);
     nfa.set_transition(&mut transtions, 101, Array(&SIGMA), 102);
     nfa.set_transition(&mut transtions, 101, Array(&DIGIT), 101);
     nfa.set_transition(&mut transtions, 101, Array(&LETTER), 101);
     nfa.set_transition(&mut transtions, 101, Char('_'), 101);
     nfa.add_final_state(&mut tokens, &mut backtrack, 102, TokenType::Id, Backtrack);
+    DotGraph::generate(
+        &nfa,
+        &transtions,
+        &tokens,
+        &backtrack,
+        100..=102,
+        "dfa/id.gv",
+    );
 
-    //integer::=nonzero digit* |0
+    // TokenType::Integer (non zero)
+    initial_states.push(200);
     nfa.set_transition(&mut transtions, 200, Array(&NONZERO), 201);
     nfa.set_transition(&mut transtions, 201, Array(&SIGMA), 202);
     nfa.set_transition(&mut transtions, 201, Char('.'), 400);
@@ -167,7 +119,17 @@ pub fn define_nfa_table() -> (
         TokenType::Integer,
         Backtrack,
     );
+    DotGraph::generate(
+        &nfa,
+        &transtions,
+        &tokens,
+        &backtrack,
+        200..=202,
+        "dfa/nonzero.gv",
+    );
 
+    // TokenType::Integer (zero)
+    initial_states.push(300);
     nfa.set_transition(&mut transtions, 300, Char('0'), 301);
     nfa.set_transition(&mut transtions, 301, Array(&SIGMA), 302);
     nfa.set_transition(&mut transtions, 301, Char('.'), 400);
@@ -178,7 +140,6 @@ pub fn define_nfa_table() -> (
         TokenType::Integer,
         Backtrack,
     );
-
     DotGraph::generate(
         &nfa,
         &transtions,
@@ -188,6 +149,8 @@ pub fn define_nfa_table() -> (
         "dfa/zero.gv",
     );
 
+    // TokenType::Float
+    //initial_states.push(400);
     nfa.set_transition(&mut transtions, 400, Array(&SIGMA), 401);
     nfa.add_final_state(
         &mut tokens,
@@ -198,7 +161,6 @@ pub fn define_nfa_table() -> (
     );
     nfa.set_transition(&mut transtions, 400, Char('0'), 402);
     nfa.set_transition(&mut transtions, 400, Array(&NONZERO), 404);
-
     nfa.set_transition(&mut transtions, 402, Array(&SIGMA), 403);
     nfa.add_final_state(
         &mut tokens,
@@ -209,7 +171,6 @@ pub fn define_nfa_table() -> (
     );
     nfa.set_transition(&mut transtions, 402, Array(&NONZERO), 404);
     nfa.set_transition(&mut transtions, 402, Char('0'), 406);
-
     nfa.set_transition(&mut transtions, 404, Array(&SIGMA), 405);
     nfa.add_final_state(
         &mut tokens,
@@ -221,7 +182,6 @@ pub fn define_nfa_table() -> (
     nfa.set_transition(&mut transtions, 404, Array(&NONZERO), 404);
     nfa.set_transition(&mut transtions, 404, Char('0'), 406);
     nfa.set_transition(&mut transtions, 404, Char('e'), 408);
-
     nfa.set_transition(&mut transtions, 406, Array(&SIGMA), 407);
     nfa.add_final_state(
         &mut tokens,
@@ -232,7 +192,6 @@ pub fn define_nfa_table() -> (
     );
     nfa.set_transition(&mut transtions, 406, Array(&NONZERO), 404);
     nfa.set_transition(&mut transtions, 406, Char('0'), 406);
-
     nfa.set_transition(&mut transtions, 408, Array(&SIGMA), 409);
     nfa.add_final_state(
         &mut tokens,
@@ -252,7 +211,6 @@ pub fn define_nfa_table() -> (
     nfa.set_transition(&mut transtions, 408, Char('+'), 412);
     nfa.set_transition(&mut transtions, 408, Char('-'), 412);
     nfa.set_transition(&mut transtions, 408, Array(&NONZERO), 411);
-
     nfa.set_transition(&mut transtions, 411, Array(&SIGMA), 413);
     nfa.add_final_state(
         &mut tokens,
@@ -262,11 +220,9 @@ pub fn define_nfa_table() -> (
         Backtrack,
     );
     nfa.set_transition(&mut transtions, 411, Array(&DIGIT), 411);
-
     nfa.set_transition(&mut transtions, 412, Array(&SIGMA), 409);
     nfa.set_transition(&mut transtions, 412, Char('0'), 410);
     nfa.set_transition(&mut transtions, 412, Array(&NONZERO), 411);
-
     DotGraph::generate(
         &nfa,
         &transtions,
@@ -276,7 +232,8 @@ pub fn define_nfa_table() -> (
         "dfa/float.gv",
     );
 
-    // /
+    // TokenType::Operator(Division)
+    initial_states.push(500);
     nfa.set_transition(&mut transtions, 500, Char('/'), 501);
     nfa.set_transition(&mut transtions, 501, Array(&SIGMA), 502);
     nfa.add_final_state(
@@ -286,7 +243,7 @@ pub fn define_nfa_table() -> (
         TokenType::Operator(Division),
         Backtrack,
     );
-    //Line comment
+    // TokenType::Comment(LineComment)
     nfa.set_transition(&mut transtions, 501, Char('/'), 503);
     nfa.set_transition(&mut transtions, 503, Array(&SIGMA), 503);
     nfa.set_transition(&mut transtions, 503, Char('\n'), 504);
@@ -297,7 +254,7 @@ pub fn define_nfa_table() -> (
         TokenType::Comment(LineComment),
         Backtrack,
     );
-    //Block comment
+    // TokenType::Comment(BlockComment)
     nfa.set_transition(&mut transtions, 501, Char('*'), 505);
     nfa.set_transition(&mut transtions, 505, Array(&SIGMA), 505);
     nfa.set_transition(&mut transtions, 505, Char('*'), 506);
@@ -311,9 +268,17 @@ pub fn define_nfa_table() -> (
         TokenType::Comment(BlockComment),
         NoBacktrack,
     );
+    DotGraph::generate(
+        &nfa,
+        &transtions,
+        &tokens,
+        &backtrack,
+        500..=507,
+        "dfa/slash.gv",
+    );
 
-    //OPERATORS
-    // < <= <>
+    // TokenType::Operator(Smaller)
+    initial_states.push(600);
     nfa.set_transition(&mut transtions, 600, Char('<'), 601);
     nfa.set_transition(&mut transtions, 601, Array(&SIGMA), 602);
     nfa.add_final_state(
@@ -323,6 +288,7 @@ pub fn define_nfa_table() -> (
         TokenType::Operator(Smaller),
         Backtrack,
     );
+    // TokenType::Operator(SmallerOrEqual)
     nfa.set_transition(&mut transtions, 601, Char('='), 603);
     nfa.add_final_state(
         &mut tokens,
@@ -331,6 +297,7 @@ pub fn define_nfa_table() -> (
         TokenType::Operator(SmallerOrEqual),
         NoBacktrack,
     );
+    // TokenType::Operator(NotEqual)
     nfa.set_transition(&mut transtions, 601, Char('>'), 604);
     nfa.add_final_state(
         &mut tokens,
@@ -339,7 +306,6 @@ pub fn define_nfa_table() -> (
         TokenType::Operator(NotEqual),
         NoBacktrack,
     );
-
     DotGraph::generate(
         &nfa,
         &transtions,
@@ -349,7 +315,8 @@ pub fn define_nfa_table() -> (
         "dfa/smaller.gv",
     );
 
-    // > >=
+    // TokenType::Operator(Greater)
+    initial_states.push(700);
     nfa.set_transition(&mut transtions, 700, Char('>'), 701);
     nfa.set_transition(&mut transtions, 701, Array(&SIGMA), 702);
     nfa.add_final_state(
@@ -359,6 +326,7 @@ pub fn define_nfa_table() -> (
         TokenType::Operator(Greater),
         Backtrack,
     );
+    // TokenType::Operator(GreaterOrEqual)
     nfa.set_transition(&mut transtions, 701, Char('='), 703);
     nfa.add_final_state(
         &mut tokens,
@@ -367,8 +335,17 @@ pub fn define_nfa_table() -> (
         TokenType::Operator(GreaterOrEqual),
         NoBacktrack,
     );
+    DotGraph::generate(
+        &nfa,
+        &transtions,
+        &tokens,
+        &backtrack,
+        700..=703,
+        "dfa/greater.gv",
+    );
 
-    // = ==
+    // TokenType::Operator(Assignment)
+    initial_states.push(800);
     nfa.set_transition(&mut transtions, 800, Char('='), 801);
     nfa.set_transition(&mut transtions, 801, Array(&SIGMA), 802);
     nfa.add_final_state(
@@ -378,6 +355,7 @@ pub fn define_nfa_table() -> (
         TokenType::Operator(Assignment),
         Backtrack,
     );
+    // TokenType::Operator(Equal)
     nfa.set_transition(&mut transtions, 801, Char('='), 803);
     nfa.add_final_state(
         &mut tokens,
@@ -386,8 +364,17 @@ pub fn define_nfa_table() -> (
         TokenType::Operator(Equal),
         NoBacktrack,
     );
+    DotGraph::generate(
+        &nfa,
+        &transtions,
+        &tokens,
+        &backtrack,
+        800..=803,
+        "dfa/equal.gv",
+    );
 
-    // +
+    // TokenType::Operator(Addition)
+    initial_states.push(900);
     nfa.set_transition(&mut transtions, 900, Char('+'), 901);
     nfa.add_final_state(
         &mut tokens,
@@ -396,8 +383,17 @@ pub fn define_nfa_table() -> (
         TokenType::Operator(Addition),
         NoBacktrack,
     );
+    DotGraph::generate(
+        &nfa,
+        &transtions,
+        &tokens,
+        &backtrack,
+        900..=901,
+        "dfa/addition.gv",
+    );
 
-    // -
+    // TokenType::Operator(Subtraction)
+    initial_states.push(1000);
     nfa.set_transition(&mut transtions, 1000, Char('-'), 1001);
     nfa.add_final_state(
         &mut tokens,
@@ -406,8 +402,17 @@ pub fn define_nfa_table() -> (
         TokenType::Operator(Subtraction),
         NoBacktrack,
     );
+    DotGraph::generate(
+        &nfa,
+        &transtions,
+        &tokens,
+        &backtrack,
+        1000..=1001,
+        "dfa/substraction.gv",
+    );
 
-    // *
+    // TokenType::Operator(Multiplication)
+    initial_states.push(1100);
     nfa.set_transition(&mut transtions, 1100, Char('*'), 1101);
     nfa.add_final_state(
         &mut tokens,
@@ -416,8 +421,17 @@ pub fn define_nfa_table() -> (
         TokenType::Operator(Multiplication),
         NoBacktrack,
     );
+    DotGraph::generate(
+        &nfa,
+        &transtions,
+        &tokens,
+        &backtrack,
+        1100..=1101,
+        "dfa/multiplication.gv",
+    );
 
-    // &&
+    // TokenType::Operator(And)
+    initial_states.push(1200);
     nfa.set_transition(&mut transtions, 1200, Char('&'), 1201);
     nfa.set_transition(&mut transtions, 1201, Array(&SIGMA), 1202);
     nfa.add_final_state(
@@ -435,8 +449,17 @@ pub fn define_nfa_table() -> (
         TokenType::Operator(And),
         NoBacktrack,
     );
+    DotGraph::generate(
+        &nfa,
+        &transtions,
+        &tokens,
+        &backtrack,
+        1200..=1201,
+        "dfa/ampersand.gv",
+    );
 
-    // !
+    // TokenType::Operator(Not)
+    initial_states.push(1300);
     nfa.set_transition(&mut transtions, 1300, Char('!'), 1301);
     nfa.add_final_state(
         &mut tokens,
@@ -445,8 +468,17 @@ pub fn define_nfa_table() -> (
         TokenType::Operator(Not),
         NoBacktrack,
     );
+    DotGraph::generate(
+        &nfa,
+        &transtions,
+        &tokens,
+        &backtrack,
+        1300..=1301,
+        "dfa/not.gv",
+    );
 
-    // &&
+    // TokenType::Operator(Or)
+    initial_states.push(1400);
     nfa.set_transition(&mut transtions, 1400, Char('|'), 1401);
     nfa.set_transition(&mut transtions, 1401, Array(&SIGMA), 1402);
     nfa.add_final_state(
@@ -464,8 +496,17 @@ pub fn define_nfa_table() -> (
         TokenType::Operator(Or),
         NoBacktrack,
     );
+    DotGraph::generate(
+        &nfa,
+        &transtions,
+        &tokens,
+        &backtrack,
+        1400..=1401,
+        "dfa/pipe.gv",
+    );
 
-    // ;
+    // TokenType::Separator(SemiColon)
+    initial_states.push(1500);
     nfa.set_transition(&mut transtions, 1500, Char(';'), 1501);
     nfa.add_final_state(
         &mut tokens,
@@ -474,8 +515,17 @@ pub fn define_nfa_table() -> (
         TokenType::Separator(SemiColon),
         NoBacktrack,
     );
+    DotGraph::generate(
+        &nfa,
+        &transtions,
+        &tokens,
+        &backtrack,
+        1500..=1501,
+        "dfa/semicolon.gv",
+    );
 
-    // ,
+    // TokenType::Separator(Coma)
+    initial_states.push(1600);
     nfa.set_transition(&mut transtions, 1600, Char(','), 1601);
     nfa.add_final_state(
         &mut tokens,
@@ -484,8 +534,17 @@ pub fn define_nfa_table() -> (
         TokenType::Separator(Coma),
         NoBacktrack,
     );
+    DotGraph::generate(
+        &nfa,
+        &transtions,
+        &tokens,
+        &backtrack,
+        1600..=1601,
+        "dfa/coma.gv",
+    );
 
-    // .
+    // TokenType::Separator(Period)
+    initial_states.push(1700);
     nfa.set_transition(&mut transtions, 1700, Char('.'), 1701);
     nfa.add_final_state(
         &mut tokens,
@@ -494,8 +553,17 @@ pub fn define_nfa_table() -> (
         TokenType::Separator(Period),
         NoBacktrack,
     );
+    DotGraph::generate(
+        &nfa,
+        &transtions,
+        &tokens,
+        &backtrack,
+        1700..=1701,
+        "dfa/period.gv",
+    );
 
-    // : ::
+    // TokenType::Separator(Colon)
+    initial_states.push(1800);
     nfa.set_transition(&mut transtions, 1800, Char(':'), 1801);
     nfa.set_transition(&mut transtions, 1801, Array(&SIGMA), 1802);
     nfa.add_final_state(
@@ -505,6 +573,7 @@ pub fn define_nfa_table() -> (
         TokenType::Separator(Colon),
         Backtrack,
     );
+    // TokenType::Separator(ScopeResolution)
     nfa.set_transition(&mut transtions, 1801, Char(':'), 1803);
     nfa.add_final_state(
         &mut tokens,
@@ -513,8 +582,17 @@ pub fn define_nfa_table() -> (
         TokenType::Separator(ScopeResolution),
         NoBacktrack,
     );
+    DotGraph::generate(
+        &nfa,
+        &transtions,
+        &tokens,
+        &backtrack,
+        1800..=1803,
+        "dfa/colon.gv",
+    );
 
-    // (
+    // TokenType::Separator(LeftParenthesis)
+    initial_states.push(1900);
     nfa.set_transition(&mut transtions, 1900, Char('('), 1901);
     nfa.add_final_state(
         &mut tokens,
@@ -523,8 +601,17 @@ pub fn define_nfa_table() -> (
         TokenType::Separator(LeftParenthesis),
         NoBacktrack,
     );
+    DotGraph::generate(
+        &nfa,
+        &transtions,
+        &tokens,
+        &backtrack,
+        1900..=1901,
+        "dfa/leftparenthesis.gv",
+    );
 
-    // )
+    // TokenType::Separator(RightParenthesis)
+    initial_states.push(2000);
     nfa.set_transition(&mut transtions, 2000, Char(')'), 2001);
     nfa.add_final_state(
         &mut tokens,
@@ -533,8 +620,17 @@ pub fn define_nfa_table() -> (
         TokenType::Separator(RightParenthesis),
         NoBacktrack,
     );
+    DotGraph::generate(
+        &nfa,
+        &transtions,
+        &tokens,
+        &backtrack,
+        2000..=2001,
+        "dfa/rightparenthesis.gv",
+    );
 
-    // {
+    // TokenType::Separator(LeftCurlyBracket)
+    initial_states.push(2100);
     nfa.set_transition(&mut transtions, 2100, Char('{'), 2101);
     nfa.add_final_state(
         &mut tokens,
@@ -543,8 +639,17 @@ pub fn define_nfa_table() -> (
         TokenType::Separator(LeftCurlyBracket),
         NoBacktrack,
     );
+    DotGraph::generate(
+        &nfa,
+        &transtions,
+        &tokens,
+        &backtrack,
+        2100..=2101,
+        "dfa/leftcurlybracket.gv",
+    );
 
-    // }
+    // TokenType::Separator(RightCurlyBracket)
+    initial_states.push(2200);
     nfa.set_transition(&mut transtions, 2200, Char('}'), 2201);
     nfa.add_final_state(
         &mut tokens,
@@ -553,8 +658,17 @@ pub fn define_nfa_table() -> (
         TokenType::Separator(RightCurlyBracket),
         NoBacktrack,
     );
+    DotGraph::generate(
+        &nfa,
+        &transtions,
+        &tokens,
+        &backtrack,
+        2200..=2201,
+        "dfa/rightcurlybracket.gv",
+    );
 
-    // [
+    // TokenType::Separator(LeftSquareBracket)
+    initial_states.push(2300);
     nfa.set_transition(&mut transtions, 2300, Char('['), 2301);
     nfa.add_final_state(
         &mut tokens,
@@ -563,8 +677,17 @@ pub fn define_nfa_table() -> (
         TokenType::Separator(LeftSquareBracket),
         NoBacktrack,
     );
+    DotGraph::generate(
+        &nfa,
+        &transtions,
+        &tokens,
+        &backtrack,
+        2300..=2301,
+        "dfa/leftsquarebracket.gv",
+    );
 
-    // ]
+    // TokenType::Separator(RightSquareBracket)
+    initial_states.push(2400);
     nfa.set_transition(&mut transtions, 2400, Char(']'), 2401);
     nfa.add_final_state(
         &mut tokens,
@@ -573,7 +696,17 @@ pub fn define_nfa_table() -> (
         TokenType::Separator(RightSquareBracket),
         NoBacktrack,
     );
+    DotGraph::generate(
+        &nfa,
+        &transtions,
+        &tokens,
+        &backtrack,
+        2400..=2401,
+        "dfa/rightsquarebracket.gv",
+    );
 
+    // TokenType::LexicalError(InvalidId)
+    initial_states.push(2500);
     nfa.set_transition(&mut transtions, 2500, Char('_'), 2501);
     nfa.add_final_state(
         &mut tokens,
@@ -582,6 +715,17 @@ pub fn define_nfa_table() -> (
         TokenType::LexicalError(InvalidId),
         NoBacktrack,
     );
+    DotGraph::generate(
+        &nfa,
+        &transtions,
+        &tokens,
+        &backtrack,
+        2500..=2501,
+        "dfa/invalidid.gv",
+    );
+
+    // Add all of the first state of all the DFA to the espilon closure.
+    nfa.epsilon_closure.insert(0, initial_states);
 
     nfa.states = nfa
         .epsilon_closure

@@ -1,0 +1,33 @@
+digraph finite_state_machine {
+	rankdir=LR;
+	size="8,5"
+
+	node [shape = rectangle, label="507 -> BlockComment", fontsize=12] token507;
+	node [shape = rectangle, label="504 -> LineComment", fontsize=12] token504;
+	node [shape = rectangle, label="502 -> Division", fontsize=12] token502;
+
+	node [shape = circle, label="500", fontsize=12, color=black] 500;
+	node [shape = circle, label="501", fontsize=12, color=black] 501;
+	node [shape = doublecircle, label="502", fontsize=12, color=red] 502;
+	node [shape = circle, label="503", fontsize=12, color=black] 503;
+	node [shape = doublecircle, label="504", fontsize=12, color=red] 504;
+	node [shape = circle, label="505", fontsize=12, color=black] 505;
+	node [shape = circle, label="506", fontsize=12, color=black] 506;
+	node [shape = doublecircle, label="507", fontsize=12, color=black] 507;
+
+	node [shape = point, color=black] q0;
+	q0	->	500;
+
+	503	->	504	[ label = "
+" ];
+	506	->	507	[ label = "/" ];
+	506	->	505	[ label = "Σ" ];
+	505	->	506	[ label = "*" ];
+	501	->	502	[ label = "Σ" ];
+	500	->	501	[ label = "/" ];
+	501	->	505	[ label = "*" ];
+	506	->	506	[ label = "*" ];
+	503	->	503	[ label = "Σ" ];
+	505	->	505	[ label = "Σ" ];
+	501	->	503	[ label = "/" ];
+}

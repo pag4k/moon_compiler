@@ -1,0 +1,19 @@
+digraph finite_state_machine {
+	rankdir=LR;
+	size="8,5"
+
+	node [shape = rectangle, label="102 -> Id", fontsize=12] token102;
+
+	node [shape = circle, label="100", fontsize=12, color=black] 100;
+	node [shape = circle, label="101", fontsize=12, color=black] 101;
+	node [shape = doublecircle, label="102", fontsize=12, color=red] 102;
+
+	node [shape = point, color=black] q0;
+	q0	->	100;
+
+	101	->	101	[ label = "_" ];
+	101	->	102	[ label = "Σ" ];
+	101	->	101	[ label = "D" ];
+	100	->	101	[ label = "L" ];
+	101	->	101	[ label = "L" ];
+}

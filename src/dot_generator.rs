@@ -1,20 +1,19 @@
 use super::finite_accepter::*;
 use super::language::*;
 
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::prelude::*;
+use std::ops::RangeInclusive;
 use std::path::Path;
 
-use std::collections::HashMap;
-use std::collections::HashSet;
-
-use std::ops::RangeInclusive;
-
+/// DotGraph ADT
 pub struct DotGraph {
     code: String,
 }
 
 impl DotGraph {
+    /// Generate a .gv file based on the section of NFA specified in arguments.
     pub fn generate(
         nfa: &NonDeterministicFiniteAccepter,
         transtions: &HashMap<(usize, char), usize>,
@@ -83,11 +82,10 @@ impl DotGraph {
         dot_graph.add_line("}");
 
         let path = Path::new(filename);
-
         let mut file = File::create(&path).unwrap();
-
         file.write_all(dot_graph.code.as_bytes()).unwrap();
     }
+    /// Helper function to add a line to the output String.
     fn add_line(&mut self, line: &str) {
         self.code.push_str(line);
         self.code.push('\n');
