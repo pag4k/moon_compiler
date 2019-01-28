@@ -22,8 +22,17 @@ fn main() {
     } else {
         &args[1]
     };
-    let source =
-        fs::read_to_string(source_filename).expect("Something went wrong reading source file.");
+
+    let source = match fs::read_to_string(source_filename) {
+        Ok(file) => file,
+        Err(_) => {
+            println!(
+                "ERROR: Something went wrong reading source file: {}. Exiting...",
+                source_filename
+            );
+            return;
+        }
+    };
 
     // If there was a second argument, use it as AtoCC file, otherwise atocc.txt.
     let atocc_filename = if args.len() < 3 {
@@ -32,7 +41,16 @@ fn main() {
         &args[2]
     };
     let path = Path::new(atocc_filename);
-    let mut atocc_file = File::create(&path).expect("Something went wrong reading AtoCC file.");
+    let mut atocc_file = match File::create(&path) {
+        Ok(file) => file,
+        Err(_) => {
+            println!(
+                "ERROR: Something went wrong creating AtoCC file: {}. Exiting...",
+                atocc_filename
+            );
+            return;
+        }
+    };
 
     // If there was a third argument, use it as error file, otherwise error.txt.
     let error_filename = if args.len() < 4 {
@@ -41,7 +59,16 @@ fn main() {
         &args[3]
     };
     let path = Path::new(error_filename);
-    let mut error_file = File::create(&path).expect("Something went wrong reading error file.");
+    let mut error_file = match File::create(&path) {
+        Ok(file) => file,
+        Err(_) => {
+            println!(
+                "ERROR: Something went wrong creating error file: {}. Exiting...",
+                error_filename
+            );
+            return;
+        }
+    };
 
     // Print the source file content.
     //println!("File content:\n{}", source);
@@ -57,7 +84,7 @@ fn main() {
                     .expect("Could not write to AtoCC file.");
             }
             Err(error) => {
-                println!("{}", error);
+                //println!("{}", error);
                 error_file
                     .write_fmt(format_args!("{}\n", error))
                     .expect("Could not write to error file.");

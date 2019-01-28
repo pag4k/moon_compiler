@@ -28,7 +28,11 @@ impl NonDeterministicFiniteAccepter {
         match input {
             // If the input is only one character, set it.
             Input::Char(char) => {
-                transtions.insert((current_state, char), next_states);
+                if char == '\n' {
+                    transtions.insert((current_state, 'R'), next_states);
+                } else {
+                    transtions.insert((current_state, char), next_states);
+                }
                 self.function
                     .insert((current_state, char), vec![next_states]);
             }
@@ -103,7 +107,7 @@ pub fn define_nfa_table() -> (
         &tokens,
         &backtrack,
         100..=102,
-        "dfa/id.gv",
+        "nfa/id.gv",
     );
 
     // TokenType::Integer (non zero)
@@ -125,7 +129,7 @@ pub fn define_nfa_table() -> (
         &tokens,
         &backtrack,
         200..=202,
-        "dfa/nonzero.gv",
+        "nfa/nonzero.gv",
     );
 
     // TokenType::Integer (zero)
@@ -146,7 +150,7 @@ pub fn define_nfa_table() -> (
         &tokens,
         &backtrack,
         300..=302,
-        "dfa/zero.gv",
+        "nfa/zero.gv",
     );
 
     // TokenType::Float
@@ -229,7 +233,7 @@ pub fn define_nfa_table() -> (
         &tokens,
         &backtrack,
         400..=413,
-        "dfa/float.gv",
+        "nfa/float.gv",
     );
 
     // TokenType::Operator(Division)
@@ -274,7 +278,7 @@ pub fn define_nfa_table() -> (
         &tokens,
         &backtrack,
         500..=507,
-        "dfa/slash.gv",
+        "nfa/slash.gv",
     );
 
     // TokenType::Operator(Smaller)
@@ -312,7 +316,7 @@ pub fn define_nfa_table() -> (
         &tokens,
         &backtrack,
         600..=604,
-        "dfa/smaller.gv",
+        "nfa/smaller.gv",
     );
 
     // TokenType::Operator(Greater)
@@ -341,7 +345,7 @@ pub fn define_nfa_table() -> (
         &tokens,
         &backtrack,
         700..=703,
-        "dfa/greater.gv",
+        "nfa/greater.gv",
     );
 
     // TokenType::Operator(Assignment)
@@ -370,7 +374,7 @@ pub fn define_nfa_table() -> (
         &tokens,
         &backtrack,
         800..=803,
-        "dfa/equal.gv",
+        "nfa/equal.gv",
     );
 
     // TokenType::Operator(Addition)
@@ -389,7 +393,7 @@ pub fn define_nfa_table() -> (
         &tokens,
         &backtrack,
         900..=901,
-        "dfa/addition.gv",
+        "nfa/addition.gv",
     );
 
     // TokenType::Operator(Subtraction)
@@ -408,7 +412,7 @@ pub fn define_nfa_table() -> (
         &tokens,
         &backtrack,
         1000..=1001,
-        "dfa/substraction.gv",
+        "nfa/substraction.gv",
     );
 
     // TokenType::Operator(Multiplication)
@@ -427,7 +431,7 @@ pub fn define_nfa_table() -> (
         &tokens,
         &backtrack,
         1100..=1101,
-        "dfa/multiplication.gv",
+        "nfa/multiplication.gv",
     );
 
     // TokenType::Operator(And)
@@ -454,8 +458,8 @@ pub fn define_nfa_table() -> (
         &transtions,
         &tokens,
         &backtrack,
-        1200..=1201,
-        "dfa/ampersand.gv",
+        1200..=1203,
+        "nfa/ampersand.gv",
     );
 
     // TokenType::Operator(Not)
@@ -474,7 +478,7 @@ pub fn define_nfa_table() -> (
         &tokens,
         &backtrack,
         1300..=1301,
-        "dfa/not.gv",
+        "nfa/not.gv",
     );
 
     // TokenType::Operator(Or)
@@ -501,8 +505,8 @@ pub fn define_nfa_table() -> (
         &transtions,
         &tokens,
         &backtrack,
-        1400..=1401,
-        "dfa/pipe.gv",
+        1400..=1403,
+        "nfa/pipe.gv",
     );
 
     // TokenType::Separator(SemiColon)
@@ -521,7 +525,7 @@ pub fn define_nfa_table() -> (
         &tokens,
         &backtrack,
         1500..=1501,
-        "dfa/semicolon.gv",
+        "nfa/semicolon.gv",
     );
 
     // TokenType::Separator(Coma)
@@ -540,7 +544,7 @@ pub fn define_nfa_table() -> (
         &tokens,
         &backtrack,
         1600..=1601,
-        "dfa/coma.gv",
+        "nfa/coma.gv",
     );
 
     // TokenType::Separator(Period)
@@ -559,7 +563,7 @@ pub fn define_nfa_table() -> (
         &tokens,
         &backtrack,
         1700..=1701,
-        "dfa/period.gv",
+        "nfa/period.gv",
     );
 
     // TokenType::Separator(Colon)
@@ -588,7 +592,7 @@ pub fn define_nfa_table() -> (
         &tokens,
         &backtrack,
         1800..=1803,
-        "dfa/colon.gv",
+        "nfa/colon.gv",
     );
 
     // TokenType::Separator(LeftParenthesis)
@@ -607,7 +611,7 @@ pub fn define_nfa_table() -> (
         &tokens,
         &backtrack,
         1900..=1901,
-        "dfa/leftparenthesis.gv",
+        "nfa/leftparenthesis.gv",
     );
 
     // TokenType::Separator(RightParenthesis)
@@ -626,7 +630,7 @@ pub fn define_nfa_table() -> (
         &tokens,
         &backtrack,
         2000..=2001,
-        "dfa/rightparenthesis.gv",
+        "nfa/rightparenthesis.gv",
     );
 
     // TokenType::Separator(LeftCurlyBracket)
@@ -645,7 +649,7 @@ pub fn define_nfa_table() -> (
         &tokens,
         &backtrack,
         2100..=2101,
-        "dfa/leftcurlybracket.gv",
+        "nfa/leftcurlybracket.gv",
     );
 
     // TokenType::Separator(RightCurlyBracket)
@@ -664,7 +668,7 @@ pub fn define_nfa_table() -> (
         &tokens,
         &backtrack,
         2200..=2201,
-        "dfa/rightcurlybracket.gv",
+        "nfa/rightcurlybracket.gv",
     );
 
     // TokenType::Separator(LeftSquareBracket)
@@ -683,7 +687,7 @@ pub fn define_nfa_table() -> (
         &tokens,
         &backtrack,
         2300..=2301,
-        "dfa/leftsquarebracket.gv",
+        "nfa/leftsquarebracket.gv",
     );
 
     // TokenType::Separator(RightSquareBracket)
@@ -702,7 +706,7 @@ pub fn define_nfa_table() -> (
         &tokens,
         &backtrack,
         2400..=2401,
-        "dfa/rightsquarebracket.gv",
+        "nfa/rightsquarebracket.gv",
     );
 
     // TokenType::LexicalError(InvalidId)
@@ -721,7 +725,7 @@ pub fn define_nfa_table() -> (
         &tokens,
         &backtrack,
         2500..=2501,
-        "dfa/invalidid.gv",
+        "nfa/invalidid.gv",
     );
 
     // Add all of the first state of all the DFA to the espilon closure.

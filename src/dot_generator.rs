@@ -82,8 +82,19 @@ impl DotGraph {
         dot_graph.add_line("}");
 
         let path = Path::new(filename);
-        let mut file = File::create(&path).unwrap();
-        file.write_all(dot_graph.code.as_bytes()).unwrap();
+        match File::create(&path).as_mut() {
+            Ok(file) => match file.write_all(dot_graph.code.as_bytes()) {
+                Ok(_) => {}
+                Err(_) => println!(
+                    "ERROR: Something went wrong writing DOT file: {}. Exiting...",
+                    filename
+                ),
+            },
+            Err(_) => println!(
+                "ERROR: Something went wrong creating DOT file: {}. Exiting...",
+                filename
+            ),
+        }
     }
     /// Helper function to add a line to the output String.
     fn add_line(&mut self, line: &str) {

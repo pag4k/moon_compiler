@@ -1,5 +1,6 @@
 //Test whitespaces
-1 1  1   1  1
+1 1  1   1
+1	1
 1
 
 //Test all tokens
@@ -7,46 +8,7 @@ testid
 testid2
 testid_3
 testid4_
-0
-12345
-10.01
-12345.6789e-12
-10.01e+10
-10.01e-10
-==
-<>
-<
->
-<=
->=
-;
-,
-.
-:
-::
-+
--
-*
-/
-=
-&&
-!
-||
-(
-)
-{
-}
-[
-]
-//Line comment
-/*
-Block
-comment
-*/
-/*
-Block *
-comment
-*/
+if123
 if
 then
 else
@@ -58,47 +20,81 @@ read
 write
 return
 main
+0
+12345
+10.01
+12345.6789e-12
+10.01e+10
+10.01e-10
+<
+<=
+<>
+>
+>=
+=
+==
++
+-
+*
+/
+&&
+!
+||
+;
+,
+.
+:
+::
+(
+)
+{
+}
+[
+]
+//Line comment
+/*
+Block
+comment
+*/
+/* Block * / /* comment */
 
-//Test combined cases
+//Test all error cases (except InvalidToken and UnterminatedBlockComment)
+@
+_
+12.
+12.120
+12.1200
+12.12e
+&
+|
+
+//Test combined valid cases
 0123
 01.23
-12.340
 12.34e01
 123abc
 123if
-if123
+/ *
+*/
+><
+!=
+=!
 
-//Test float errors
-12.
+//Test combined with errors
 12..
-12.3404000
-12.34e
 12.34ee
 12.34ef
-12.34e+
-12.34e-
 12.34e-+
-
-//Test error cases
 _art
-1abc
 _1abc
 
 //Test with invalid character
 étest
+teést
 testé
-testétest
-
-/*
-Test:
--InvalidCharacter in the middle of tockens.
--UnterminatedBlockComment
--Closing of block comments with * not followed by /
--Opening block comment vs division + multiplication... I guess both would be correct.
--Difference between int.int and float.
--All possible errors in a float
-
-*/
+~45
+4~5
+45~
 
 //End with unclosed block comment
 /* test...
