@@ -84,7 +84,7 @@ fn main() {
                     .expect("Could not write to AtoCC file.");
             }
             Err(error) => {
-                //println!("{}", error);
+                println!("{}", error);
                 error_file
                     .write_fmt(format_args!("{}\n", error))
                     .expect("Could not write to error file.");
