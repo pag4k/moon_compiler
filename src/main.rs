@@ -4,6 +4,7 @@ mod language;
 mod lexical_analyzer;
 mod lexical_analyzer_table;
 mod nfa_generator;
+mod grammar;
 
 use lexical_analyzer::*;
 use std::env;
