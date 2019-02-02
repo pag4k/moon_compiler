@@ -289,7 +289,7 @@ pub fn define_nfa_table() -> (
         &mut tokens,
         &mut backtrack,
         602,
-        TokenType::Operator(Smaller),
+        TokenType::Operator(LT),
         Backtrack,
     );
     // TokenType::Operator(SmallerOrEqual)
@@ -298,7 +298,7 @@ pub fn define_nfa_table() -> (
         &mut tokens,
         &mut backtrack,
         603,
-        TokenType::Operator(SmallerOrEqual),
+        TokenType::Operator(LEq),
         NoBacktrack,
     );
     // TokenType::Operator(NotEqual)
@@ -307,7 +307,7 @@ pub fn define_nfa_table() -> (
         &mut tokens,
         &mut backtrack,
         604,
-        TokenType::Operator(NotEqual),
+        TokenType::Operator(NEq),
         NoBacktrack,
     );
     DotGraph::generate(
@@ -327,7 +327,7 @@ pub fn define_nfa_table() -> (
         &mut tokens,
         &mut backtrack,
         702,
-        TokenType::Operator(Greater),
+        TokenType::Operator(GT),
         Backtrack,
     );
     // TokenType::Operator(GreaterOrEqual)
@@ -336,7 +336,7 @@ pub fn define_nfa_table() -> (
         &mut tokens,
         &mut backtrack,
         703,
-        TokenType::Operator(GreaterOrEqual),
+        TokenType::Operator(GEq),
         NoBacktrack,
     );
     DotGraph::generate(
@@ -365,7 +365,7 @@ pub fn define_nfa_table() -> (
         &mut tokens,
         &mut backtrack,
         803,
-        TokenType::Operator(Equal),
+        TokenType::Operator(Eq),
         NoBacktrack,
     );
     DotGraph::generate(
@@ -583,7 +583,7 @@ pub fn define_nfa_table() -> (
         &mut tokens,
         &mut backtrack,
         1803,
-        TokenType::Separator(ScopeResolution),
+        TokenType::Operator(SR),
         NoBacktrack,
     );
     DotGraph::generate(

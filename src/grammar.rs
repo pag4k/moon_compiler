@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter, Result};
 use std::hash::Hash;
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy)]
 enum Symbol<V, T> {
     Variable(V),
     // Epsilon will be included as a None terminal.
@@ -24,7 +24,20 @@ impl<V, T> Symbol<V, T> {
     }
 }
 
-struct Production<V, T> {
+impl<V: Debug, T: Debug> Debug for Symbol<V, T> {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        let output = match self {
+            Symbol::Variable(variable) => format!("{:?}", variable),
+            Symbol::Terminal(terminal) => match terminal {
+                Some(terminal) => format!("'{:?}'", terminal),
+                None => "EPSILON".to_string(),
+            },
+        };
+        write!(f, "{}", output)
+    }
+}
+
+pub struct Production<V, T> {
     lhs: V,
     rhs: Vec<Symbol<V, T>>,
 }
@@ -40,11 +53,17 @@ impl<V: Debug, T: Debug> Debug for Production<V, T> {
     }
 }
 
-struct ContextFreeGrammar<V, T> {
-    variables: HashSet<V>,
-    terminals: HashSet<T>,
-    start: V,
-    productions: HashMap<V, Vec<Vec<Symbol<V, T>>>>,
+// impl<V, T> Production<V, T> {
+//     fn new(lhs: V, rhs: Vec<Symbol<V, T>>) -> Self {
+//         Production { lhs, rhs }
+//     }
+// }
+
+pub struct ContextFreeGrammar<V, T> {
+    pub variables: HashSet<V>,
+    pub terminals: HashSet<T>,
+    pub start: V,
+    pub productions: Vec<Production<V, T>>,
 }
 
 impl<V, T> ContextFreeGrammar<V, T> {
@@ -83,44 +102,42 @@ impl<V, T> ContextFreeGrammar<V, T> {
         let mut modified = true;
         while modified {
             modified = false;
-            for (current_variable, productions) in self.productions.iter() {
-                for production in productions.iter() {
-                    let mut set: HashSet<Option<T>> = HashSet::new();
-                    let mut add_epsilon = true;
-                    for symbol in production.iter() {
-                        match symbol {
-                            Terminal(terminal) => {
-                                set.insert(*terminal);
+            for production in self.productions.iter() {
+                let mut set: HashSet<Option<T>> = HashSet::new();
+                let mut add_epsilon = true;
+                for symbol in production.rhs.iter() {
+                    match symbol {
+                        Terminal(terminal) => {
+                            set.insert(*terminal);
+                            add_epsilon = false;
+                            break;
+                        }
+                        Variable(variable) => {
+                            // if first.get(variable).unwrap().is_empty() {
+                            //     add_epsilon = false;
+                            //     break;
+                            // }
+                            if first[variable].contains(&None) {
+                                let mut without_epsilon = first[variable].clone();
+                                without_epsilon.remove(&None);
+                                set = set.union(&without_epsilon).cloned().collect();
+                            } else {
+                                set = set.union(&first[variable]).cloned().collect();
                                 add_epsilon = false;
                                 break;
                             }
-                            Variable(variable) => {
-                                // if first.get(variable).unwrap().is_empty() {
-                                //     add_epsilon = false;
-                                //     break;
-                                // }
-                                if first[variable].contains(&None) {
-                                    let mut without_epsilon = first[variable].clone();
-                                    without_epsilon.remove(&None);
-                                    set = set.union(&without_epsilon).cloned().collect();
-                                } else {
-                                    set = set.union(&first[variable]).cloned().collect();
-                                    add_epsilon = false;
-                                    break;
-                                }
-                            }
                         }
                     }
-                    if add_epsilon {
-                        set.insert(None);
-                    }
-                    if !first[current_variable].is_superset(&set) {
-                        first.insert(
-                            *current_variable,
-                            first[current_variable].union(&set).cloned().collect(),
-                        );
-                        modified = true;
-                    }
+                }
+                if add_epsilon {
+                    set.insert(None);
+                }
+                if !first[&production.lhs].is_superset(&set) {
+                    first.insert(
+                        production.lhs,
+                        first[&production.lhs].union(&set).cloned().collect(),
+                    );
+                    modified = true;
                 }
             }
         }
@@ -152,78 +169,74 @@ impl<V, T> ContextFreeGrammar<V, T> {
         while modified {
             modified = false;
             //Step 2
-            for (_, productions) in self.productions.iter() {
-                for production in productions.iter() {
-                    let mut iterator = production.iter().peekable();
-
-                    while iterator.peek().is_some() {
-                        if let Variable(first_variable) = iterator.next().unwrap() {
-                            let second_variable = match iterator.peek() {
-                                None => break,
-                                Some(symbol) => symbol,
-                            };
-                            let mut set: HashSet<Option<T>> = HashSet::new();
-                            match second_variable {
-                                Variable(second_variable) => {
-                                    if first[second_variable].contains(&None) {
-                                        let mut without_epsilon = first[second_variable].clone();
-                                        without_epsilon.remove(&None);
-                                        set = set.union(&without_epsilon).cloned().collect();
-                                    } else {
-                                        set = set.union(&first[second_variable]).cloned().collect();
-                                    }
-                                }
-                                Terminal(terminal) => {
-                                    assert!(terminal.is_some());
-                                    set.insert(*terminal);
-                                }
-                            }
-                            if !follow[first_variable].is_superset(&set) {
-                                follow.insert(
-                                    *first_variable,
-                                    follow[first_variable].union(&set).cloned().collect(),
-                                );
-                                modified = true;
-                            }
+            for production in self.productions.iter() {
+                let mut iterator = production.rhs.iter().peekable();
+                while iterator.peek().is_some() {
+                    if let Variable(first_variable) = iterator.next().unwrap() {
+                        let second_variable = match iterator.peek() {
+                            None => break,
+                            Some(symbol) => symbol,
                         };
-                    }
+                        let mut set: HashSet<Option<T>> = HashSet::new();
+                        match second_variable {
+                            Variable(second_variable) => {
+                                if first[second_variable].contains(&None) {
+                                    let mut without_epsilon = first[second_variable].clone();
+                                    without_epsilon.remove(&None);
+                                    set = set.union(&without_epsilon).cloned().collect();
+                                } else {
+                                    set = set.union(&first[second_variable]).cloned().collect();
+                                }
+                            }
+                            Terminal(terminal) => {
+                                assert!(terminal.is_some());
+                                set.insert(*terminal);
+                            }
+                        }
+                        if !follow[first_variable].is_superset(&set) {
+                            follow.insert(
+                                *first_variable,
+                                follow[first_variable].union(&set).cloned().collect(),
+                            );
+                            modified = true;
+                        }
+                    };
                 }
             }
 
             //Step 3
-            for (lhs, productions) in self.productions.iter() {
-                for production in productions.iter() {
-                    let mut iterator = production.iter().peekable();
+            for production in self.productions.iter() {
+                let mut iterator = production.rhs.iter().peekable();
 
-                    while iterator.peek().is_some() {
-                        if let Variable(first_variable) = iterator.next().unwrap() {
-                            let second_symbol = iterator.peek();
-                            let mut set: HashSet<Option<T>> = HashSet::new();
-                            match second_symbol {
-                                Some(second_symbol) => match second_symbol {
-                                    Variable(second_variable) => {
-                                        if first[second_variable].contains(&None) {
-                                            set = set.union(&follow[lhs]).cloned().collect();
-                                        }
+                while iterator.peek().is_some() {
+                    if let Variable(first_variable) = iterator.next().unwrap() {
+                        let second_symbol = iterator.peek();
+                        let mut set: HashSet<Option<T>> = HashSet::new();
+                        match second_symbol {
+                            Some(second_symbol) => match second_symbol {
+                                Variable(second_variable) => {
+                                    if first[second_variable].contains(&None) {
+                                        set =
+                                            set.union(&follow[&production.lhs]).cloned().collect();
                                     }
-                                    Terminal(terminal) => {
-                                        assert!(terminal.is_some());
-                                    }
-                                },
-                                //Case: first_variable is the last symbol
-                                None => {
-                                    set = set.union(&follow[lhs]).cloned().collect();
                                 }
+                                Terminal(terminal) => {
+                                    assert!(terminal.is_some());
+                                }
+                            },
+                            //Case: first_variable is the last symbol
+                            None => {
+                                set = set.union(&follow[&production.lhs]).cloned().collect();
                             }
-                            if !follow[first_variable].is_superset(&set) {
-                                follow.insert(
-                                    *first_variable,
-                                    follow[first_variable].union(&set).cloned().collect(),
-                                );
-                                modified = true;
-                            }
-                        };
-                    }
+                        }
+                        if !follow[first_variable].is_superset(&set) {
+                            follow.insert(
+                                *first_variable,
+                                follow[first_variable].union(&set).cloned().collect(),
+                            );
+                            modified = true;
+                        }
+                    };
                 }
             }
         }
@@ -245,46 +258,75 @@ impl<V, T> ContextFreeGrammar<V, T> {
 
         let mut table: HashMap<(V, Option<T>), usize> = HashMap::new();
 
-        let mut production_number = 0;
-        for (lhs, productions) in self.productions.iter() {
-            for rhs in productions.iter() {
-                assert!(!rhs.is_empty());
-                match rhs[0] {
-                    Terminal(terminal) => match terminal {
-                        Some(terminal) => {
-                            assert!(table
-                                .insert((*lhs, Some(terminal)), production_number)
-                                .is_none());
+        //let mut production_number = 0;
+        for (production_number, production) in self.productions.iter().enumerate() {
+            assert!(!production.rhs.is_empty());
+            match production.rhs[0] {
+                Terminal(terminal) => match terminal {
+                    Some(terminal) => {
+                        self.add_cell(
+                            &mut table,
+                            production.lhs,
+                            Some(terminal),
+                            production_number,
+                        );
+                        // assert!(table
+                        //     .insert((production.lhs, Some(terminal)), production_number)
+                        //     .is_none());
+                    }
+                    None => {
+                        for terminal in follow[&production.lhs].iter() {
+                            self.add_cell(&mut table, production.lhs, *terminal, production_number);
+                            // assert!(table
+                            //     .insert((production.lhs, *terminal), production_number)
+                            //     .is_none());
                         }
-                        None => {
-                            for terminal in follow[lhs].iter() {
-                                assert!(table
-                                    .insert((*lhs, *terminal), production_number)
-                                    .is_none());
-                            }
+                    }
+                },
+                Variable(variable) => {
+                    if first[&variable].contains(&None) {
+                        for terminal in follow[&production.lhs].iter() {
+                            self.add_cell(&mut table, production.lhs, *terminal, production_number);
+                            // assert!(table
+                            //     .insert((production.lhs, *terminal), production_number)
+                            //     .is_none());
                         }
-                    },
-                    Variable(variable) => {
-                        if first[&variable].contains(&None) {
-                            for terminal in follow[lhs].iter() {
-                                assert!(table
-                                    .insert((*lhs, *terminal), production_number)
-                                    .is_none());
-                            }
-                        } else {
-                            for terminal in first[lhs].iter() {
-                                assert!(table
-                                    .insert((*lhs, *terminal), production_number)
-                                    .is_none());
-                            }
+                    } else {
+                        for terminal in first[&production.lhs].iter() {
+                            self.add_cell(&mut table, production.lhs, *terminal, production_number);
+                            //     assert!(table
+                            //         .insert((production.lhs, *terminal), production_number)
+                            //         .is_none());
                         }
                     }
                 }
-                production_number += 1;
             }
         }
 
         table
+    }
+
+    fn add_cell(
+        &self,
+        table: &mut HashMap<(V, Option<T>), usize>,
+        variable: V,
+        terminal: Option<T>,
+        new_production_number: usize,
+    ) where
+        V: Debug + Eq + Hash + Copy,
+        T: Debug + Eq + Hash + Copy,
+    {
+        if let Some(old_production_number) =
+            table.insert((variable, terminal), new_production_number)
+        {
+            println!(
+                "Collison at ({:?}, {:?}) between:\nOld: {:?}\nNew: {:?}",
+                variable,
+                terminal,
+                self.productions[old_production_number],
+                self.productions[new_production_number]
+            )
+        }
     }
 }
 
@@ -327,41 +369,53 @@ mod tests {
         terminals.insert(LeftParenthesis);
         terminals.insert(RightParenthesis);
         let start = Expression;
-        let mut productions: HashMap<VariableEnum1, Vec<Vec<Symbol<VariableEnum1, TerminalEnum>>>> =
-            HashMap::new();
-        productions.insert(
-            Expression,
-            vec![
-                vec![
-                    Variable(Expression),
-                    Terminal(Some(Plus)),
-                    Variable(Expression),
-                ],
-                vec![
-                    Variable(Expression),
-                    Terminal(Some(Minus)),
-                    Variable(Expression),
-                ],
-                vec![
-                    Variable(Expression),
-                    Terminal(Some(Multiplication)),
-                    Variable(Expression),
-                ],
-                vec![
-                    Variable(Expression),
-                    Terminal(Some(Division)),
-                    Variable(Expression),
-                ],
-                vec![
-                    Terminal(Some(LeftParenthesis)),
-                    Variable(Expression),
-                    Terminal(Some(RightParenthesis)),
-                ],
-                vec![Terminal(Some(Id))],
+        let mut productions: Vec<Production<VariableEnum1, TerminalEnum>> = Vec::new();
+        productions.push(Production {
+            lhs: Expression,
+            rhs: vec![
+                Variable(Expression),
+                Terminal(Some(Plus)),
+                Variable(Expression),
             ],
-        );
+        });
+        productions.push(Production {
+            lhs: Expression,
+            rhs: vec![
+                Variable(Expression),
+                Terminal(Some(Minus)),
+                Variable(Expression),
+            ],
+        });
+        productions.push(Production {
+            lhs: Expression,
+            rhs: vec![
+                Variable(Expression),
+                Terminal(Some(Multiplication)),
+                Variable(Expression),
+            ],
+        });
+        productions.push(Production {
+            lhs: Expression,
+            rhs: vec![
+                Variable(Expression),
+                Terminal(Some(Division)),
+                Variable(Expression),
+            ],
+        });
+        productions.push(Production {
+            lhs: Expression,
+            rhs: vec![
+                Terminal(Some(LeftParenthesis)),
+                Variable(Expression),
+                Terminal(Some(RightParenthesis)),
+            ],
+        });
+        productions.push(Production {
+            lhs: Expression,
+            rhs: vec![Terminal(Some(Id))],
+        });
 
-        //dbg!(&productions);
+        dbg!(&productions);
 
         let grammar = ContextFreeGrammar {
             variables,
@@ -371,11 +425,11 @@ mod tests {
         };
 
         let first = grammar.get_first();
-        dbg!(&first);
+        //dbg!(&first);
         let follow = grammar.get_follow(&first);
-        dbg!(&follow);
+        //dbg!(&follow);
         let table = grammar.get_table(&first, &follow);
-        dbg!(&table);
+        //dbg!(&table);
         assert!(first.is_empty());
     }
 
@@ -408,42 +462,53 @@ mod tests {
         terminals.insert(LeftParenthesis);
         terminals.insert(RightParenthesis);
         let start = E;
-        let mut productions: HashMap<VariableEnum2, Vec<Vec<Symbol<VariableEnum2, TerminalEnum>>>> =
-            HashMap::new();
-        productions.insert(E, vec![vec![Variable(T), Variable(EPrime)]]);
-        productions.insert(
-            EPrime,
-            vec![
-                vec![Terminal(None)],
-                vec![Terminal(Some(Plus)), Variable(T), Variable(EPrime)],
+        let mut productions: Vec<Production<VariableEnum2, TerminalEnum>> = Vec::new();
+        productions.push(Production {
+            lhs: E,
+            rhs: vec![Variable(T), Variable(EPrime)],
+        });
+        productions.push(Production {
+            lhs: EPrime,
+            rhs: vec![Terminal(None)],
+        });
+        productions.push(Production {
+            lhs: EPrime,
+            rhs: vec![Terminal(Some(Plus)), Variable(T), Variable(EPrime)],
+        });
+        productions.push(Production {
+            lhs: T,
+            rhs: vec![Variable(F), Variable(TPrime)],
+        });
+        productions.push(Production {
+            lhs: TPrime,
+            rhs: vec![Terminal(None)],
+        });
+        productions.push(Production {
+            lhs: TPrime,
+            rhs: vec![
+                Terminal(Some(Multiplication)),
+                Variable(F),
+                Variable(TPrime),
             ],
-        );
-        productions.insert(T, vec![vec![Variable(F), Variable(TPrime)]]);
-        productions.insert(
-            TPrime,
-            vec![
-                vec![Terminal(None)],
-                vec![
-                    Terminal(Some(Multiplication)),
-                    Variable(F),
-                    Variable(TPrime),
-                ],
+        });
+        productions.push(Production {
+            lhs: F,
+            rhs: vec![
+                Terminal(Some(LeftParenthesis)),
+                Variable(E),
+                Terminal(Some(RightParenthesis)),
             ],
-        );
-        productions.insert(
-            F,
-            vec![
-                vec![
-                    Terminal(Some(LeftParenthesis)),
-                    Variable(E),
-                    Terminal(Some(RightParenthesis)),
-                ],
-                vec![Terminal(Some(Zero))],
-                vec![Terminal(Some(One))],
-            ],
-        );
+        });
+        productions.push(Production {
+            lhs: F,
+            rhs: vec![Terminal(Some(Zero))],
+        });
+        productions.push(Production {
+            lhs: F,
+            rhs: vec![Terminal(Some(One))],
+        });
 
-        //dbg!(&productions);
+        dbg!(&productions);
 
         let grammar = ContextFreeGrammar {
             variables,
@@ -453,11 +518,15 @@ mod tests {
         };
 
         let first = grammar.get_first();
-        dbg!(&first);
+        //dbg!(&first);
         let follow = grammar.get_follow(&first);
-        dbg!(&follow);
+        //dbg!(&follow);
         let table = grammar.get_table(&first, &follow);
-        dbg!(&table);
+        for (key, value) in table.iter() {
+            println!("({:?}): {:?}", key, grammar.productions[*value]);
+        }
+
+        //dbg!(&table);
         assert!(first.is_empty());
     }
 }

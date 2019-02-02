@@ -17,7 +17,8 @@ pub const LETTER: [char; 53] = [
     'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
 ];
 
-#[derive(Clone, Copy)]
+//#[derive(Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum TokenType {
     Id,
     Integer,
@@ -45,7 +46,8 @@ impl Display for TokenType {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+//#[derive(Debug, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Keyword {
     If,
     Then,
@@ -79,15 +81,16 @@ impl Keyword {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+//#[derive(Debug, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Operator {
-    Smaller,
-    SmallerOrEqual,
-    NotEqual,
-    Greater,
-    GreaterOrEqual,
+    LT,
+    LEq,
+    NEq,
+    GT,
+    GEq,
     Assignment,
-    Equal,
+    Eq,
     Addition,
     Subtraction,
     Multiplication,
@@ -95,15 +98,16 @@ pub enum Operator {
     And,
     Not,
     Or,
+    SR,
 }
 
-#[derive(Debug, Clone, Copy)]
+//#[derive(Debug, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Separator {
     SemiColon,
     Coma,
     Period,
     Colon,
-    ScopeResolution,
     LeftParenthesis,
     RightParenthesis,
     LeftCurlyBracket,
@@ -112,13 +116,15 @@ pub enum Separator {
     RightSquareBracket,
 }
 
-#[derive(Debug, Clone, Copy)]
+//#[derive(Debug, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Comment {
     BlockComment,
     LineComment,
 }
 
-#[derive(Debug, Clone, Copy)]
+//#[derive(Debug, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum LexicalError {
     InvalidCharacter,
     InvalidToken,
