@@ -72,11 +72,11 @@ pub fn define_nfa_table() -> (
     HashSet<usize>,
 ) {
     use BacktrackEnum::*;
-    use Comment::*;
+    use CommentType::*;
     use Input::*;
     use LexicalError::*;
-    use Operator::*;
-    use Separator::*;
+    use OperatorType::*;
+    use SeparatorType::*;
 
     let mut nfa = NonDeterministicFiniteAccepter {
         states: HashSet::new(),
@@ -120,7 +120,7 @@ pub fn define_nfa_table() -> (
         &mut tokens,
         &mut backtrack,
         202,
-        TokenType::Integer,
+        TokenType::IntNum,
         Backtrack,
     );
     DotGraph::generate(
@@ -141,7 +141,7 @@ pub fn define_nfa_table() -> (
         &mut tokens,
         &mut backtrack,
         302,
-        TokenType::Integer,
+        TokenType::IntNum,
         Backtrack,
     );
     DotGraph::generate(
@@ -170,7 +170,7 @@ pub fn define_nfa_table() -> (
         &mut tokens,
         &mut backtrack,
         403,
-        TokenType::Float,
+        TokenType::FloatNum,
         Backtrack,
     );
     nfa.set_transition(&mut transtions, 402, Array(&NONZERO), 404);
@@ -180,7 +180,7 @@ pub fn define_nfa_table() -> (
         &mut tokens,
         &mut backtrack,
         405,
-        TokenType::Float,
+        TokenType::FloatNum,
         Backtrack,
     );
     nfa.set_transition(&mut transtions, 404, Array(&NONZERO), 404);
@@ -209,7 +209,7 @@ pub fn define_nfa_table() -> (
         &mut tokens,
         &mut backtrack,
         410,
-        TokenType::Float,
+        TokenType::FloatNum,
         NoBacktrack,
     );
     nfa.set_transition(&mut transtions, 408, Char('+'), 412);
@@ -220,7 +220,7 @@ pub fn define_nfa_table() -> (
         &mut tokens,
         &mut backtrack,
         413,
-        TokenType::Float,
+        TokenType::FloatNum,
         Backtrack,
     );
     nfa.set_transition(&mut transtions, 411, Array(&DIGIT), 411);

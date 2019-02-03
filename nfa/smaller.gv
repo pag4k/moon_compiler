@@ -1,0 +1,22 @@
+digraph finite_state_machine {
+	rankdir=LR;
+	size="8,5"
+
+	node [shape = rectangle, label="604 -> NEq", fontsize=12] token604;
+	node [shape = rectangle, label="603 -> LEq", fontsize=12] token603;
+	node [shape = rectangle, label="602 -> LT", fontsize=12] token602;
+
+	node [shape = circle, label="600", fontsize=12, color=black] 600;
+	node [shape = circle, label="601", fontsize=12, color=black] 601;
+	node [shape = doublecircle, label="602", fontsize=12, color=red] 602;
+	node [shape = doublecircle, label="603", fontsize=12, color=black] 603;
+	node [shape = doublecircle, label="604", fontsize=12, color=black] 604;
+
+	node [shape = point, color=black] q0;
+	q0	->	600;
+
+	601	->	602	[ label = "Σ" ];
+	601	->	604	[ label = ">" ];
+	601	->	603	[ label = "=" ];
+	600	->	601	[ label = "<" ];
+}

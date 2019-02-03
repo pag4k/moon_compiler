@@ -1,0 +1,19 @@
+digraph finite_state_machine {
+	rankdir=LR;
+	size="8,5"
+
+	node [shape = rectangle, label="1203 -> And", fontsize=12] token1203;
+	node [shape = rectangle, label="1202 -> Lexical Error: Incomplete And (did you mean '&&'?)", fontsize=12] token1202;
+
+	node [shape = circle, label="1200", fontsize=12, color=black] 1200;
+	node [shape = circle, label="1201", fontsize=12, color=black] 1201;
+	node [shape = doublecircle, label="1202", fontsize=12, color=red] 1202;
+	node [shape = doublecircle, label="1203", fontsize=12, color=black] 1203;
+
+	node [shape = point, color=black] q0;
+	q0	->	1200;
+
+	1200	->	1201	[ label = "&" ];
+	1201	->	1202	[ label = "Σ" ];
+	1201	->	1203	[ label = "&" ];
+}

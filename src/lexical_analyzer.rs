@@ -7,7 +7,7 @@ use std::iter::Peekable;
 use std::str::Chars;
 
 /// Location ADT
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 struct Location {
     line: usize,
     column: usize,
@@ -19,6 +19,7 @@ impl Display for Location {
 }
 
 /// Token ADT
+#[derive(Clone)]
 pub struct Token {
     pub token_type: TokenType,
     lexeme: Option<String>,
@@ -45,6 +46,7 @@ impl Token {
 }
 
 /// TokenError ADT
+#[derive(Debug, Clone)]
 pub struct TokenError {
     pub error_type: LexicalError,
     lexeme: String,
@@ -208,7 +210,7 @@ impl<'a> LexicalAnalyzer<'a> {
                 ))),
                 // If the token type is an Id, verify if it is a keyword.
                 TokenType::Id => {
-                    let token_type = match Keyword::from_str(&string) {
+                    let token_type = match KeywordType::from_str(&string) {
                         Some(keyword) => TokenType::Keyword(keyword),
                         None => TokenType::Id,
                     };

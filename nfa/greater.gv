@@ -1,0 +1,19 @@
+digraph finite_state_machine {
+	rankdir=LR;
+	size="8,5"
+
+	node [shape = rectangle, label="703 -> GEq", fontsize=12] token703;
+	node [shape = rectangle, label="702 -> GT", fontsize=12] token702;
+
+	node [shape = circle, label="700", fontsize=12, color=black] 700;
+	node [shape = circle, label="701", fontsize=12, color=black] 701;
+	node [shape = doublecircle, label="702", fontsize=12, color=red] 702;
+	node [shape = doublecircle, label="703", fontsize=12, color=black] 703;
+
+	node [shape = point, color=black] q0;
+	q0	->	700;
+
+	701	->	702	[ label = "Σ" ];
+	700	->	701	[ label = ">" ];
+	701	->	703	[ label = "=" ];
+}

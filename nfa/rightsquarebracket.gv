@@ -1,0 +1,14 @@
+digraph finite_state_machine {
+	rankdir=LR;
+	size="8,5"
+
+	node [shape = rectangle, label="2401 -> RightSquareBracket", fontsize=12] token2401;
+
+	node [shape = circle, label="2400", fontsize=12, color=black] 2400;
+	node [shape = doublecircle, label="2401", fontsize=12, color=black] 2401;
+
+	node [shape = point, color=black] q0;
+	q0	->	2400;
+
+	2400	->	2401	[ label = "]" ];
+}

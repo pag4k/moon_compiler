@@ -1,103 +1,54 @@
-//Test whitespaces
-1 1  1   1
-1	1
-1
+class InheritedUtility {
+  integer member1;};
 
-//Test all tokens
-testid
-testid2
-testid_3
-testid4_
-if123
-if
-then
-else
-for
-class
-integer
-float
-read
-write
-return
-main
-0
-12345
-10.01
-0.00000000001
-0.0
-12345.6789e12
-10.01e+10
-10.01e-10
-<
-<=
-<>
->
->=
-=
-==
-+
--
-*
-/
-&&
-!
-||
-;
-,
-.
-:
-::
-(
-)
-{
-}
-[
-]
-//Line comment
-/*
-Block
-comment
-*/
-/* Block * / /* comment */
+class Utility : InheritedUtility {
+  integer var1[4][5][7][8][9][1][0];
+  float var2;
+  integer findMax(integer array[100]);
+  integer findMin(integer array[100]);};
 
-//Test all error cases (except InvalidToken and UnterminatedBlockComment)
-@
-_
-12.
-12.120
-12.1200
-0.00000100
-12.12e
-&
-|
+int Utility::findMax(integer array[100]){
+  integer maxValue;
+  integer idx;
+  maxValue = array[100];
+  for( integer idx = 99; idx > 0; idx = idx  - 1 ){
+    if(array[idx] > maxValue) then {
+      maxValue = array[idx];}
+    else{};
+  };
+  return (maxValue);};
 
-//Test combined valid cases
-0123
-01.23
-12.34e01
-123abc
-123if
-/ *
-*/
-><
-!=
-=!
+int Utility::findMin(integer array[100]){
+  integer minValue;
+  integer idx;
+  minValue = array[100];
+    for( integer idx = 1; idx <= 99; idx = ( idx ) + 1) { 
+      if(array[idx] < maxValue + 1 / 8 || idx) then {
+        maxValue = array[idx];}
+      else{};  
+  };
+  return (minValue);};
 
-//Test combined with errors
-12..
-12.34ee
-12.34ef
-12.34e-+
-_art
-_1abc
+float randomize(){
+  float value;
+  value = 100 * (2 + 3.0 / 7.0006);
+  value = 1.05 + ((2.04 * 2.47)  - 3.0) + 7.0006 > 1 && ! - 1;
+  return (value);};
 
-//Test with invalid character
-étest
-teést
-testé
-~45
-4~5
-45~
-
-//End with unclosed block comment
-/* test...
+main {
+  int sample[100];
+  int idx;
+  int maxValue;
+  int minValue;
+  Utility utility;
+  Utility arrayUtility[2][3][6][7];
+  for(integer t = 0; t<=100 ; t = t + 1) {
+    read(sample[t]);
+    sample[t] = (sample[t] * randomize());
+  };
+  maxValue = utility.findMax(sample);
+  minValue = utility.findMin(sample);
+  utility.var1[4][1][0][0][0][0][0] = 10;
+  arrayUtility[utility.var1[1][2][3][4][5][6][idx+maxValue]][1][1][1].var2 = 2.5;
+  write(maxValue);
+  write(minValue);};
