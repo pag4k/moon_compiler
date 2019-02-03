@@ -1,5 +1,5 @@
 use super::grammar::*;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -27,7 +27,7 @@ impl<V, T> SyntacticAnalyzerTable<V, T> {
     {
         self.table
             .get(&(variable, input))
-            .map(|production_id| self.grammar.productions[production_id.clone()].clone())
+            .map(|production_id| self.grammar.productions[*production_id].clone())
     }
 
     pub fn get_start(&self) -> V

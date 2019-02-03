@@ -13,7 +13,7 @@ digraph finite_state_machine {
 	node [shape = point, color=black] q0;
 	q0	->	700;
 
-	701	->	702	[ label = "Σ" ];
 	700	->	701	[ label = ">" ];
 	701	->	703	[ label = "=" ];
+	701	->	702	[ label = "Σ" ];
 }

@@ -1,24 +1,35 @@
 use super::grammar::*;
-use super::lexical_analyzer::*;
 use super::syntactic_analyzer_table::*;
 
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::str::FromStr;
 
 pub struct SyntacticAnalyzer<V, T> {
-    pub tokens: Vec<T>,
     pub table: SyntacticAnalyzerTable<V, T>,
 }
 
 impl<V, T> SyntacticAnalyzer<V, T> {
-    pub fn parse(&self)
+    pub fn from_file(source: &str) -> Self
+    where
+        V: Debug + Eq + Hash + Copy + FromStr,
+        T: Debug + Eq + Hash + Copy + FromStr,
+    {
+        let grammar: ContextFreeGrammar<V, T> = ContextFreeGrammar::from_file(source);
+
+        let table = SyntacticAnalyzerTable::new(grammar);
+
+        SyntacticAnalyzer { table }
+    }
+
+    pub fn parse(&self, tokens: &[T])
     where
         V: Debug + Eq + Hash + Copy,
         T: Debug + Eq + Hash + Copy,
     {
         use Symbol::*;
         // Get a reverse iterator over the token stream.
-        let mut token_iter = self.tokens.iter();
+        let mut token_iter = tokens.iter();
         // Initialize the stack with '$' (Option<Terminal>: None) and the start non-terminal.
         let mut stack = vec![Terminal(None), NonTerminal(self.table.get_start())];
         let mut token = token_iter.next().cloned();

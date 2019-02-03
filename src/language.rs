@@ -1,4 +1,4 @@
-use std::fmt::{Display, Formatter, Result};
+use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
 // Define the all the arrays of char describing the language.
@@ -32,24 +32,24 @@ pub enum TokenType {
 }
 
 impl Display for TokenType {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        //use OperatorType::*;
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        use TokenType::*;
         match self {
-            TokenType::Id => write!(f, "id"),
-            TokenType::IntNum => write!(f, "intNum"),
-            TokenType::FloatNum => write!(f, "floatNum"),
-            TokenType::Keyword(keyword) => write!(f, "{:?}", keyword),
-            TokenType::Operator(operator) => write!(f, "{:?}", operator),
-            TokenType::Separator(separator) => write!(f, "{:?}", separator),
-            TokenType::Comment(comment) => write!(f, "{:?}", comment),
-            TokenType::LexicalError(error) => write!(f, "{}", error),
+            Id => write!(f, "id"),
+            IntNum => write!(f, "intNum"),
+            FloatNum => write!(f, "floatNum"),
+            Keyword(keyword) => write!(f, "{:?}", keyword),
+            Operator(operator) => write!(f, "{:?}", operator),
+            Separator(separator) => write!(f, "{:?}", separator),
+            Comment(comment) => write!(f, "{:?}", comment),
+            LexicalError(error) => write!(f, "{}", error),
         }
     }
 }
 
 impl FromStr for TokenType {
     type Err = ();
-    fn from_str(s: &str) -> std::result::Result<Self, ()> {
+    fn from_str(s: &str) -> Result<Self, ()> {
         use KeywordType::*;
         use OperatorType::*;
         use SeparatorType::*;
@@ -115,21 +115,23 @@ pub enum KeywordType {
     Main,
 }
 
-impl KeywordType {
-    pub fn from_str(keyword: &str) -> Option<Self> {
-        match keyword {
-            "if" => Some(KeywordType::If),
-            "then" => Some(KeywordType::Then),
-            "else" => Some(KeywordType::Else),
-            "for" => Some(KeywordType::For),
-            "class" => Some(KeywordType::Class),
-            "integer" => Some(KeywordType::Integer),
-            "float" => Some(KeywordType::Float),
-            "read" => Some(KeywordType::Read),
-            "write" => Some(KeywordType::Write),
-            "return" => Some(KeywordType::Return),
-            "main" => Some(KeywordType::Main),
-            _ => None,
+impl FromStr for KeywordType {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, ()> {
+        use KeywordType::*;
+        match s {
+            "if" => Ok(If),
+            "then" => Ok(Then),
+            "else" => Ok(Else),
+            "for" => Ok(For),
+            "class" => Ok(Class),
+            "integer" => Ok(Integer),
+            "float" => Ok(Float),
+            "read" => Ok(Read),
+            "write" => Ok(Write),
+            "return" => Ok(Return),
+            "main" => Ok(Main),
+            _ => Err(()),
         }
     }
 }
@@ -191,7 +193,7 @@ pub enum LexicalError {
 }
 
 impl Display for LexicalError {
-    fn fmt(&self, f: &mut Formatter) -> Result {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         match self {
             LexicalError::InvalidCharacter => write!(f, "Lexical Error: Invalid Character"),
             LexicalError::InvalidToken => write!(f, "Lexical Error: Invalid Token"),
@@ -213,6 +215,130 @@ impl Display for LexicalError {
                 f,
                 "Lexical Error: Unterminated Block Comment (you are missing '*/')"
             ),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+pub enum VariableType {
+    Prog,
+    ClassDecl,
+    ClassDeclRep,
+    FuncDecl,
+    FuncHead,
+    FuncScopeOp,
+    FuncDef,
+    FuncDefRep,
+    FuncBody,
+    VarDecl,
+    VarDeclRep,
+    Decl,
+    DeclPrime,
+    DeclRep,
+    NumVarDecl,
+    BodyElement,
+    BodyElementPrime,
+    BodyElementRep,
+    Statement,
+    StatementRep,
+    AssignStat,
+    StatBlock,
+    ScopeOp,
+    Expr,
+    ExprPrime,
+    RelExpr,
+    ArithExpr,
+    ArithExprPrime,
+    Sign,
+    Term,
+    TermPrime,
+    Factor,
+    FactorPrime,
+    Variable,
+    FunctionCall,
+    Idnest,
+    IdnestPrime,
+    IdnestRep,
+    ParentOp,
+    ParentListRep,
+    Indice,
+    IndiceRep,
+    ArraySize,
+    ArraySizeRep,
+    Type,
+    FParams,
+    AParams,
+    FParamsTail,
+    FParamsTailRep,
+    AParamsTail,
+    AParamsTailRep,
+    AssignOp,
+    RelOp,
+    AddOp,
+    MultOp,
+}
+
+impl FromStr for VariableType {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, ()> {
+        use VariableType::*;
+        match s {
+            "prog" => Ok(Prog),
+            "classDecl" => Ok(ClassDecl),
+            "classDeclRep" => Ok(ClassDeclRep),
+            "funcDecl" => Ok(FuncDecl),
+            "funcHead" => Ok(FuncHead),
+            "funcScopeOp" => Ok(FuncScopeOp),
+            "funcDef" => Ok(FuncDef),
+            "funcDefRep" => Ok(FuncDefRep),
+            "funcBody" => Ok(FuncBody),
+            "varDecl" => Ok(VarDecl),
+            "varDeclRep" => Ok(VarDeclRep),
+            "decl" => Ok(Decl),
+            "decl'" => Ok(DeclPrime),
+            "declRep" => Ok(DeclRep),
+            "numVarDecl" => Ok(NumVarDecl),
+            "bodyElement" => Ok(BodyElement),
+            "bodyElement'" => Ok(BodyElementPrime),
+            "bodyElementRep" => Ok(BodyElementRep),
+            "statement" => Ok(Statement),
+            "statementRep" => Ok(StatementRep),
+            "assignStat" => Ok(AssignStat),
+            "statBlock" => Ok(StatBlock),
+            "scopeOp" => Ok(ScopeOp),
+            "expr" => Ok(Expr),
+            "expr'" => Ok(ExprPrime),
+            "relExpr" => Ok(RelExpr),
+            "arithExpr" => Ok(ArithExpr),
+            "arithExpr'" => Ok(ArithExprPrime),
+            "sign" => Ok(Sign),
+            "term" => Ok(Term),
+            "term'" => Ok(TermPrime),
+            "factor" => Ok(Factor),
+            "factor'" => Ok(FactorPrime),
+            "variable" => Ok(Variable),
+            "functionCall" => Ok(FunctionCall),
+            "idnest" => Ok(Idnest),
+            "idnest'" => Ok(IdnestPrime),
+            "idnestRep" => Ok(IdnestRep),
+            "parentOp" => Ok(ParentOp),
+            "parentListRep" => Ok(ParentListRep),
+            "indice" => Ok(Indice),
+            "indiceRep" => Ok(IndiceRep),
+            "arraySize" => Ok(ArraySize),
+            "arraySizeRep" => Ok(ArraySizeRep),
+            "type" => Ok(Type),
+            "fParams" => Ok(FParams),
+            "aParams" => Ok(AParams),
+            "fParamsTail" => Ok(FParamsTail),
+            "fParamsTailRep" => Ok(FParamsTailRep),
+            "aParamsTail" => Ok(AParamsTail),
+            "aParamsTailRep" => Ok(AParamsTailRep),
+            "assignOp" => Ok(AssignOp),
+            "relOp" => Ok(RelOp),
+            "addOp" => Ok(AddOp),
+            "multOp" => Ok(MultOp),
+            _ => Err(()),
         }
     }
 }

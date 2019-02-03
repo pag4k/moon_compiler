@@ -18,15 +18,15 @@ digraph finite_state_machine {
 	node [shape = point, color=black] q0;
 	q0	->	500;
 
-	505	->	505	[ label = "Σ" ];
-	503	->	504	[ label = "R" ];
-	505	->	506	[ label = "*" ];
-	501	->	502	[ label = "Σ" ];
-	506	->	506	[ label = "*" ];
 	501	->	503	[ label = "/" ];
-	503	->	503	[ label = "Σ" ];
-	500	->	501	[ label = "/" ];
 	506	->	507	[ label = "/" ];
+	501	->	502	[ label = "Σ" ];
+	505	->	505	[ label = "Σ" ];
+	505	->	506	[ label = "*" ];
+	503	->	503	[ label = "Σ" ];
 	501	->	505	[ label = "*" ];
 	506	->	505	[ label = "Σ" ];
+	500	->	501	[ label = "/" ];
+	506	->	506	[ label = "*" ];
+	503	->	504	[ label = "R" ];
 }

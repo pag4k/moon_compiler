@@ -5,6 +5,7 @@ use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
 use std::str::Chars;
+use std::str::FromStr;
 
 /// Location ADT
 #[derive(Debug, Clone, Copy)]
@@ -211,8 +212,8 @@ impl<'a> LexicalAnalyzer<'a> {
                 // If the token type is an Id, verify if it is a keyword.
                 TokenType::Id => {
                     let token_type = match KeywordType::from_str(&string) {
-                        Some(keyword) => TokenType::Keyword(keyword),
-                        None => TokenType::Id,
+                        Ok(keyword) => TokenType::Keyword(keyword),
+                        Err(_) => TokenType::Id,
                     };
                     Some(Ok(Token::new(
                         token_type,

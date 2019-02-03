@@ -10,21 +10,6 @@ pub enum Symbol<V, T> {
     Terminal(Option<T>),
 }
 
-impl<V, T> Symbol<V, T> {
-    fn is_variable(&self) -> bool {
-        match self {
-            Symbol::NonTerminal(_) => true,
-            Symbol::Terminal(_) => false,
-        }
-    }
-    fn is_terminal(&self) -> bool {
-        match self {
-            Symbol::NonTerminal(_) => false,
-            Symbol::Terminal(_) => true,
-        }
-    }
-}
-
 impl<V: Debug, T: Debug> Debug for Symbol<V, T> {
     fn fmt(&self, f: &mut Formatter) -> Result {
         let output = match self {
@@ -55,12 +40,6 @@ impl<V: Debug, T: Debug> Debug for Production<V, T> {
     }
 }
 
-// impl<V, T> Production<V, T> {
-//     fn new(lhs: V, rhs: Vec<Symbol<V, T>>) -> Self {
-//         Production { lhs, rhs }
-//     }
-// }
-
 pub struct ContextFreeGrammar<V, T> {
     pub variables: HashSet<V>,
     pub terminals: HashSet<T>,
@@ -70,7 +49,7 @@ pub struct ContextFreeGrammar<V, T> {
 
 impl<V, T> ContextFreeGrammar<V, T> {
     #[allow(dead_code)]
-    pub fn from_file(file_name: &str) -> Self
+    pub fn from_file(source: &str) -> Self
     where
         V: Debug + Eq + Hash + Copy + FromStr,
         T: Debug + Eq + Hash + Copy + FromStr,
@@ -79,12 +58,8 @@ impl<V, T> ContextFreeGrammar<V, T> {
         let mut terminals: HashSet<T> = HashSet::new();
         let mut productions: Vec<Production<V, T>> = Vec::new();
 
-        use std::fs::File;
-        use std::io::{BufRead, BufReader, Result};
-
-        let file = File::open(file_name).unwrap();
-        for line in BufReader::new(file).lines() {
-            let line = line.unwrap();
+        for line in source.lines() {
+            let line = line;
             let words: Vec<&str> = line.split_whitespace().collect();
             let lhs = match V::from_str(words[0]) {
                 Ok(lhs) => {
@@ -131,8 +106,6 @@ impl<V, T> ContextFreeGrammar<V, T> {
         V: Debug + Eq + Hash + Copy,
         T: Debug + Eq + Hash + Copy,
     {
-        use Symbol::*;
-
         let mut first: HashMap<V, HashSet<Option<T>>> = HashMap::new();
 
         for variable in self.variables.iter().cloned() {
@@ -143,31 +116,7 @@ impl<V, T> ContextFreeGrammar<V, T> {
         while modified {
             modified = false;
             for production in self.productions.iter() {
-                let mut set: HashSet<Option<T>> = HashSet::new();
-                let mut add_epsilon = true;
-                for symbol in production.rhs.iter() {
-                    match symbol {
-                        Terminal(terminal) => {
-                            set.insert(*terminal);
-                            add_epsilon = false;
-                            break;
-                        }
-                        NonTerminal(variable) => {
-                            if first[variable].contains(&None) {
-                                let mut without_epsilon = first[variable].clone();
-                                without_epsilon.remove(&None);
-                                set = set.union(&without_epsilon).cloned().collect();
-                            } else {
-                                set = set.union(&first[variable]).cloned().collect();
-                                add_epsilon = false;
-                                break;
-                            }
-                        }
-                    }
-                }
-                if add_epsilon {
-                    set.insert(None);
-                }
+                let set = self.get_first_from_rhs(&first, &production.rhs);
                 if !first[&production.lhs].is_superset(&set) {
                     first.insert(
                         production.lhs,
@@ -177,7 +126,6 @@ impl<V, T> ContextFreeGrammar<V, T> {
                 }
             }
         }
-
         first
     }
 
@@ -311,9 +259,6 @@ impl<V, T> ContextFreeGrammar<V, T> {
                         ) {
                             collisions += 1;
                         }
-                        // assert!(table
-                        //     .insert((production.lhs, Some(terminal)), production_number)
-                        //     .is_none());
                     }
                     None => {
                         //println!("Adding Terminal None.");
@@ -326,38 +271,11 @@ impl<V, T> ContextFreeGrammar<V, T> {
                             ) {
                                 collisions += 1;
                             }
-                            // assert!(table
-                            //     .insert((production.lhs, *terminal), production_number)
-                            //     .is_none());
                         }
                     }
                 },
-                NonTerminal(variable) => {
-                    let mut set: HashSet<Option<T>> = HashSet::new();
-                    let mut add_epsilon = true;
-                    for symbol in production.rhs.iter() {
-                        match symbol {
-                            Terminal(terminal) => {
-                                set.insert(*terminal);
-                                add_epsilon = false;
-                                break;
-                            }
-                            NonTerminal(variable) => {
-                                if first[variable].contains(&None) {
-                                    let mut without_epsilon = first[variable].clone();
-                                    without_epsilon.remove(&None);
-                                    set = set.union(&without_epsilon).cloned().collect();
-                                } else {
-                                    set = set.union(&first[variable]).cloned().collect();
-                                    add_epsilon = false;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    if add_epsilon {
-                        set.insert(None);
-                    }
+                NonTerminal(_) => {
+                    let set = self.get_first_from_rhs(&first, &production.rhs);
 
                     if set.contains(&None) {
                         //println!("Adding NonTerminal with None.");
@@ -370,9 +288,6 @@ impl<V, T> ContextFreeGrammar<V, T> {
                             ) {
                                 collisions += 1;
                             }
-                            // assert!(table
-                            //     .insert((production.lhs, *terminal), production_number)
-                            //     .is_none());
                         }
                     }
                     //println!("Adding NonTerminal without None.");
@@ -380,9 +295,6 @@ impl<V, T> ContextFreeGrammar<V, T> {
                         if self.add_cell(&mut table, production.lhs, *terminal, production_number) {
                             collisions += 1;
                         }
-                        //     assert!(table
-                        //         .insert((production.lhs, *terminal), production_number)
-                        //         .is_none());
                     }
                 }
             }
@@ -419,211 +331,52 @@ impl<V, T> ContextFreeGrammar<V, T> {
         }
         false
     }
+
+    fn get_first_from_rhs(
+        &self,
+        first: &HashMap<V, HashSet<Option<T>>>,
+        rhs: &[Symbol<V, T>],
+    ) -> HashSet<Option<T>>
+    where
+        V: Debug + Eq + Hash + Copy,
+        T: Debug + Eq + Hash + Copy,
+    {
+        use Symbol::*;
+        let mut set: HashSet<Option<T>> = HashSet::new();
+        let mut add_epsilon = true;
+        for symbol in rhs.iter() {
+            match symbol {
+                Terminal(terminal) => {
+                    set.insert(*terminal);
+                    add_epsilon = false;
+                    break;
+                }
+                NonTerminal(variable) => {
+                    if first[variable].contains(&None) {
+                        let mut without_epsilon = first[variable].clone();
+                        without_epsilon.remove(&None);
+                        set = set.union(&without_epsilon).cloned().collect();
+                    } else {
+                        set = set.union(&first[variable]).cloned().collect();
+                        add_epsilon = false;
+                        break;
+                    }
+                }
+            }
+        }
+        if add_epsilon {
+            set.insert(None);
+        }
+        set
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashSet;
-
-    // #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-    // enum TerminalEnum {
-    //     Id,
-    //     Plus,
-    //     Minus,
-    //     Multiplication,
-    //     Division,
-    //     LeftParenthesis,
-    //     RightParenthesis,
-    //     Zero,
-    //     One,
-    // }
-    //
-    // #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-    // enum VariableEnum1 {
-    //     Expression,
-    // }
-    //
-    // #[test]
-    // fn bad_grammar() {
-    //     use Symbol::*;
-    //     use TerminalEnum::*;
-    //     use VariableEnum1::*;
-    //     let mut variables: HashSet<VariableEnum1> = HashSet::new();
-    //     variables.insert(Expression);
-    //     let mut terminals: HashSet<TerminalEnum> = HashSet::new();
-    //     terminals.insert(Id);
-    //     terminals.insert(Plus);
-    //     terminals.insert(Minus);
-    //     terminals.insert(Multiplication);
-    //     terminals.insert(Division);
-    //     terminals.insert(LeftParenthesis);
-    //     terminals.insert(RightParenthesis);
-    //     let start = Expression;
-    //     let mut productions: Vec<Production<VariableEnum1, TerminalEnum>> = Vec::new();
-    //     productions.push(Production {
-    //         lhs: Expression,
-    //         rhs: vec![
-    //             NonTerminal(Expression),
-    //             Terminal(Some(Plus)),
-    //             NonTerminal(Expression),
-    //         ],
-    //     });
-    //     productions.push(Production {
-    //         lhs: Expression,
-    //         rhs: vec![
-    //             NonTerminal(Expression),
-    //             Terminal(Some(Minus)),
-    //             NonTerminal(Expression),
-    //         ],
-    //     });
-    //     productions.push(Production {
-    //         lhs: Expression,
-    //         rhs: vec![
-    //             NonTerminal(Expression),
-    //             Terminal(Some(Multiplication)),
-    //             NonTerminal(Expression),
-    //         ],
-    //     });
-    //     productions.push(Production {
-    //         lhs: Expression,
-    //         rhs: vec![
-    //             NonTerminal(Expression),
-    //             Terminal(Some(Division)),
-    //             NonTerminal(Expression),
-    //         ],
-    //     });
-    //     productions.push(Production {
-    //         lhs: Expression,
-    //         rhs: vec![
-    //             Terminal(Some(LeftParenthesis)),
-    //             NonTerminal(Expression),
-    //             Terminal(Some(RightParenthesis)),
-    //         ],
-    //     });
-    //     productions.push(Production {
-    //         lhs: Expression,
-    //         rhs: vec![Terminal(Some(Id))],
-    //     });
-    //
-    //     dbg!(&productions);
-    //
-    //     let grammar = ContextFreeGrammar {
-    //         variables,
-    //         terminals,
-    //         start,
-    //         productions,
-    //     };
-    //
-    //     let first = grammar.get_first();
-    //     //dbg!(&first);
-    //     let follow = grammar.get_follow(&first);
-    //     //dbg!(&follow);
-    //     let table = grammar.get_table(&first, &follow);
-    //     //dbg!(&table);
-    //     assert!(first.is_empty());
-    // }
-    //
-    // #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-    // enum VariableEnum2 {
-    //     E,
-    //     EPrime,
-    //     T,
-    //     TPrime,
-    //     F,
-    // }
-    //
-    // #[test]
-    // fn good_grammar() {
-    //     use Symbol::*;
-    //     use TerminalEnum::*;
-    //     use VariableEnum2::*;
-    //     let mut variables: HashSet<VariableEnum2> = HashSet::new();
-    //     variables.insert(E);
-    //     variables.insert(EPrime);
-    //     variables.insert(T);
-    //     variables.insert(TPrime);
-    //     variables.insert(F);
-    //     let mut terminals: HashSet<TerminalEnum> = HashSet::new();
-    //     terminals.insert(Id);
-    //     terminals.insert(Plus);
-    //     terminals.insert(Minus);
-    //     terminals.insert(Multiplication);
-    //     terminals.insert(Division);
-    //     terminals.insert(LeftParenthesis);
-    //     terminals.insert(RightParenthesis);
-    //     let start = E;
-    //     let mut productions: Vec<Production<VariableEnum2, TerminalEnum>> = Vec::new();
-    //     productions.push(Production {
-    //         lhs: E,
-    //         rhs: vec![NonTerminal(T), NonTerminal(EPrime)],
-    //     });
-    //     productions.push(Production {
-    //         lhs: EPrime,
-    //         rhs: vec![Terminal(None)],
-    //     });
-    //     productions.push(Production {
-    //         lhs: EPrime,
-    //         rhs: vec![Terminal(Some(Plus)), NonTerminal(T), NonTerminal(EPrime)],
-    //     });
-    //     productions.push(Production {
-    //         lhs: T,
-    //         rhs: vec![NonTerminal(F), NonTerminal(TPrime)],
-    //     });
-    //     productions.push(Production {
-    //         lhs: TPrime,
-    //         rhs: vec![Terminal(None)],
-    //     });
-    //     productions.push(Production {
-    //         lhs: TPrime,
-    //         rhs: vec![
-    //             Terminal(Some(Multiplication)),
-    //             NonTerminal(F),
-    //             NonTerminal(TPrime),
-    //         ],
-    //     });
-    //     productions.push(Production {
-    //         lhs: F,
-    //         rhs: vec![
-    //             Terminal(Some(LeftParenthesis)),
-    //             NonTerminal(E),
-    //             Terminal(Some(RightParenthesis)),
-    //         ],
-    //     });
-    //     productions.push(Production {
-    //         lhs: F,
-    //         rhs: vec![Terminal(Some(Zero))],
-    //     });
-    //     productions.push(Production {
-    //         lhs: F,
-    //         rhs: vec![Terminal(Some(One))],
-    //     });
-    //
-    //     dbg!(&productions);
-    //
-    //     let grammar = ContextFreeGrammar {
-    //         variables,
-    //         terminals,
-    //         start,
-    //         productions,
-    //     };
-    //
-    //     let first = grammar.get_first();
-    //     //dbg!(&first);
-    //     let follow = grammar.get_follow(&first);
-    //     //dbg!(&follow);
-    //     let table = grammar.get_table(&first, &follow);
-    //     for (key, value) in table.iter() {
-    //         println!("({:?}): {:?}", key, grammar.productions[*value]);
-    //     }
-    //
-    //     //dbg!(&table);
-    //     assert!(first.is_empty());
-    // }
 
     #[test]
     fn file_grammar() {
-        use super::super::grammar_generator::*;
         use super::super::language::*;
 
         let grammar: ContextFreeGrammar<VariableType, TokenType> =
