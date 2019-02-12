@@ -9,36 +9,39 @@ pub struct SyntacticAnalyzer<V, T> {
     pub table: SyntacticAnalyzerTable<V, T>,
 }
 
-impl<V, T> SyntacticAnalyzer<V, T> {
-    pub fn from_file(source: &str) -> Self
-    where
-        V: Debug + Eq + Hash + Copy + FromStr,
-        T: Debug + Eq + Hash + Copy + FromStr,
-    {
+impl<V, T> SyntacticAnalyzer<V, T>
+where
+    V: Debug + Eq + Hash + Copy + FromStr,
+    T: Debug + Eq + Hash + Copy + FromStr,
+{
+    pub fn from_file(source: &str) -> Self {
         let grammar: ContextFreeGrammar<V, T> = ContextFreeGrammar::from_file(source);
 
-        let table = SyntacticAnalyzerTable::new(grammar);
+        let table = SyntacticAnalyzerTable::from_grammar(grammar);
 
         SyntacticAnalyzer { table }
     }
 
-    pub fn parse(&self, tokens: &[T])
-    where
-        V: Debug + Eq + Hash + Copy,
-        T: Debug + Eq + Hash + Copy,
-    {
-        use Symbol::*;
-        // Get a reverse iterator over the token stream.
-        let mut token_iter = tokens.iter();
-        // Initialize the stack with '$' (Option<Terminal>: None) and the start non-terminal.
-        let mut stack = vec![Terminal(None), NonTerminal(self.table.get_start())];
-        let mut token = token_iter.next().cloned();
+    pub fn parse(&self, tokens: &[T]) {
+        // Convert token stream and add '$' at the end.
+        let mut parser_symbols: Vec<FollowType<T>> = tokens
+            .iter()
+            .map(|token| FollowType::Terminal(*token))
+            .collect();
+        parser_symbols.push(FollowType::DollarSign);
+        let mut token_iter = parser_symbols.iter();
+        // Initialize the stack with '$' and the start non-terminal.
+        let mut stack = vec![
+            ParserSymbol::DollarSign,
+            ParserSymbol::Variable(self.table.get_start()),
+        ];
+        let mut token = *token_iter.next().unwrap();
         while let Some(symbol) = stack.last() {
             match symbol {
-                Terminal(terminal) => {
-                    if *terminal == token {
+                ParserSymbol::Terminal(terminal) => {
+                    if FollowType::Terminal(*terminal) == token {
                         stack.pop();
-                        token = token_iter.next().cloned();
+                        token = *token_iter.next().unwrap();
                     } else {
                         println!(
                             "Terminals on stack ({:?}) and token ({:?}) do not match.",
@@ -48,25 +51,26 @@ impl<V, T> SyntacticAnalyzer<V, T> {
                         panic!();
                     }
                 }
-                NonTerminal(non_terminal) => match self.table.get(*non_terminal, token) {
+                ParserSymbol::Variable(variable) => match self.table.get(*variable, token) {
                     Some(production) => {
                         stack.pop();
-                        if production.rhs[0] == Terminal(None) {
+                        if production.rhs[0] == GrammarSymbol::Epsilon {
                             continue;
                         }
-                        for symbol in production.rhs.iter().rev() {
-                            stack.push(*symbol);
+                        for grammar_symbol in production.rhs.iter().rev() {
+                            stack.push(ParserSymbol::from(*grammar_symbol));
                         }
                     }
                     None => {
-                        println!("Not in table ({:?}, {:?}).", non_terminal, token);
+                        println!("Not in table ({:?}, {:?}).", variable, token);
                         println!("Stack: {:?}.", stack);
                         panic!();
                     }
                 },
+                ParserSymbol::DollarSign => break,
             }
         }
-        if token.is_some() {
+        if token != FollowType::DollarSign {
             println!("Last token is not '$': {:?}", token);
             println!("Stack: {:?}.", stack);
             panic!();

@@ -7,8 +7,8 @@ funcHead     -> type funcScopeOp '(' fParams ')'
 funcScopeOp  -> 'id' scopeOp
 funcScopeOp  -> EPSILON
 funcDef      -> funcHead funcBody ';'
-funcDefRep -> funcDef funcDefRep
-funcDefRep -> EPSILON
+funcDefRep   -> funcDef funcDefRep
+funcDefRep   -> EPSILON
 funcBody     -> '{' bodyElementRep '}'
 varDecl      -> type 'id' arraySizeRep ';'
 varDeclRep   -> varDecl varDeclRep
@@ -52,59 +52,59 @@ relExpr      -> arithExpr relOp arithExpr
 arithExpr    -> term arithExpr'
 arithExpr'   -> addOp term arithExpr'
 arithExpr'   -> EPSILON
-sign         -> '+'
-sign         -> '-'
-term         -> factor term'
-term'        -> multOp factor term'
-term'        -> EPSILON
-factor      -> 'id' factor' idnestRep
-factor       -> 'intNum'
-factor       -> 'floatNum'
-factor       -> '(' arithExpr ')'
-factor       -> 'not' factor
-factor       -> sign factor
-factor'     -> indiceRep
-factor'     -> '(' aParams ')'
-variable     -> 'id' indiceRep idnestRep
-functionCall -> 'id' '(' aParams ')' idnestRep
-idnest       -> '.' 'id' idnest'
-idnest'	     -> indiceRep
-idnest'       -> '(' aParams ')'
-idnestRep    -> idnest idnestRep
-idnestRep    -> EPSILON
-parentOp     -> ':' 'id' parentListRep
-parentOp     -> EPSILON
+sign            -> '+'
+sign            -> '-'
+term            -> factor term'
+term'           -> multOp factor term'
+term'           -> EPSILON
+factor          -> 'id' factor' idnestRep
+factor          -> 'intNum'
+factor          -> 'floatNum'
+factor          -> '(' arithExpr ')'
+factor          -> 'not' factor
+factor          -> sign factor
+factor'         -> indiceRep
+factor'         -> '(' aParams ')'
+variable        -> 'id' indiceRep idnestRep
+functionCall    -> 'id' '(' aParams ')' idnestRep
+idnest          -> '.' 'id' idnest'
+idnest'	        -> indiceRep
+idnest'         -> '(' aParams ')'
+idnestRep       -> idnest idnestRep
+idnestRep       -> EPSILON
+parentOp        -> ':' 'id' parentListRep
+parentOp        -> EPSILON
 parentListRep   -> ',' 'id' parentListRep
 parentListRep   -> EPSILON
-indice       -> '[' arithExpr ']'
-indiceRep   -> indice indiceRep
-indiceRep   -> EPSILON
-arraySize    -> '[' 'intNum' ']'
-arraySizeRep   -> arraySize arraySizeRep
-arraySizeRep   -> EPSILON
-type         -> 'integer'
-type         -> 'float'
-type         -> 'id'
-fParams      -> type 'id' arraySizeRep fParamsTailRep
-fParams      -> EPSILON
-aParams      -> expr aParamsTailRep
-aParams      -> EPSILON
-fParamsTail  -> ',' type 'id' arraySizeRep
-fParamsTailRep   -> fParamsTail fParamsTailRep
-fParamsTailRep   -> EPSILON
-aParamsTail  -> ',' expr
-aParamsTailRep   -> aParamsTail aParamsTailRep
-aParamsTailRep   -> EPSILON
-assignOp     -> '='
-relOp        -> 'eq'
-relOp        -> 'neq'
-relOp        -> 'lt'
-relOp        -> 'gt'
-relOp        -> 'leq'
-relOp        -> 'geq'
-addOp        -> '+'
-addOp        -> '-'
-addOp        -> 'or'
-multOp       -> '*'
-multOp       -> '/'
-multOp       -> 'and'
+indice          -> '[' arithExpr ']'
+indiceRep       -> indice indiceRep
+indiceRep       -> EPSILON
+arraySize       -> '[' 'intNum' ']'
+arraySizeRep    -> arraySize arraySizeRep
+arraySizeRep    -> EPSILON
+type            -> 'integer'
+type            -> 'float'
+type            -> 'id'
+fParams         -> type 'id' arraySizeRep fParamsTailRep
+fParams         -> EPSILON
+aParams         -> expr aParamsTailRep
+aParams         -> EPSILON
+fParamsTail     -> ',' type 'id' arraySizeRep
+fParamsTailRep  -> fParamsTail fParamsTailRep
+fParamsTailRep  -> EPSILON
+aParamsTail     -> ',' expr
+aParamsTailRep  -> aParamsTail aParamsTailRep
+aParamsTailRep  -> EPSILON
+assignOp        -> '='
+relOp           -> 'eq'
+relOp           -> 'neq'
+relOp           -> 'lt'
+relOp           -> 'gt'
+relOp           -> 'leq'
+relOp           -> 'geq'
+addOp           -> '+'
+addOp           -> '-'
+addOp           -> 'or'
+multOp          -> '*'
+multOp          -> '/'
+multOp          -> 'and'

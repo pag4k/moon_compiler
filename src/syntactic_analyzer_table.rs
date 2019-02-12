@@ -6,35 +6,38 @@ use std::hash::Hash;
 
 pub struct SyntacticAnalyzerTable<V, T> {
     grammar: ContextFreeGrammar<V, T>,
-    table: HashMap<(V, Option<T>), usize>,
+    pub first_sets: HashMap<V, FirstSet<T>>,
+    pub follow_sets: HashMap<V, FollowSet<T>>,
+    table: ParserTable<V, T>,
 }
 
-impl<V, T> SyntacticAnalyzerTable<V, T> {
-    pub fn new(grammar: ContextFreeGrammar<V, T>) -> Self
-    where
-        V: Debug + Eq + Hash + Copy,
-        T: Debug + Eq + Hash + Copy,
-    {
+impl<V, T> SyntacticAnalyzerTable<V, T>
+where
+    V: Debug + Eq + Hash + Copy,
+    T: Debug + Eq + Hash + Copy,
+{
+    /// Create a SyntacticAnalyzerTable from a ContextFreeGrammar.
+    pub fn from_grammar(grammar: ContextFreeGrammar<V, T>) -> Self {
+        let first_sets = grammar.get_first_sets();
+        let follow_sets = grammar.get_follow_sets(&first_sets);
+        let table = grammar.get_table(&first_sets, &follow_sets);
         SyntacticAnalyzerTable {
-            table: grammar.get_table(),
             grammar,
+            table,
+            first_sets,
+            follow_sets,
         }
     }
-    pub fn get(&self, variable: V, input: Option<T>) -> Option<Production<V, T>>
-    where
-        V: Debug + Eq + Hash + Copy,
-        T: Debug + Eq + Hash + Copy,
-    {
+
+    //TODO: MAYBE RETURN A RESULT INSTEAD? I'LL SEE WITH ERROR HANDLING.
+    /// Get the production needed to parse a Token based on a Variable.
+    pub fn get(&self, variable: V, input: FollowType<T>) -> Option<Production<V, T>> {
         self.table
             .get(&(variable, input))
             .map(|production_id| self.grammar.productions[*production_id].clone())
     }
 
-    pub fn get_start(&self) -> V
-    where
-        V: Debug + Eq + Hash + Copy,
-        T: Debug + Eq + Hash + Copy,
-    {
+    pub fn get_start(&self) -> V {
         self.grammar.start
     }
 }

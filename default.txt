@@ -7,7 +7,7 @@ class Utility : InheritedUtility {
   integer findMax(integer array[100]);
   integer findMin(integer array[100]);};
 
-int Utility::findMax(integer array[100]){
+integer Utility::findMax(integer array[100]){
   integer maxValue;
   integer idx;
   maxValue = array[100];
@@ -18,14 +18,14 @@ int Utility::findMax(integer array[100]){
   };
   return (maxValue);};
 
-int Utility::findMin(integer array[100]){
+integer Utility::findMin(integer array[100]){
   integer minValue;
   integer idx;
   minValue = array[100];
-    for( integer idx = 1; idx <= 99; idx = ( idx ) + 1) { 
+    for( integer idx = 1; idx <= 99; idx = ( idx ) + 1) {
       if(array[idx] < maxValue + 1 / 8 || idx) then {
         maxValue = array[idx];}
-      else{};  
+      else{};
   };
   return (minValue);};
 
@@ -36,10 +36,10 @@ float randomize(){
   return (value);};
 
 main {
-  int sample[100];
-  int idx;
-  int maxValue;
-  int minValue;
+  integer sample[100];
+  integer idx;
+  integer maxValue;
+  integer minValue;
   Utility utility;
   Utility arrayUtility[2][3][6][7];
   for(integer t = 0; t<=100 ; t = t + 1) {
