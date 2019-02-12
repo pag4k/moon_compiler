@@ -1,110 +1,104 @@
-prog         -> classDeclRep funcDefRep 'main' funcBody ';'
-classDecl    -> 'class' 'id' parentOp '{' declRep '}' ';'
-classDeclRep -> classDecl classDeclRep
-classDeclRep -> EPSILON
-funcDecl     -> type 'id' '(' fParams ')' ';'
-funcHead     -> type funcScopeOp '(' fParams ')'
-funcScopeOp  -> 'id' scopeOp
-funcScopeOp  -> EPSILON
-funcDef      -> funcHead funcBody ';'
-funcDefRep   -> funcDef funcDefRep
-funcDefRep   -> EPSILON
-funcBody     -> '{' bodyElementRep '}'
-varDecl      -> type 'id' arraySizeRep ';'
-varDeclRep   -> varDecl varDeclRep
-varDeclRep   -> EPSILON
-decl         -> type 'id' decl'
-decl'        -> '(' fParams ')' ';'
-decl'        -> arraySizeRep ';'
-declRep      -> decl declRep
-declRep      -> EPSILON
-numVarDecl   -> 'integer' 'id' arraySizeRep ';'
-numVarDecl   -> 'float' 'id' arraySizeRep ';'
-bodyElement  -> 'id' bodyElement'
-bodyElement  -> numVarDecl
-bodyElement  -> 'if'     '(' expr ')' 'then' statBlock 'else' statBlock ';'
-bodyElement  -> 'for'    '(' type 'id' assignOp expr ';' relExpr ';' assignStat ')' statBlock ';'
-bodyElement  -> 'read'   '(' variable ')' ';'
-bodyElement  -> 'write'  '(' expr ')' ';'
-bodyElement  -> 'return' '(' expr ')' ';'
-bodyElement' -> 'id' arraySizeRep ';'
-bodyElement' ->  indiceRep idnestRep assignOp expr ';'
-bodyElementRep -> bodyElement bodyElementRep
-bodyElementRep -> EPSILON
-statement    -> assignStat ';'
-statement    -> 'if'     '(' expr ')' 'then' statBlock 'else' statBlock ';'
-statement    -> 'for'    '(' type 'id' assignOp expr ';' relExpr ';' assignStat ')' statBlock ';'
-statement    -> 'read'   '(' variable ')' ';'
-statement    -> 'write'  '(' expr ')' ';'
-statement    -> 'return' '(' expr ')' ';'
-statementRep -> statement statementRep
-statementRep -> EPSILON
-assignStat   -> variable assignOp expr
-statBlock    -> '{' statementRep '}'
-statBlock    -> statement
-statBlock    -> EPSILON
-scopeOp      -> 'sr' 'id'
-scopeOp      -> EPSILON
-expr         -> arithExpr expr'
-expr'        -> relOp arithExpr
-expr'        -> EPSILON
-relExpr      -> arithExpr relOp arithExpr
-arithExpr    -> term arithExpr'
-arithExpr'   -> addOp term arithExpr'
-arithExpr'   -> EPSILON
-sign            -> '+'
-sign            -> '-'
-term            -> factor term'
-term'           -> multOp factor term'
-term'           -> EPSILON
-factor          -> 'id' factor' idnestRep
-factor          -> 'intNum'
-factor          -> 'floatNum'
-factor          -> '(' arithExpr ')'
-factor          -> 'not' factor
-factor          -> sign factor
-factor'         -> indiceRep
-factor'         -> '(' aParams ')'
-variable        -> 'id' indiceRep idnestRep
-functionCall    -> 'id' '(' aParams ')' idnestRep
-idnest          -> '.' 'id' idnest'
-idnest'	        -> indiceRep
-idnest'         -> '(' aParams ')'
-idnestRep       -> idnest idnestRep
-idnestRep       -> EPSILON
-parentOp        -> ':' 'id' parentListRep
-parentOp        -> EPSILON
-parentListRep   -> ',' 'id' parentListRep
-parentListRep   -> EPSILON
-indice          -> '[' arithExpr ']'
-indiceRep       -> indice indiceRep
-indiceRep       -> EPSILON
-arraySize       -> '[' 'intNum' ']'
-arraySizeRep    -> arraySize arraySizeRep
-arraySizeRep    -> EPSILON
-type            -> 'integer'
-type            -> 'float'
-type            -> 'id'
-fParams         -> type 'id' arraySizeRep fParamsTailRep
-fParams         -> EPSILON
-aParams         -> expr aParamsTailRep
-aParams         -> EPSILON
-fParamsTail     -> ',' type 'id' arraySizeRep
-fParamsTailRep  -> fParamsTail fParamsTailRep
-fParamsTailRep  -> EPSILON
-aParamsTail     -> ',' expr
-aParamsTailRep  -> aParamsTail aParamsTailRep
-aParamsTailRep  -> EPSILON
-assignOp        -> '='
-relOp           -> 'eq'
-relOp           -> 'neq'
-relOp           -> 'lt'
-relOp           -> 'gt'
-relOp           -> 'leq'
-relOp           -> 'geq'
-addOp           -> '+'
-addOp           -> '-'
-addOp           -> 'or'
-multOp          -> '*'
-multOp          -> '/'
-multOp          -> 'and'
+prog                      -> classDeclList funcDefList 'main' funcBody ';'
+classDecl                 -> 'class' 'id' inherListOp '{' memberList '}' ';'
+classDeclList             -> classDecl classDeclList
+classDeclList             -> EPSILON
+funcDecl                  -> type 'id' '(' fParamList ')' ';'
+funcHead                  -> type scopeSpecOp '(' fParamList ')'
+scopeSpecOp               -> 'id' scopeOp
+scopeSpecOp               -> EPSILON
+funcDef                   -> funcHead funcBody ';'
+funcDefList               -> funcDef funcDefList
+funcDefList               -> EPSILON
+funcBody                  -> '{' statOrAssignOrVarDeclList '}'
+memberDecl                -> type 'id' memberDecl'
+memberDecl'               -> '(' fParamList ')' ';'
+memberDecl'               -> dimList ';'
+memberList                -> memberDecl memberList
+memberList                -> EPSILON
+numVarDecl                -> 'integer' 'id' dimList
+numVarDecl                -> 'float' 'id' dimList
+assignStat                -> variable assignOp expr
+statement                 -> 'if'     '(' expr ')' 'then' statBlock 'else' statBlock
+statement                 -> 'for'    '(' type 'id' assignOp expr ';' relExpr ';' assignStat ')' statBlock
+statement                 -> 'read'   '(' variable ')'
+statement                 -> 'write'  '(' expr ')'
+statement                 -> 'return' '(' expr ')'
+statOrAssign              -> assignStat ';'
+statOrAssign              -> statement  ';'
+statOrAssignList          -> statOrAssign statOrAssignList
+statOrAssignList          -> EPSILON
+statOrAssignOrVarDecl     -> 'id' statOrAssignOrVarDecl'
+statOrAssignOrVarDecl     -> numVarDecl ';'
+statOrAssignOrVarDecl     -> statement ';'
+statOrAssignOrVarDecl'    -> 'id' dimList ';'
+statOrAssignOrVarDecl'    ->  indexList idnestRep assignOp expr ';'
+statOrAssignOrVarDeclList -> statOrAssignOrVarDecl statOrAssignOrVarDeclList
+statOrAssignOrVarDeclList -> EPSILON
+statBlock                 -> '{' statOrAssignList '}'
+statBlock                 -> statOrAssign
+statBlock                 -> EPSILON
+scopeOp                   -> 'sr' 'id'
+scopeOp                   -> EPSILON
+expr                      -> arithExpr expr'
+expr'                     -> relOp arithExpr
+expr'                     -> EPSILON
+relExpr                   -> arithExpr relOp arithExpr
+arithExpr                 -> term arithExpr'
+arithExpr'                -> addOp term arithExpr'
+arithExpr'                -> EPSILON
+sign                      -> '+'
+sign                      -> '-'
+term                      -> factor term'
+term'                     -> multOp factor term'
+term'                     -> EPSILON
+factor                    -> 'id' factor' idnestRep
+factor                    -> 'intNum'
+factor                    -> 'floatNum'
+factor                    -> '(' arithExpr ')'
+factor                    -> 'not' factor
+factor                    -> sign factor
+factor'                   -> indexList
+factor'                   -> '(' indexList ')'
+variable                  -> 'id' indexList idnestRep
+functionCall              -> 'id' '(' aParamList ')' idnestRep
+idnest                    -> '.' 'id' idnest'
+idnest'	                  -> indexList
+idnest'                   -> '(' aParamList ')'
+idnestRep                 -> idnest idnestRep
+idnestRep                 -> EPSILON
+inherListOp               -> ':' 'id' inherList
+inherListOp               -> EPSILON
+inherList                 -> ',' 'id' inherList
+inherList                 -> EPSILON
+index                     -> '[' arithExpr ']'
+indexList                 -> index indexList
+indexList                 -> EPSILON
+dim                       -> '[' 'intNum' ']'
+dimList                   -> dim dimList
+dimList                   -> EPSILON
+type                      -> 'integer'
+type                      -> 'float'
+type                      -> 'id'
+fParam                    -> type 'id' dimList
+fParamList                -> fParam fParamList'
+fParamList                -> EPSILON
+fParamList'               -> ',' fParam fParamList'
+fParamList'               -> EPSILON
+aParam                    -> expr
+aParamList                -> aParam aParamList'
+aParamList                -> EPSILON
+aParamList'               -> ',' aParam aParamList'
+aParamList'               -> EPSILON
+assignOp                  -> '='
+relOp                     -> 'eq'
+relOp                     -> 'neq'
+relOp                     -> 'lt'
+relOp                     -> 'gt'
+relOp                     -> 'leq'
+relOp                     -> 'geq'
+addOp                     -> '+'
+addOp                     -> '-'
+addOp                     -> 'or'
+multOp                    -> '*'
+multOp                    -> '/'
+multOp                    -> 'and'
