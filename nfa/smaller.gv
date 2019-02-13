@@ -17,6 +17,6 @@ digraph finite_state_machine {
 
 	601	->	602	[ label = "Σ" ];
 	601	->	603	[ label = "=" ];
-	601	->	604	[ label = ">" ];
 	600	->	601	[ label = "<" ];
+	601	->	604	[ label = ">" ];
 }

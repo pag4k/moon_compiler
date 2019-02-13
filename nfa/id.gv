@@ -11,9 +11,9 @@ digraph finite_state_machine {
 	node [shape = point, color=black] q0;
 	q0	->	100;
 
+	101	->	101	[ label = "D" ];
+	101	->	101	[ label = "L" ];
+	101	->	102	[ label = "Σ" ];
 	100	->	101	[ label = "L" ];
 	101	->	101	[ label = "_" ];
-	101	->	101	[ label = "D" ];
-	101	->	102	[ label = "Σ" ];
-	101	->	101	[ label = "L" ];
 }

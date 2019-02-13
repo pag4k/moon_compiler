@@ -7,6 +7,7 @@ mod lexical_analyzer_table;
 mod nfa_generator;
 mod syntactic_analyzer;
 mod syntactic_analyzer_table;
+mod tree;
 
 use language::*;
 use lexical_analyzer::*;
