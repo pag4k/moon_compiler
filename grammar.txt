@@ -1,28 +1,28 @@
-prog                      -> classDeclList funcDefList 'main' funcBody ';'
-classDecl                 -> 'class' 'id' inherListOp '{' memberList '}' ';'
+prog                      -> classDeclList #MakeNodeClassDeclList funcDefList #MakeNodeFuncDefList 'main' funcBody ';' #MakeNodeProg
+classDecl                 -> 'class' 'id' #MakeNodeId inherListOp '{' memberList '}' #MakeNodeMemberList ';' #MakeNodeClassDecl
 classDeclList             -> classDecl classDeclList
 classDeclList             -> EPSILON
-funcDecl                  -> type 'id' '(' fParamList ')' ';'
-funcHead                  -> type scopeSpecOp '(' fParamList ')'
-scopeSpecOp               -> 'id' scopeOp
-scopeSpecOp               -> EPSILON
-funcDef                   -> funcHead funcBody ';'
+funcDecl                  -> type 'id' #MakeNodeId '(' fParamList ')' ';' #MakeNodeFuncDecl
+funcHead                  -> type 'id' #MakeNodeId scopeOp '(' fParamList ')'
+scopeOp                   -> 'sr' 'id' #MakeNodeId
+scopeOp                   -> EPSILON
+funcDef                   -> funcHead funcBody ';' #MakeNodeFuncDef
 funcDefList               -> funcDef funcDefList
 funcDefList               -> EPSILON
-funcBody                  -> '{' statOrAssignOrVarDeclList '}'
-memberDecl                -> type 'id' memberDecl'
+funcBody                  -> '{' statOrAssignOrVarDeclList '}' #MakeNodeStatBlock
+memberDecl                -> type 'id' #MakeNodeId memberDecl' #MakeNodeMemberDecl
 memberDecl'               -> '(' fParamList ')' ';'
-memberDecl'               -> dimList ';'
+memberDecl'               -> dimList #MakeNodeDimList ';'
 memberList                -> memberDecl memberList
 memberList                -> EPSILON
-numVarDecl                -> 'integer' 'id' dimList
-numVarDecl                -> 'float' 'id' dimList
-assignStat                -> variable assignOp expr
-statement                 -> 'if'     '(' expr ')' 'then' statBlock 'else' statBlock
-statement                 -> 'for'    '(' type 'id' assignOp expr ';' relExpr ';' assignStat ')' statBlock
-statement                 -> 'read'   '(' variable ')'
-statement                 -> 'write'  '(' expr ')'
-statement                 -> 'return' '(' expr ')'
+numVarDecl                -> 'integer' 'id' #MakeNodeId dimList #MakeNodeDimList #MakeNodeVarDecl
+numVarDecl                -> 'float' 'id' #MakeNodeId dimList #MakeNodeDimList #MakeNodeVarDecl
+assignStat                -> variable assignOp expr #MakeNodeAssignStat
+statement                 -> 'if'     '(' expr ')' 'then' statBlock 'else' statBlock #MakeNodeIfStat
+statement                 -> 'for'    '(' type 'id' #MakeNodeId assignOp expr #MakeNodeAssignStat ';' relExpr ';' assignStat ')' statBlock #MakeNodeForStat
+statement                 -> 'read'   '(' variable ')' #MakeNodeReadStat
+statement                 -> 'write'  '(' expr ')' #MakeNodeWriteStat
+statement                 -> 'return' '(' expr ')' #MakeNodeReturnStat
 statOrAssign              -> assignStat ';'
 statOrAssign              -> statement  ';'
 statOrAssignList          -> statOrAssign statOrAssignList
@@ -30,72 +30,70 @@ statOrAssignList          -> EPSILON
 statOrAssignOrVarDecl     -> 'id' statOrAssignOrVarDecl'
 statOrAssignOrVarDecl     -> numVarDecl ';'
 statOrAssignOrVarDecl     -> statement ';'
-statOrAssignOrVarDecl'    -> 'id' dimList ';'
-statOrAssignOrVarDecl'    ->  indexList idnestRep assignOp expr ';'
+statOrAssignOrVarDecl'    -> 'id' #MakeNodeId dimList #MakeNodeDimList #MakeNodeVarDecl ';'
+statOrAssignOrVarDecl'    ->  indexList #MakeNodeIndexList idnestRep assignOp expr #MakeNodeAssignStat ';'
 statOrAssignOrVarDeclList -> statOrAssignOrVarDecl statOrAssignOrVarDeclList
 statOrAssignOrVarDeclList -> EPSILON
 statBlock                 -> '{' statOrAssignList '}'
 statBlock                 -> statOrAssign
 statBlock                 -> EPSILON
-scopeOp                   -> 'sr' 'id'
-scopeOp                   -> EPSILON
 expr                      -> arithExpr expr'
-expr'                     -> relOp arithExpr
+expr'                     -> relOp arithExpr #MakeNodeRelExpr
 expr'                     -> EPSILON
-relExpr                   -> arithExpr relOp arithExpr
+relExpr                   -> arithExpr relOp arithExpr #MakeNodeRelExpr
 arithExpr                 -> term arithExpr'
-arithExpr'                -> addOp term arithExpr'
+arithExpr'                -> addOp term arithExpr' #MakeNodeAddOp
 arithExpr'                -> EPSILON
 sign                      -> '+'
 sign                      -> '-'
 term                      -> factor term'
-term'                     -> multOp factor term'
+term'                     -> multOp factor term' #MakeNodeMultOp
 term'                     -> EPSILON
 factor                    -> 'id' factor' idnestRep
-factor                    -> 'intNum'
-factor                    -> 'floatNum'
+factor                    -> 'intNum' #MakeNodeType
+factor                    -> 'floatNum' #MakeNodeType
 factor                    -> '(' arithExpr ')'
-factor                    -> 'not' factor
-factor                    -> sign factor
-factor'                   -> indexList
-factor'                   -> '(' indexList ')'
-variable                  -> 'id' indexList idnestRep
-functionCall              -> 'id' '(' aParamList ')' idnestRep
+factor                    -> 'not' factor #MakeNodeNot
+factor                    -> sign factor #MakeNodeSign
+factor'                   -> indexList #MakeNodeIndexList
+factor'                   -> '(' indexList ')' #MakeNodeIndexList
+variable                  -> 'id' indexList #MakeNodeIndexList idnestRep
+functionCall              -> 'id' #MakeNodeId '(' aParamList ')' idnestRep #MakeNodeFunctionCall
 idnest                    -> '.' 'id' idnest'
-idnest'	                  -> indexList
+idnest'	                  -> indexList #MakeNodeIndexList
 idnest'                   -> '(' aParamList ')'
 idnestRep                 -> idnest idnestRep
 idnestRep                 -> EPSILON
-inherListOp               -> ':' 'id' inherList
+inherListOp               -> ':' 'id' #MakeNodeId inherList #MakeNodeInheritList
 inherListOp               -> EPSILON
-inherList                 -> ',' 'id' inherList
+inherList                 -> ',' 'id' #MakeNodeId inherList
 inherList                 -> EPSILON
 index                     -> '[' arithExpr ']'
 indexList                 -> index indexList
 indexList                 -> EPSILON
-dim                       -> '[' 'intNum' ']'
+dim                       -> '[' 'intNum' #MakeNodeNum ']'
 dimList                   -> dim dimList
 dimList                   -> EPSILON
-type                      -> 'integer'
-type                      -> 'float'
-type                      -> 'id'
-fParam                    -> type 'id' dimList
-fParamList                -> fParam fParamList'
+type                      -> 'integer' #MakeNodeType
+type                      -> 'float' #MakeNodeType
+type                      -> 'id' #MakeNodeType
+fParam                    -> type #MakeNodeType 'id' #MakeNodeId dimList #MakeNodeDimList #MakeNodeFParam
+fParamList                -> fParam fParamList' #MakeNodeFParamList
 fParamList                -> EPSILON
 fParamList'               -> ',' fParam fParamList'
 fParamList'               -> EPSILON
 aParam                    -> expr
-aParamList                -> aParam aParamList'
+aParamList                -> aParam aParamList' #MakeNodeAParamList
 aParamList                -> EPSILON
 aParamList'               -> ',' aParam aParamList'
 aParamList'               -> EPSILON
 assignOp                  -> '='
-relOp                     -> 'eq'
-relOp                     -> 'neq'
-relOp                     -> 'lt'
-relOp                     -> 'gt'
-relOp                     -> 'leq'
-relOp                     -> 'geq'
+relOp                     -> 'eq' #MakeNodeRelOp
+relOp                     -> 'neq' #MakeNodeRelOp
+relOp                     -> 'lt' #MakeNodeRelOp
+relOp                     -> 'gt' #MakeNodeRelOp
+relOp                     -> 'leq' #MakeNodeRelOp
+relOp                     -> 'geq' #MakeNodeRelOp
 addOp                     -> '+'
 addOp                     -> '-'
 addOp                     -> 'or'

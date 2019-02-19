@@ -226,7 +226,7 @@ pub enum VariableType {
     ClassDeclList,
     FuncDecl,
     FuncHead,
-    ScopeSpecOp,
+    ScopeOp,
     FuncDef,
     FuncDefList,
     FuncBody,
@@ -242,7 +242,6 @@ pub enum VariableType {
     StatOrAssignOrVarDeclPrime,
     StatOrAssignOrVarDeclList,
     StatBlock,
-    ScopeOp,
     Expr,
     ExprPrime,
     RelExpr,
@@ -287,7 +286,7 @@ impl FromStr for VariableType {
             "classDeclList" => Ok(ClassDeclList),
             "funcDecl" => Ok(FuncDecl),
             "funcHead" => Ok(FuncHead),
-            "scopeSpecOp" => Ok(ScopeSpecOp),
+            "scopeOp" => Ok(ScopeOp),
             "funcDef" => Ok(FuncDef),
             "funcDefList" => Ok(FuncDefList),
             "funcBody" => Ok(FuncBody),
@@ -303,7 +302,6 @@ impl FromStr for VariableType {
             "statOrAssignOrVarDecl'" => Ok(StatOrAssignOrVarDeclPrime),
             "statOrAssignOrVarDeclList" => Ok(StatOrAssignOrVarDeclList),
             "statBlock" => Ok(StatBlock),
-            "scopeOp" => Ok(ScopeOp),
             "expr" => Ok(Expr),
             "expr'" => Ok(ExprPrime),
             "relExpr" => Ok(RelExpr),
@@ -336,6 +334,29 @@ impl FromStr for VariableType {
             "relOp" => Ok(RelOp),
             "addOp" => Ok(AddOp),
             "multOp" => Ok(MultOp),
+            _ => Err(()),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+pub enum SemanticActionType {
+    MakeNodeId,
+    MakeNodeNum,
+    MakeNodeRelOp,
+    MakeNodeType,
+}
+
+impl FromStr for SemanticActionType {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, ()> {
+        use SemanticActionType::*;
+        match s {
+            "#MakeNodeId" => Ok(MakeNodeId),
+            "#MakeNodeNum" => Ok(MakeNodeNum),
+            "#MakeNodeRelOp" => Ok(MakeNodeRelOp),
+            "#MakeNodeType" => Ok(MakeNodeType),
+
             _ => Err(()),
         }
     }
