@@ -1,3 +1,5 @@
+use super::tree::{Tree, Node};
+
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
@@ -353,7 +355,25 @@ pub enum SemanticActionType {
     MakeNodeFuncDecl,
     MakeNodeFuncDef,
     MakeNodeStatBlock,
-    MakeNodeMemberDecl,
+    MakeNodeDimList,
+    MakeNodeVarDecl,
+    MakeNodeAssignStat,
+    MakeNodeIfStat,
+    MakeNodeForStat,
+    MakeNodeReadStat,
+    MakeNodeWriteStat,
+    MakeNodeReturnStat,
+    MakeNodeIndexList,
+    MakeNodeRelExpr,
+    MakeNodeAddOp,
+    MakeNodeMultOp,
+    MakeNodeNot,
+    MakeNodeSign,
+    MakeNodeFunctionCall,
+    MakeNodeInheritList,
+    MakeNodeFParam,
+    MakeNodeFParamList,
+    MakeNodeAParamList,
 }
 
 impl FromStr for SemanticActionType {
@@ -373,8 +393,122 @@ impl FromStr for SemanticActionType {
             "#MakeNodeFuncDecl" => Ok(MakeNodeFuncDecl),
             "#MakeNodeFuncDef" => Ok(MakeNodeFuncDef),
             "#MakeNodeStatBlock" => Ok(MakeNodeStatBlock),
-            "#MakeNodeMemberDecl" => Ok(MakeNodeMemberDecl),
+            "#MakeNodeDimList" => Ok(MakeNodeDimList),
+            "#MakeNodeVarDecl" => Ok(MakeNodeVarDecl),
+            "#MakeNodeAssignStat" => Ok(MakeNodeAssignStat),
+            "#MakeNodeIfStat" => Ok(MakeNodeIfStat),
+            "#MakeNodeForStat" => Ok(MakeNodeForStat),
+            "#MakeNodeReadStat" => Ok(MakeNodeReadStat),
+            "#MakeNodeWriteStat" => Ok(MakeNodeWriteStat),
+            "#MakeNodeReturnStat" => Ok(MakeNodeReturnStat),
+            "#MakeNodeIndexList" => Ok(MakeNodeIndexList),
+            "#MakeNodeRelExpr" => Ok(MakeNodeRelExpr),
+            "#MakeNodeAddOp" => Ok(MakeNodeAddOp),
+            "#MakeNodeMultOp" => Ok(MakeNodeMultOp),
+            "#MakeNodeNot" => Ok(MakeNodeNot),
+            "#MakeNodeSign" => Ok(MakeNodeSign),
+            "#MakeNodeFunctionCall" => Ok(MakeNodeFunctionCall),
+            "#MakeNodeInheritList" => Ok(MakeNodeInheritList),
+            "#MakeNodeFParam" => Ok(MakeNodeFParam),
+            "#MakeNodeFParamList" => Ok(MakeNodeFParamList),
+            "#MakeNodeAParamList" => Ok(MakeNodeAParamList),
             _ => Err(()),
+        }
+    }
+}
+
+struct NodeElement {
+    node_type: SemanticActionType,
+}
+
+impl Tree<NodeElement> {
+    fn make_node(&mut self, semantic_stack: &mut Vec<Node<NodeElement>>, semantic_action: SemanticActionType) {
+        match semantic_action {
+            MakeNodeId => {
+                let node = Node {
+                    index : 0,
+                    parent: None,
+                    children: Vec::new(),
+                    element: NodeElement {
+                        node_type: semantic_action
+                    }
+                };
+                semantic_stack.push(node);
+            }
+            MakeNodeNum => {
+                let node = Node {
+                    index : 0,
+                    parent: None,
+                    children: Vec::new(),
+                    element: NodeElement {
+                        node_type: semantic_action
+                    }
+                };
+                semantic_stack.push(node);
+            }
+            MakeNodeRelOp => {
+                let node = Node {
+                    index : 0,
+                    parent: None,
+                    children: Vec::new(),
+                    element: NodeElement {
+                        node_type: semantic_action
+                    }
+                };
+                semantic_stack.push(node);
+            }
+            MakeNodeType => {
+                let node = Node {
+                    index : 0,
+                    parent: None,
+                    children: Vec::new(),
+                    element: NodeElement {
+                        node_type: semantic_action
+                    }
+                };
+                semantic_stack.push(node);
+            }
+            MakeNodeClassDeclList => {}
+            MakeNodeFuncDefList => {}
+            MakeNodeProg => {}
+            MakeNodeMemberList => {}
+            MakeNodeClassDecl => {}
+            MakeNodeFuncDecl => {}
+            MakeNodeFuncDef => {}
+            MakeNodeStatBlock => {}
+            MakeNodeDimList => {}
+            MakeNodeVarDecl => {
+                let dim_list_node = semantic_stack.pop().unwrap();
+                let id_node = semantic_stack.pop().unwrap();
+                let type_node = semantic_stack.pop().unwrap();
+                let node = Node {
+                    index : 0,
+                    parent: None,
+                    children: Vec::new(),
+                    element: NodeElement {
+                        node_type: semantic_action
+                    }
+                };
+                semantic_stack.push(node);
+            }
+            MakeNodeAssignStat => {}
+            MakeNodeIfStat => {}
+            MakeNodeForStat => {}
+            MakeNodeReadStat => {}
+            MakeNodeWriteStat => {}
+            MakeNodeReturnStat => {}
+            MakeNodeIndexList => {}
+            MakeNodeRelExpr => {}
+            MakeNodeAddOp => {}
+            MakeNodeMultOp => {}
+            MakeNodeNot => {}
+            MakeNodeSign => {}
+            MakeNodeFunctionCall => {}
+            MakeNodeInheritList => {}
+            MakeNodeFParam => {}
+            MakeNodeFParamList => {}
+            MakeNodeAParamList => {}
+
         }
     }
 }

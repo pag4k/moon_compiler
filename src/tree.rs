@@ -1,15 +1,16 @@
-struct Tree {
+pub struct Tree<E> {
     root: usize,
-    nodes: Vec<Node>,
+    nodes: Vec<Node<E>>,
 }
 
-struct Node {
-    index: usize,
-    parent: Option<usize>,
-    children: Vec<usize>,
+pub struct Node<E> {
+    pub index: usize,
+    pub parent: Option<usize>,
+    pub children: Vec<usize>,
+    pub element: E
 }
 
-impl Tree {
+impl<E> Tree<E> {
     fn get_right_sibling(&self, node: usize) -> Option<usize> {
         match self.nodes[node].parent {
             None => None,
@@ -33,7 +34,7 @@ impl Tree {
             Some(parent) => self.nodes[parent].children[0],
         }
     }
-    fn sibling_iter(&self, node: usize) -> SiblingIterator {
+    fn sibling_iter(&self, node: usize) -> SiblingIterator<E> {
         SiblingIterator {
             tree: self,
             index: node,
@@ -42,11 +43,11 @@ impl Tree {
 }
 
 // FIXME: I don't need all of this. I can just iterate over the children vec.
-pub struct SiblingIterator<'a> {
-    tree: &'a Tree,
+pub struct SiblingIterator<'a, E> {
+    tree: &'a Tree<E>,
     index: usize,
 }
-impl<'a> Iterator for SiblingIterator<'a> {
+impl<'a, E> Iterator for SiblingIterator<'a, E> {
     type Item = usize;
     fn next(&mut self) -> Option<<Self as Iterator>::Item> {
         match self.tree.get_right_sibling(self.index) {

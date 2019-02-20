@@ -36,8 +36,10 @@ where
             ParserSymbol::DollarSign,
             ParserSymbol::Variable(self.table.get_start()),
         ];
+        let mut semantic_stack: Vec<A> = Vec::new();
         let mut token = *token_iter.next().unwrap();
         while let Some(symbol) = stack.last() {
+            //dbg!(&symbol);
             match symbol {
                 ParserSymbol::Terminal(terminal) => {
                     if FollowType::Terminal(*terminal) == token {
@@ -68,7 +70,10 @@ where
                         panic!();
                     }
                 },
-                ParserSymbol::SemanticAction(semantic_action) => {}
+                ParserSymbol::SemanticAction(semantic_action) => {
+                    semantic_stack.push(*semantic_action);
+                    stack.pop();
+                }
                 ParserSymbol::DollarSign => break,
             }
         }
@@ -80,5 +85,6 @@ where
         println!("Parse completed succesfully!");
         println!("Tokens: {:?}", token_iter.next());
         println!("Stack: {:?}.", stack);
+        dbg!(semantic_stack);
     }
 }

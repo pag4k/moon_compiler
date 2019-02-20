@@ -10,9 +10,9 @@ funcDef                   -> funcHead funcBody ';' #MakeNodeFuncDef
 funcDefList               -> funcDef funcDefList
 funcDefList               -> EPSILON
 funcBody                  -> '{' statOrAssignOrVarDeclList '}' #MakeNodeStatBlock
-memberDecl                -> type 'id' #MakeNodeId memberDecl' #MakeNodeMemberDecl
-memberDecl'               -> '(' fParamList ')' ';'
-memberDecl'               -> dimList #MakeNodeDimList ';'
+memberDecl                -> type 'id' #MakeNodeId memberDecl'
+memberDecl'               -> '(' fParamList ')' ';' #MakeNodeFuncDecl
+memberDecl'               -> dimList #MakeNodeDimList ';' #MakeNodeVarDecl
 memberList                -> memberDecl memberList
 memberList                -> EPSILON
 numVarDecl                -> 'integer' 'id' #MakeNodeId dimList #MakeNodeDimList #MakeNodeVarDecl
