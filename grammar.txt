@@ -4,7 +4,7 @@ classDeclList             -> classDecl classDeclList
 classDeclList             -> EPSILON
 funcDecl                  -> type 'id' #MakeNodeId '(' fParamList ')' ';' #MakeNodeFuncDecl
 funcHead                  -> type 'id' #MakeNodeId scopeOp '(' fParamList ')'
-scopeOp                   -> 'sr' 'id' #MakeNodeId
+scopeOp                   -> 'sr' 'id' #MakeNodeScopeSpec
 scopeOp                   -> EPSILON
 funcDef                   -> funcHead funcBody ';' #MakeNodeFuncDef
 funcDefList               -> funcDef funcDefList

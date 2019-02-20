@@ -342,89 +342,142 @@ impl FromStr for VariableType {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-pub enum SemanticActionType {
-    MakeNodeId,
-    MakeNodeNum,
-    MakeNodeRelOp,
-    MakeNodeType,
-    MakeNodeClassDeclList,
-    MakeNodeFuncDefList,
-    MakeNodeProg,
-    MakeNodeMemberList,
-    MakeNodeClassDecl,
-    MakeNodeFuncDecl,
-    MakeNodeFuncDef,
-    MakeNodeStatBlock,
-    MakeNodeDimList,
-    MakeNodeVarDecl,
-    MakeNodeAssignStat,
-    MakeNodeIfStat,
-    MakeNodeForStat,
-    MakeNodeReadStat,
-    MakeNodeWriteStat,
-    MakeNodeReturnStat,
-    MakeNodeIndexList,
-    MakeNodeRelExpr,
-    MakeNodeAddOp,
-    MakeNodeMultOp,
-    MakeNodeNot,
-    MakeNodeSign,
-    MakeNodeFunctionCall,
-    MakeNodeInheritList,
-    MakeNodeFParam,
-    MakeNodeFParamList,
-    MakeNodeAParamList,
+pub enum NodeType {
+    Id,
+    Num,
+    RelOp,
+    Type,
+    ClassDeclList,
+    FuncDefList,
+    Prog,
+    MemberList,
+    ClassDecl,
+    FuncDecl,
+    FuncDef,
+    StatBlock,
+    DimList,
+    VarDecl,
+    AssignStat,
+    IfStat,
+    ForStat,
+    ReadStat,
+    WriteStat,
+    ReturnStat,
+    IndexList,
+    RelExpr,
+    AddOp,
+    MultOp,
+    Not,
+    Sign,
+    FunctionCall,
+    InheritList,
+    FParam,
+    FParamList,
+    AParamList,
+    ScopeSpec,
 }
 
-impl FromStr for SemanticActionType {
+enum NodeChildren {
+    List(Vec<NodeType>), // With that, take as many of that type on the stack.
+    Parameters(Vec<NodeType>), // Take these inverse order.
+    Leaf,
+}
+
+impl NodeType {
+    fn get_children(self) -> NodeChildren {
+        use NodeType::*;
+        use NodeChildren::*;
+        match self {
+            Id => Leaf,
+            Num => Leaf,
+            RelOp => Leaf,
+            Type => Leaf,
+            ClassDeclList => List(vec![ClassDecl]),
+            FuncDefList => List(vec![FuncDecl]),
+            Prog => Parameters(vec![ClassDeclList, FuncDefList, StatBlock]),
+            MemberList => List(vec![VarDecl, FuncDecl]),
+            ClassDecl => Parameters(vec![Id, XXXInheritList, MemberList]),
+            FuncDecl => Parameters(vec![Type, Id, FParamList]),
+            FuncDef => Parameters(vec![Type, XXXScopeSpec, Id, FParamList, StatBlock]),
+            StatBlock => List(vec![VarDecl, AssignStat, IfStat, ForStat, ReadStat, WriteStat, ReturnStat]),
+            DimList => List(vec![Num]),
+            VarDecl => Parameters(vec![Type, Id, XXXDimList]),
+            AssignStat => {}
+            IfStat => Parameters(vec![RelExpr, StatBlock, StatBlock]),
+            ForStat => Parameters(vec![Type, Id, Expr, RelExpr, AssignStat, StatBlock]),
+            ReadStat => {}
+            WriteStat => {}
+            ReturnStat => {}
+            IndexList => List(vec![ArithExpr]),
+            RelExpr => Parameters(vec![Expr, RelOp, Expr]),
+            AddOp => Parameters(vec![ArithExpr, Term]),
+            MultOp => Parameters(vec![Term, Factor]),
+            Not => Parameters(vec![Factor]),
+            Sign => Parameters(vec![Factor]),
+            FunctionCall => Parameters(vec![Id, AParamList]),
+            InheritList => List(vec![Id]),
+            FParam => Parameters(vec![Type, Id, DimList]),
+            FParamList => List(vec![FParam]),
+            AParamList => List(vec![Expr]),
+            ScopeSpec => Parameters(vec![Id]),
+        }
+    }
+}
+
+impl FromStr for NodeType {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, ()> {
-        use SemanticActionType::*;
+        use NodeType::*;
         match s {
-            "#MakeNodeId" => Ok(MakeNodeId),
-            "#MakeNodeNum" => Ok(MakeNodeNum),
-            "#MakeNodeRelOp" => Ok(MakeNodeRelOp),
-            "#MakeNodeType" => Ok(MakeNodeType),
-            "#MakeNodeClassDeclList" => Ok(MakeNodeClassDeclList),
-            "#MakeNodeFuncDefList" => Ok(MakeNodeFuncDefList),
-            "#MakeNodeProg" => Ok(MakeNodeProg),
-            "#MakeNodeMemberList" => Ok(MakeNodeMemberList),
-            "#MakeNodeClassDecl" => Ok(MakeNodeClassDecl),
-            "#MakeNodeFuncDecl" => Ok(MakeNodeFuncDecl),
-            "#MakeNodeFuncDef" => Ok(MakeNodeFuncDef),
-            "#MakeNodeStatBlock" => Ok(MakeNodeStatBlock),
-            "#MakeNodeDimList" => Ok(MakeNodeDimList),
-            "#MakeNodeVarDecl" => Ok(MakeNodeVarDecl),
-            "#MakeNodeAssignStat" => Ok(MakeNodeAssignStat),
-            "#MakeNodeIfStat" => Ok(MakeNodeIfStat),
-            "#MakeNodeForStat" => Ok(MakeNodeForStat),
-            "#MakeNodeReadStat" => Ok(MakeNodeReadStat),
-            "#MakeNodeWriteStat" => Ok(MakeNodeWriteStat),
-            "#MakeNodeReturnStat" => Ok(MakeNodeReturnStat),
-            "#MakeNodeIndexList" => Ok(MakeNodeIndexList),
-            "#MakeNodeRelExpr" => Ok(MakeNodeRelExpr),
-            "#MakeNodeAddOp" => Ok(MakeNodeAddOp),
-            "#MakeNodeMultOp" => Ok(MakeNodeMultOp),
-            "#MakeNodeNot" => Ok(MakeNodeNot),
-            "#MakeNodeSign" => Ok(MakeNodeSign),
-            "#MakeNodeFunctionCall" => Ok(MakeNodeFunctionCall),
-            "#MakeNodeInheritList" => Ok(MakeNodeInheritList),
-            "#MakeNodeFParam" => Ok(MakeNodeFParam),
-            "#MakeNodeFParamList" => Ok(MakeNodeFParamList),
-            "#MakeNodeAParamList" => Ok(MakeNodeAParamList),
+            "#MakeNodeId" => Ok(Id),
+            "#MakeNodeNum" => Ok(Num),
+            "#MakeNodeRelOp" => Ok(RelOp),
+            "#MakeNodeType" => Ok(Type),
+            "#MakeNodeClassDeclList" => Ok(ClassDeclList),
+            "#MakeNodeFuncDefList" => Ok(FuncDefList),
+            "#MakeNodeProg" => Ok(Prog),
+            "#MakeNodeMemberList" => Ok(MemberList),
+            "#MakeNodeClassDecl" => Ok(ClassDecl),
+            "#MakeNodeFuncDecl" => Ok(FuncDecl),
+            "#MakeNodeFuncDef" => Ok(FuncDef),
+            "#MakeNodeStatBlock" => Ok(StatBlock),
+            "#MakeNodeDimList" => Ok(DimList),
+            "#MakeNodeVarDecl" => Ok(VarDecl),
+            "#MakeNodeAssignStat" => Ok(AssignStat),
+            "#MakeNodeIfStat" => Ok(IfStat),
+            "#MakeNodeForStat" => Ok(ForStat),
+            "#MakeNodeReadStat" => Ok(ReadStat),
+            "#MakeNodeWriteStat" => Ok(WriteStat),
+            "#MakeNodeReturnStat" => Ok(ReturnStat),
+            "#MakeNodeIndexList" => Ok(IndexList),
+            "#MakeNodeRelExpr" => Ok(RelExpr),
+            "#MakeNodeAddOp" => Ok(AddOp),
+            "#MakeNodeMultOp" => Ok(MultOp),
+            "#MakeNodeNot" => Ok(Not),
+            "#MakeNodeSign" => Ok(Sign),
+            "#MakeNodeFunctionCall" => Ok(FunctionCall),
+            "#MakeNodeInheritList" => Ok(InheritList),
+            "#MakeNodeFParam" => Ok(FParam),
+            "#MakeNodeFParamList" => Ok(FParamList),
+            "#MakeNodeAParamList" => Ok(AParamList),
+            "#MakeNodeScopeSpec" => Ok(ScopeSpec),
             _ => Err(()),
         }
     }
 }
 
 struct NodeElement {
-    node_type: SemanticActionType,
+    node_type: NodeType,
+
 }
 
+//Define somewhere what each type of nodes expect.
+//Then call make_node will automatically get the needed element on the stacks.
+
 impl Tree<NodeElement> {
-    fn make_node(&mut self, semantic_stack: &mut Vec<Node<NodeElement>>, semantic_action: SemanticActionType) {
+    fn make_node(&mut self, semantic_stack: &mut Vec<Node<NodeElement>>, semantic_action: NodeType) {
         match semantic_action {
-            MakeNodeId => {
+            Id => {
                 let node = Node {
                     index : 0,
                     parent: None,
@@ -435,7 +488,7 @@ impl Tree<NodeElement> {
                 };
                 semantic_stack.push(node);
             }
-            MakeNodeNum => {
+            Num => {
                 let node = Node {
                     index : 0,
                     parent: None,
@@ -446,7 +499,7 @@ impl Tree<NodeElement> {
                 };
                 semantic_stack.push(node);
             }
-            MakeNodeRelOp => {
+            RelOp => {
                 let node = Node {
                     index : 0,
                     parent: None,
@@ -457,7 +510,7 @@ impl Tree<NodeElement> {
                 };
                 semantic_stack.push(node);
             }
-            MakeNodeType => {
+            Type => {
                 let node = Node {
                     index : 0,
                     parent: None,
@@ -468,16 +521,16 @@ impl Tree<NodeElement> {
                 };
                 semantic_stack.push(node);
             }
-            MakeNodeClassDeclList => {}
-            MakeNodeFuncDefList => {}
-            MakeNodeProg => {}
-            MakeNodeMemberList => {}
-            MakeNodeClassDecl => {}
-            MakeNodeFuncDecl => {}
-            MakeNodeFuncDef => {}
-            MakeNodeStatBlock => {}
-            MakeNodeDimList => {}
-            MakeNodeVarDecl => {
+            ClassDeclList => {}
+            FuncDefList => {}
+            Prog => {}
+            MemberList => {}
+            ClassDecl => {}
+            FuncDecl => {}
+            FuncDef => {}
+            StatBlock => {}
+            DimList => {}
+            VarDecl => {
                 let dim_list_node = semantic_stack.pop().unwrap();
                 let id_node = semantic_stack.pop().unwrap();
                 let type_node = semantic_stack.pop().unwrap();
@@ -491,23 +544,23 @@ impl Tree<NodeElement> {
                 };
                 semantic_stack.push(node);
             }
-            MakeNodeAssignStat => {}
-            MakeNodeIfStat => {}
-            MakeNodeForStat => {}
-            MakeNodeReadStat => {}
-            MakeNodeWriteStat => {}
-            MakeNodeReturnStat => {}
-            MakeNodeIndexList => {}
-            MakeNodeRelExpr => {}
-            MakeNodeAddOp => {}
-            MakeNodeMultOp => {}
-            MakeNodeNot => {}
-            MakeNodeSign => {}
-            MakeNodeFunctionCall => {}
-            MakeNodeInheritList => {}
-            MakeNodeFParam => {}
-            MakeNodeFParamList => {}
-            MakeNodeAParamList => {}
+            AssignStat => {}
+            IfStat => {}
+            ForStat => {}
+            ReadStat => {}
+            WriteStat => {}
+            ReturnStat => {}
+            IndexList => {}
+            RelExpr => {}
+            AddOp => {}
+            MultOp => {}
+            Not => {}
+            Sign => {}
+            FunctionCall => {}
+            InheritList => {}
+            FParam => {}
+            FParamList => {}
+            AParamList => {}
 
         }
     }

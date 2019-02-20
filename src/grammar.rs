@@ -490,7 +490,7 @@ mod tests {
     fn file_grammar() {
         use super::super::language::*;
 
-        let grammar: ContextFreeGrammar<VariableType, TokenType, SemanticActionType> =
+        let grammar: ContextFreeGrammar<VariableType, TokenType, NodeType> =
             ContextFreeGrammar::from_file("test.txt");
 
         dbg!(&grammar.productions);
