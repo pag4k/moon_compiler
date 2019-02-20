@@ -117,7 +117,7 @@ fn main() {
     //     .map(|token| token.unwrap().token_type)
     //     .collect();
 
-    let syntactic_analyzer: SyntacticAnalyzer<VariableType, TokenType> =
+    let syntactic_analyzer: SyntacticAnalyzer<VariableType, TokenType, SemanticActionType> =
         SyntacticAnalyzer::from_file(&grammar_source);
 
     syntactic_analyzer.parse(&tokens);

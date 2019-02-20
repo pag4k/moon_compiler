@@ -5,17 +5,18 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::str::FromStr;
 
-pub struct SyntacticAnalyzer<V, T> {
-    pub table: SyntacticAnalyzerTable<V, T>,
+pub struct SyntacticAnalyzer<V, T, A> {
+    pub table: SyntacticAnalyzerTable<V, T, A>,
 }
 
-impl<V, T> SyntacticAnalyzer<V, T>
+impl<V, T, A> SyntacticAnalyzer<V, T, A>
 where
     V: Debug + Eq + Hash + Copy + FromStr,
     T: Debug + Eq + Hash + Copy + FromStr,
+    A: Debug + Eq + Hash + Copy + FromStr,
 {
     pub fn from_file(source: &str) -> Self {
-        let grammar: ContextFreeGrammar<V, T> = ContextFreeGrammar::from_file(source);
+        let grammar: ContextFreeGrammar<V, T, A> = ContextFreeGrammar::from_file(source);
 
         let table = SyntacticAnalyzerTable::from_grammar(grammar);
 
@@ -67,6 +68,7 @@ where
                         panic!();
                     }
                 },
+                ParserSymbol::SemanticAction(semantic_action) => {}
                 ParserSymbol::DollarSign => break,
             }
         }

@@ -345,6 +345,15 @@ pub enum SemanticActionType {
     MakeNodeNum,
     MakeNodeRelOp,
     MakeNodeType,
+    MakeNodeClassDeclList,
+    MakeNodeFuncDefList,
+    MakeNodeProg,
+    MakeNodeMemberList,
+    MakeNodeClassDecl,
+    MakeNodeFuncDecl,
+    MakeNodeFuncDef,
+    MakeNodeStatBlock,
+    MakeNodeMemberDecl,
 }
 
 impl FromStr for SemanticActionType {
@@ -356,7 +365,15 @@ impl FromStr for SemanticActionType {
             "#MakeNodeNum" => Ok(MakeNodeNum),
             "#MakeNodeRelOp" => Ok(MakeNodeRelOp),
             "#MakeNodeType" => Ok(MakeNodeType),
-
+            "#MakeNodeClassDeclList" => Ok(MakeNodeClassDeclList),
+            "#MakeNodeFuncDefList" => Ok(MakeNodeFuncDefList),
+            "#MakeNodeProg" => Ok(MakeNodeProg),
+            "#MakeNodeMemberList" => Ok(MakeNodeMemberList),
+            "#MakeNodeClassDecl" => Ok(MakeNodeClassDecl),
+            "#MakeNodeFuncDecl" => Ok(MakeNodeFuncDecl),
+            "#MakeNodeFuncDef" => Ok(MakeNodeFuncDef),
+            "#MakeNodeStatBlock" => Ok(MakeNodeStatBlock),
+            "#MakeNodeMemberDecl" => Ok(MakeNodeMemberDecl),
             _ => Err(()),
         }
     }
