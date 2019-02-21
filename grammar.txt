@@ -1,5 +1,5 @@
 prog                      -> classDeclList #MakeNodeClassDeclList funcDefList #MakeNodeFuncDefList 'main' funcBody ';' #MakeNodeProg
-classDecl                 -> 'class' 'id' #MakeNodeId inherListOp '{' memberList '}' #MakeNodeMemberList ';' #MakeNodeClassDecl
+classDecl                 -> 'class' 'id' #MakeNodeId inherListOp #MakeNodeInheritList '{' memberList '}' #MakeNodeMemberList ';' #MakeNodeClassDecl
 classDeclList             -> classDecl classDeclList
 classDeclList             -> EPSILON
 funcDecl                  -> type 'id' #MakeNodeId '(' fParamList ')' ';' #MakeNodeFuncDecl
@@ -64,7 +64,7 @@ idnest'	                  -> indexList #MakeNodeIndexList #MakeNodeDataMember
 idnest'                   -> '(' aParamList ')' #MakeNodeAParamList #MakeNodeFunctionCall
 idnestRep                 -> idnest idnestRep
 idnestRep                 -> EPSILON
-inherListOp               -> ':' 'id' #MakeNodeIdi inherList #MakeNodeInheritList
+inherListOp               -> ':' 'id' #MakeNodeIdi inherList
 inherListOp               -> EPSILON
 inherList                 -> ',' 'id' #MakeNodeIdi inherList
 inherList                 -> EPSILON

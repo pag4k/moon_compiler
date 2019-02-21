@@ -439,7 +439,7 @@ impl NodeType {
             StatBlock => Single(ManyOf(vec![
                 VarDecl, AssignStat, IfStat, ForStat, ReadStat, WriteStat, ReturnStat,
             ])),
-            DimList => Single(One(Num)),
+            DimList => Single(Many(Num)),
             VarDecl => List(vec![One(Type), One(Id), One(DimList)]),
             AssignStat => List(vec![One(VarElementList), OneOf(expr.clone())]),
             IfStat => List(vec![One(RelExpr), One(StatBlock), One(StatBlock)]),
@@ -546,15 +546,16 @@ impl Tree<NodeElement> {
                         Some(top_node_id) => {
                             if !self.add_one(new_node_id, node_type, top_node_id) {
                                 unreachable!(
-                                    "Make node: Single, One, expecting: {:?}: top: {:?}.",
+                                    "Make node: Single, One, new: {:?}, expecting: {:?}: top: {:?}.",
+                                    new_node_type,
                                     node_type,
                                     self.get_element(top_node_id).node_type
                                 );
                             }
                         }
                         None => unreachable!(
-                            "Make node: Single, One, expecting: {:?}: stack is empty.",
-                            node_type
+                            "Make node: Single, One, new: {:?}, expecting: {:?}: stack is empty.",
+                            new_node_type, node_type
                         ),
                     };
                 }
@@ -563,15 +564,16 @@ impl Tree<NodeElement> {
                         Some(top_node_id) => {
                             if !self.add_one_of(new_node_id, &node_list, top_node_id) {
                                 unreachable!(
-                                    "Make node: Single, OneOf, expecting: {:?}: top: {:?}.",
+                                    "Make node: Single, OneOf, new: {:?}, expecting: {:?}: top: {:?}.",
+                                    new_node_type,
                                     node_list,
                                     self.get_element(top_node_id).node_type
                                 );
                             }
                         }
                         None => unreachable!(
-                            "Make node: Single, OneOf, expecting: {:?}: stack is empty.",
-                            node_list
+                            "Make node: Single, OneOf, new: {:?}, expecting: {:?}: stack is empty.",
+                            new_node_type, node_list
                         ),
                     };
                 }
@@ -593,21 +595,23 @@ impl Tree<NodeElement> {
                 }
             },
             List(group_list) => {
-                for group in group_list {
+                for group in group_list.iter().rev() {
                     match group {
                         One(node_type) => {
                             match semantic_stack.pop() {
                                 Some(top_node_id) => {
-                                    if !self.add_one(new_node_id, node_type, top_node_id) {
+                                    if !self.add_one(new_node_id, *node_type, top_node_id) {
                                         unreachable!(
-                                            "Make node: Single, One, expecting: {:?}: top: {:?}.",
+                                            "Make node: List, One, new: {:?}, expecting: {:?}: top: {:?}.",
+                                            new_node_type,
                                             node_type,
                                             self.get_element(top_node_id).node_type
                                         );
                                     }
                                 }
                                 None => unreachable!(
-                                    "Make node: Single, One, expecting: {:?}: stack is empty.",
+                                    "Make node: List, One, new: {:?}, expecting: {:?}: stack is empty.",
+                                    new_node_type,
                                     node_type
                                 ),
                             };
@@ -617,21 +621,23 @@ impl Tree<NodeElement> {
                                 Some(top_node_id) => {
                                     if !self.add_one_of(new_node_id, &node_list, top_node_id) {
                                         unreachable!(
-                                            "Make node: Single, OneOf, expecting: {:?}: top: {:?}.",
+                                            "Make node: List, OneOf, new: {:?}, expecting: {:?}: top: {:?}.",
+                                            new_node_type,
                                             node_list,
                                             self.get_element(top_node_id).node_type
                                         );
                                     }
                                 }
                                 None => unreachable!(
-                                    "Make node: Single, OneOf, expecting: {:?}: stack is empty.",
+                                    "Make node: Single, List, new: {:?}, expecting: {:?}: stack is empty.",
+                                    new_node_type,
                                     node_list
                                 ),
                             };
                         }
                         Many(node_type) => {
                             while let Some(top_node_id) = semantic_stack.pop() {
-                                if !self.add_one(new_node_id, node_type, top_node_id) {
+                                if !self.add_one(new_node_id, *node_type, top_node_id) {
                                     semantic_stack.push(top_node_id);
                                     break;
                                 }
