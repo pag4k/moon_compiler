@@ -1,5 +1,7 @@
 use super::grammar::*;
+use super::language::*;
 use super::syntactic_analyzer_table::*;
+use super::tree::*;
 
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -9,14 +11,13 @@ pub struct SyntacticAnalyzer<V, T, A> {
     pub table: SyntacticAnalyzerTable<V, T, A>,
 }
 
-impl<V, T, A> SyntacticAnalyzer<V, T, A>
+impl<V, T> SyntacticAnalyzer<V, T, NodeType>
 where
     V: Debug + Eq + Hash + Copy + FromStr,
     T: Debug + Eq + Hash + Copy + FromStr,
-    A: Debug + Eq + Hash + Copy + FromStr,
 {
     pub fn from_file(source: &str) -> Self {
-        let grammar: ContextFreeGrammar<V, T, A> = ContextFreeGrammar::from_file(source);
+        let grammar: ContextFreeGrammar<V, T, NodeType> = ContextFreeGrammar::from_file(source);
 
         let table = SyntacticAnalyzerTable::from_grammar(grammar);
 
@@ -36,7 +37,11 @@ where
             ParserSymbol::DollarSign,
             ParserSymbol::Variable(self.table.get_start()),
         ];
-        let mut semantic_stack: Vec<A> = Vec::new();
+        let mut ast = Tree {
+            root: 0,
+            nodes: Vec::new(),
+        };
+        let mut semantic_stack: Vec<usize> = Vec::new();
         let mut token = *token_iter.next().unwrap();
         while let Some(symbol) = stack.last() {
             //dbg!(&symbol);
@@ -71,7 +76,11 @@ where
                     }
                 },
                 ParserSymbol::SemanticAction(semantic_action) => {
-                    semantic_stack.push(*semantic_action);
+                    ast.make_node(&mut semantic_stack, *semantic_action);
+                    dbg!(semantic_stack
+                        .iter()
+                        .map(|id| ast.get_element(*id).node_type)
+                        .collect::<Vec<NodeType>>());
                     stack.pop();
                 }
                 ParserSymbol::DollarSign => break,
@@ -85,6 +94,6 @@ where
         println!("Parse completed succesfully!");
         println!("Tokens: {:?}", token_iter.next());
         println!("Stack: {:?}.", stack);
-        dbg!(semantic_stack);
+        //dbg!(semantic_stack);
     }
 }

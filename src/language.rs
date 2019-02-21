@@ -1,6 +1,7 @@
-use super::tree::{Tree, Node};
+use super::tree::{Node, Tree};
 
 use std::fmt::{Display, Formatter};
+use std::iter::Peekable;
 use std::str::FromStr;
 
 // Define the all the arrays of char describing the language.
@@ -343,7 +344,9 @@ impl FromStr for VariableType {
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum NodeType {
+    Epsilon,
     Id,
+    Idi,
     Num,
     RelOp,
     Type,
@@ -369,6 +372,8 @@ pub enum NodeType {
     MultOp,
     Not,
     Sign,
+    VarElementList,
+    DataMember,
     FunctionCall,
     InheritList,
     FParam,
@@ -377,49 +382,92 @@ pub enum NodeType {
     ScopeSpec,
 }
 
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 enum NodeChildren {
-    List(Vec<NodeType>), // With that, take as many of that type on the stack.
-    Parameters(Vec<NodeType>), // Take these inverse order.
+    Single(NodeChildrenGroup),
+    List(Vec<NodeChildrenGroup>), // Take these inverse order.
     Leaf,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+enum NodeChildrenGroup {
+    One(NodeType),
+    OneOf(Vec<NodeType>),
+    Many(NodeType),
+    ManyOf(Vec<NodeType>),
 }
 
 impl NodeType {
     fn get_children(self) -> NodeChildren {
-        use NodeType::*;
         use NodeChildren::*;
+        use NodeChildrenGroup::*;
+        use NodeType::*;
+        let expr = vec![
+            RelOp,
+            AddOp,
+            MultOp,
+            VarElementList,
+            Num,
+            FunctionCall,
+            Not,
+            Sign,
+        ];
+        let arith_expr = vec![AddOp, MultOp, VarElementList, Num, FunctionCall, Not, Sign];
+        let term = vec![AddOp, MultOp, VarElementList, Num, FunctionCall, Not, Sign];
+        let factor = vec![AddOp, MultOp, VarElementList, Num, FunctionCall, Not, Sign];
+
         match self {
+            Epsilon => unreachable!(),
             Id => Leaf,
+            Idi => Leaf,
             Num => Leaf,
             RelOp => Leaf,
             Type => Leaf,
-            ClassDeclList => List(vec![ClassDecl]),
-            FuncDefList => List(vec![FuncDecl]),
-            Prog => Parameters(vec![ClassDeclList, FuncDefList, StatBlock]),
-            MemberList => List(vec![VarDecl, FuncDecl]),
-            ClassDecl => Parameters(vec![Id, XXXInheritList, MemberList]),
-            FuncDecl => Parameters(vec![Type, Id, FParamList]),
-            FuncDef => Parameters(vec![Type, XXXScopeSpec, Id, FParamList, StatBlock]),
-            StatBlock => List(vec![VarDecl, AssignStat, IfStat, ForStat, ReadStat, WriteStat, ReturnStat]),
-            DimList => List(vec![Num]),
-            VarDecl => Parameters(vec![Type, Id, XXXDimList]),
-            AssignStat => {}
-            IfStat => Parameters(vec![RelExpr, StatBlock, StatBlock]),
-            ForStat => Parameters(vec![Type, Id, Expr, RelExpr, AssignStat, StatBlock]),
-            ReadStat => {}
-            WriteStat => {}
-            ReturnStat => {}
-            IndexList => List(vec![ArithExpr]),
-            RelExpr => Parameters(vec![Expr, RelOp, Expr]),
-            AddOp => Parameters(vec![ArithExpr, Term]),
-            MultOp => Parameters(vec![Term, Factor]),
-            Not => Parameters(vec![Factor]),
-            Sign => Parameters(vec![Factor]),
-            FunctionCall => Parameters(vec![Id, AParamList]),
-            InheritList => List(vec![Id]),
-            FParam => Parameters(vec![Type, Id, DimList]),
-            FParamList => List(vec![FParam]),
-            AParamList => List(vec![Expr]),
-            ScopeSpec => Parameters(vec![Id]),
+            ClassDeclList => Single(Many(ClassDecl)),
+            FuncDefList => Single(Many(FuncDecl)),
+            Prog => List(vec![One(ClassDeclList), One(FuncDefList), One(StatBlock)]),
+            MemberList => Single(ManyOf(vec![VarDecl, FuncDecl])),
+            ClassDecl => List(vec![One(Id), One(InheritList), One(MemberList)]),
+            FuncDecl => List(vec![One(Type), One(Id), One(FParamList)]),
+            FuncDef => List(vec![
+                One(Type),
+                OneOf(vec![ScopeSpec, Epsilon]),
+                One(Id),
+                One(FParamList),
+                One(StatBlock),
+            ]),
+            StatBlock => Single(ManyOf(vec![
+                VarDecl, AssignStat, IfStat, ForStat, ReadStat, WriteStat, ReturnStat,
+            ])),
+            DimList => Single(One(Num)),
+            VarDecl => List(vec![One(Type), One(Id), One(DimList)]),
+            AssignStat => List(vec![One(VarElementList), OneOf(expr.clone())]),
+            IfStat => List(vec![One(RelExpr), One(StatBlock), One(StatBlock)]),
+            ForStat => List(vec![
+                One(Type),
+                One(Id),
+                OneOf(expr.clone()),
+                One(RelExpr),
+                One(AssignStat),
+                One(StatBlock),
+            ]),
+            ReadStat => Single(One(VarElementList)),
+            WriteStat => Single(OneOf(expr.clone())),
+            ReturnStat => Single(OneOf(expr.clone())),
+            IndexList => Single(ManyOf(expr.clone())),
+            RelExpr => List(vec![OneOf(expr.clone()), One(RelOp), OneOf(expr.clone())]),
+            AddOp => List(vec![OneOf(arith_expr.clone()), OneOf(term.clone())]),
+            MultOp => List(vec![OneOf(term.clone()), OneOf(factor.clone())]),
+            Not => Single(OneOf(factor.clone())),
+            Sign => Single(OneOf(factor.clone())),
+            VarElementList => Single(ManyOf(vec![DataMember, FunctionCall])),
+            DataMember => List(vec![One(Id), One(IndexList)]),
+            FunctionCall => List(vec![One(Id), One(AParamList)]),
+            InheritList => Single(Many(Idi)),
+            FParam => List(vec![One(Type), One(Id), One(DimList)]),
+            FParamList => Single(Many(FParam)),
+            AParamList => Single(ManyOf(expr.clone())),
+            ScopeSpec => Single(One(Id)),
         }
     }
 }
@@ -429,7 +477,9 @@ impl FromStr for NodeType {
     fn from_str(s: &str) -> Result<Self, ()> {
         use NodeType::*;
         match s {
+            "#MakeNodeEpsilon" => Ok(Epsilon),
             "#MakeNodeId" => Ok(Id),
+            "#MakeNodeIdi" => Ok(Idi),
             "#MakeNodeNum" => Ok(Num),
             "#MakeNodeRelOp" => Ok(RelOp),
             "#MakeNodeType" => Ok(Type),
@@ -455,6 +505,8 @@ impl FromStr for NodeType {
             "#MakeNodeMultOp" => Ok(MultOp),
             "#MakeNodeNot" => Ok(Not),
             "#MakeNodeSign" => Ok(Sign),
+            "#MakeNodeVarElementList" => Ok(VarElementList),
+            "#MakeNodeDataMember" => Ok(DataMember),
             "#MakeNodeFunctionCall" => Ok(FunctionCall),
             "#MakeNodeInheritList" => Ok(InheritList),
             "#MakeNodeFParam" => Ok(FParam),
@@ -466,102 +518,161 @@ impl FromStr for NodeType {
     }
 }
 
-struct NodeElement {
-    node_type: NodeType,
-
+//#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy)]
+pub struct NodeElement {
+    pub node_type: NodeType,
 }
 
 //Define somewhere what each type of nodes expect.
 //Then call make_node will automatically get the needed element on the stacks.
 
 impl Tree<NodeElement> {
-    fn make_node(&mut self, semantic_stack: &mut Vec<Node<NodeElement>>, semantic_action: NodeType) {
-        match semantic_action {
-            Id => {
-                let node = Node {
-                    index : 0,
-                    parent: None,
-                    children: Vec::new(),
-                    element: NodeElement {
-                        node_type: semantic_action
-                    }
-                };
-                semantic_stack.push(node);
-            }
-            Num => {
-                let node = Node {
-                    index : 0,
-                    parent: None,
-                    children: Vec::new(),
-                    element: NodeElement {
-                        node_type: semantic_action
-                    }
-                };
-                semantic_stack.push(node);
-            }
-            RelOp => {
-                let node = Node {
-                    index : 0,
-                    parent: None,
-                    children: Vec::new(),
-                    element: NodeElement {
-                        node_type: semantic_action
-                    }
-                };
-                semantic_stack.push(node);
-            }
-            Type => {
-                let node = Node {
-                    index : 0,
-                    parent: None,
-                    children: Vec::new(),
-                    element: NodeElement {
-                        node_type: semantic_action
-                    }
-                };
-                semantic_stack.push(node);
-            }
-            ClassDeclList => {}
-            FuncDefList => {}
-            Prog => {}
-            MemberList => {}
-            ClassDecl => {}
-            FuncDecl => {}
-            FuncDef => {}
-            StatBlock => {}
-            DimList => {}
-            VarDecl => {
-                let dim_list_node = semantic_stack.pop().unwrap();
-                let id_node = semantic_stack.pop().unwrap();
-                let type_node = semantic_stack.pop().unwrap();
-                let node = Node {
-                    index : 0,
-                    parent: None,
-                    children: Vec::new(),
-                    element: NodeElement {
-                        node_type: semantic_action
-                    }
-                };
-                semantic_stack.push(node);
-            }
-            AssignStat => {}
-            IfStat => {}
-            ForStat => {}
-            ReadStat => {}
-            WriteStat => {}
-            ReturnStat => {}
-            IndexList => {}
-            RelExpr => {}
-            AddOp => {}
-            MultOp => {}
-            Not => {}
-            Sign => {}
-            FunctionCall => {}
-            InheritList => {}
-            FParam => {}
-            FParamList => {}
-            AParamList => {}
+    pub fn make_node(&mut self, semantic_stack: &mut Vec<usize>, new_node_type: NodeType) {
+        use NodeChildren::*;
+        use NodeChildrenGroup::*;
+        use NodeType::*;
+        let mut new_node_id = self.new_node(NodeElement {
+            node_type: new_node_type,
+        });
 
+        //let mut stack = semantic_stack.iter().rev().peekable();
+
+        let node_children = new_node_type.get_children();
+        match node_children {
+            Single(group) => match group {
+                One(node_type) => {
+                    match semantic_stack.pop() {
+                        Some(top_node_id) => {
+                            if !self.add_one(new_node_id, node_type, top_node_id) {
+                                unreachable!(
+                                    "Make node: Single, One, expecting: {:?}: top: {:?}.",
+                                    node_type,
+                                    self.get_element(top_node_id).node_type
+                                );
+                            }
+                        }
+                        None => unreachable!(
+                            "Make node: Single, One, expecting: {:?}: stack is empty.",
+                            node_type
+                        ),
+                    };
+                }
+                OneOf(node_list) => {
+                    match semantic_stack.pop() {
+                        Some(top_node_id) => {
+                            if !self.add_one_of(new_node_id, &node_list, top_node_id) {
+                                unreachable!(
+                                    "Make node: Single, OneOf, expecting: {:?}: top: {:?}.",
+                                    node_list,
+                                    self.get_element(top_node_id).node_type
+                                );
+                            }
+                        }
+                        None => unreachable!(
+                            "Make node: Single, OneOf, expecting: {:?}: stack is empty.",
+                            node_list
+                        ),
+                    };
+                }
+                Many(node_type) => {
+                    while let Some(top_node_id) = semantic_stack.pop() {
+                        if !self.add_one(new_node_id, node_type, top_node_id) {
+                            semantic_stack.push(top_node_id);
+                            break;
+                        }
+                    }
+                }
+                ManyOf(node_list) => {
+                    while let Some(top_node_id) = semantic_stack.pop() {
+                        if !self.add_one_of(new_node_id, &node_list, top_node_id) {
+                            semantic_stack.push(top_node_id);
+                            break;
+                        }
+                    }
+                }
+            },
+            List(group_list) => {
+                for group in group_list {
+                    match group {
+                        One(node_type) => {
+                            match semantic_stack.pop() {
+                                Some(top_node_id) => {
+                                    if !self.add_one(new_node_id, node_type, top_node_id) {
+                                        unreachable!(
+                                            "Make node: Single, One, expecting: {:?}: top: {:?}.",
+                                            node_type,
+                                            self.get_element(top_node_id).node_type
+                                        );
+                                    }
+                                }
+                                None => unreachable!(
+                                    "Make node: Single, One, expecting: {:?}: stack is empty.",
+                                    node_type
+                                ),
+                            };
+                        }
+                        OneOf(node_list) => {
+                            match semantic_stack.pop() {
+                                Some(top_node_id) => {
+                                    if !self.add_one_of(new_node_id, &node_list, top_node_id) {
+                                        unreachable!(
+                                            "Make node: Single, OneOf, expecting: {:?}: top: {:?}.",
+                                            node_list,
+                                            self.get_element(top_node_id).node_type
+                                        );
+                                    }
+                                }
+                                None => unreachable!(
+                                    "Make node: Single, OneOf, expecting: {:?}: stack is empty.",
+                                    node_list
+                                ),
+                            };
+                        }
+                        Many(node_type) => {
+                            while let Some(top_node_id) = semantic_stack.pop() {
+                                if !self.add_one(new_node_id, node_type, top_node_id) {
+                                    semantic_stack.push(top_node_id);
+                                    break;
+                                }
+                            }
+                        }
+                        ManyOf(node_list) => {
+                            while let Some(top_node_id) = semantic_stack.pop() {
+                                if !self.add_one_of(new_node_id, &node_list, top_node_id) {
+                                    semantic_stack.push(top_node_id);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            Leaf => {}
+        }
+
+        semantic_stack.push(new_node_id);
+    }
+
+    fn add_one(&mut self, new_node_id: usize, node_type: NodeType, top_node_id: usize) -> bool {
+        if self.get_element(top_node_id).node_type == node_type {
+            self.add_left_child(top_node_id, new_node_id);
+            true
+        } else {
+            false
+        }
+    }
+    fn add_one_of(
+        &mut self,
+        new_node_id: usize,
+        node_list: &Vec<NodeType>,
+        top_node_id: usize,
+    ) -> bool {
+        if node_list.contains(&self.get_element(top_node_id).node_type) {
+            self.add_left_child(top_node_id, new_node_id);
+            true
+        } else {
+            false
         }
     }
 }
