@@ -2,40 +2,41 @@ prog                      -> classDeclList #MakeNodeClassDeclList funcDefList #M
 classDecl                 -> 'class' 'id' #MakeNodeId inherListOp #MakeNodeInheritList '{' memberList '}' #MakeNodeMemberList ';' #MakeNodeClassDecl
 classDeclList             -> classDecl classDeclList
 classDeclList             -> EPSILON
-funcDecl                  -> type 'id' #MakeNodeId '(' fParamList ')' ';' #MakeNodeFuncDecl
-funcHead                  -> type 'id' #MakeNodeId scopeOp '(' fParamList ')'
-scopeOp                   -> 'sr' 'id' #MakeNodeScopeSpec
-scopeOp                   -> EPSILON #MakeNodeEpsilon
+funcDecl                  -> type 'id' #MakeNodeId '(' fParamList #MakeNodeFParamList ')' ';' #MakeNodeFuncDecl
+funcHead                  -> type 'id' scopeOp #MakeNodeId '(' fParamList #MakeNodeFParamList ')'
+scopeOp                   -> 'sr' 'id' #MakeNodeId
+scopeOp                   -> #MakeNodeEpsilon scopeOp'
+scopeOp'                  -> EPSILON
 funcDef                   -> funcHead funcBody ';' #MakeNodeFuncDef
 funcDefList               -> funcDef funcDefList
 funcDefList               -> EPSILON
 funcBody                  -> '{' statOrAssignOrVarDeclList '}' #MakeNodeStatBlock
 memberDecl                -> type 'id' #MakeNodeId memberDecl'
-memberDecl'               -> '(' fParamList ')' ';' #MakeNodeFuncDecl
+memberDecl'               -> '(' fParamList #MakeNodeFParamList ')' ';' #MakeNodeFuncDecl
 memberDecl'               -> dimList #MakeNodeDimList ';' #MakeNodeVarDecl
 memberList                -> memberDecl memberList
 memberList                -> EPSILON
-numVarDecl                -> 'integer' 'id' #MakeNodeId dimList #MakeNodeDimList #MakeNodeVarDecl
-numVarDecl                -> 'float' 'id' #MakeNodeId dimList #MakeNodeDimList #MakeNodeVarDecl
-assignStat                -> variable #MakeNodeVarElementList assignOp expr #MakeNodeAssignStat
+numVarDecl                -> 'integer' #MakeNodeType 'id' #MakeNodeId dimList #MakeNodeDimList #MakeNodeVarDecl
+numVarDecl                -> 'float' #MakeNodeType 'id' #MakeNodeId dimList #MakeNodeDimList #MakeNodeVarDecl
+assignStat                -> variable assignOp expr
 statement                 -> 'if'     '(' expr ')' 'then' statBlock 'else' statBlock #MakeNodeIfStat
-statement                 -> 'for'    '(' type 'id' #MakeNodeId assignOp expr #MakeNodeAssignStat ';' relExpr ';' assignStat ')' statBlock #MakeNodeForStat
-statement                 -> 'read'   '(' variable #MakeNodeVarElementList ')' #MakeNodeReadStat
+statement                 -> 'for'    '(' type 'id' #MakeNodeId assignOp expr ';' relExpr ';' assignStat #MakeNodeAssignStat ')' statBlock #MakeNodeForStat
+statement                 -> 'read'   '(' variable ')' #MakeNodeReadStat
 statement                 -> 'write'  '(' expr ')' #MakeNodeWriteStat
 statement                 -> 'return' '(' expr ')' #MakeNodeReturnStat
-statOrAssign              -> assignStat ';'
+statOrAssign              -> assignStat ';' #MakeNodeAssignStati
 statOrAssign              -> statement  ';'
 statOrAssignList          -> statOrAssign statOrAssignList
 statOrAssignList          -> EPSILON
 statOrAssignOrVarDecl     -> 'id' statOrAssignOrVarDecl'
 statOrAssignOrVarDecl     -> numVarDecl ';'
 statOrAssignOrVarDecl     -> statement ';'
-statOrAssignOrVarDecl'    -> 'id' #MakeNodeId dimList #MakeNodeDimList #MakeNodeVarDecl ';'
-statOrAssignOrVarDecl'    ->  indexList #MakeNodeIndexList idnestRep assignOp expr #MakeNodeAssignStat ';'
+statOrAssignOrVarDecl'    -> #MakeNodeType 'id' #MakeNodeId dimList #MakeNodeDimList #MakeNodeVarDecl ';'
+statOrAssignOrVarDecl'    -> #MakeNodeId indexList #MakeNodeIndexList #MakeNodeDataMember idnestRep #MakeNodeVarElementList assignOp expr #MakeNodeAssignStati ';'
 statOrAssignOrVarDeclList -> statOrAssignOrVarDecl statOrAssignOrVarDeclList
 statOrAssignOrVarDeclList -> EPSILON
-statBlock                 -> '{' statOrAssignList '}'
-statBlock                 -> statOrAssign
+statBlock                 -> '{' statOrAssignList '}' #MakeNodeStatBlock
+statBlock                 -> statOrAssign #MakeNodeAssignStati #MakeNodeStatBlock
 statBlock                 -> EPSILON
 expr                      -> arithExpr expr'
 expr'                     -> relOp arithExpr #MakeNodeRelExpr
@@ -55,10 +56,10 @@ factor                    -> 'floatNum' #MakeNodeNum
 factor                    -> '(' arithExpr ')'
 factor                    -> 'not' factor #MakeNodeNot
 factor                    -> sign factor #MakeNodeSign
-factor'                   -> indexList #MakeNodeIndexList
+factor'                   -> indexList #MakeNodeIndexList #MakeNodeDataMember
 factor'                   -> '(' aParamList ')' #MakeNodeAParamList #MakeNodeFunctionCall
 variable                  -> 'id' #MakeNodeId indexList #MakeNodeIndexList #MakeNodeDataMember idnestRep #MakeNodeVarElementList
-functionCall              -> 'id' #MakeNodeId '(' aParamList ')' #MakeNodeAParamList #MakeNodeFunctionCall idnestRep
+functionCall              -> 'id' #MakeNodeId '(' aParamList ')' #MakeNodeAParamList #MakeNodeFunctionCall idnestRep #MakeNodeVarElementList
 idnest                    -> '.' 'id' #MakeNodeId idnest'
 idnest'	                  -> indexList #MakeNodeIndexList #MakeNodeDataMember
 idnest'                   -> '(' aParamList ')' #MakeNodeAParamList #MakeNodeFunctionCall
@@ -78,7 +79,7 @@ type                      -> 'integer' #MakeNodeType
 type                      -> 'float' #MakeNodeType
 type                      -> 'id' #MakeNodeType
 fParam                    -> type 'id' #MakeNodeId dimList #MakeNodeDimList #MakeNodeFParam
-fParamList                -> fParam fParamList' #MakeNodeFParamList
+fParamList                -> fParam fParamList'
 fParamList                -> EPSILON
 fParamList'               -> ',' fParam fParamList'
 fParamList'               -> EPSILON

@@ -1,8 +1,10 @@
+#[derive(Debug)]
 pub struct Tree<E> {
-    pub root: usize,
+    pub root: Option<usize>,
     pub nodes: Vec<Node<E>>,
 }
 
+#[derive(Debug)]
 pub struct Node<E> {
     pub index: usize,
     pub parent: Option<usize>,

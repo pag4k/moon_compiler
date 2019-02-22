@@ -9,7 +9,7 @@ use std::str::FromStr;
 
 /// Location ADT
 #[derive(Debug, Clone, Copy)]
-struct Location {
+pub struct Location {
     line: usize,
     column: usize,
 }
@@ -23,8 +23,8 @@ impl Display for Location {
 #[derive(Clone)]
 pub struct Token {
     pub token_type: TokenType,
-    lexeme: Option<String>,
-    location: Location,
+    pub lexeme: Option<String>,
+    pub location: Location,
 }
 impl Display for Token {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
@@ -40,7 +40,7 @@ impl Token {
     fn new(token_type: TokenType, lexeme: Option<&str>, location: Location) -> Self {
         Token {
             token_type,
-            lexeme: lexeme.map(|lexeme| lexeme.to_string()),
+            lexeme: lexeme.map(ToString::to_string),
             location,
         }
     }

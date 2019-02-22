@@ -1,7 +1,6 @@
-use super::tree::{Node, Tree};
+use super::tree::Tree;
 
 use std::fmt::{Display, Formatter};
-use std::iter::Peekable;
 use std::str::FromStr;
 
 // Define the all the arrays of char describing the language.
@@ -230,6 +229,7 @@ pub enum VariableType {
     FuncDecl,
     FuncHead,
     ScopeOp,
+    ScopeOpPrime,
     FuncDef,
     FuncDefList,
     FuncBody,
@@ -290,6 +290,7 @@ impl FromStr for VariableType {
             "funcDecl" => Ok(FuncDecl),
             "funcHead" => Ok(FuncHead),
             "scopeOp" => Ok(ScopeOp),
+            "scopeOp'" => Ok(ScopeOpPrime),
             "funcDef" => Ok(FuncDef),
             "funcDefList" => Ok(FuncDefList),
             "funcBody" => Ok(FuncBody),
@@ -361,6 +362,7 @@ pub enum NodeType {
     DimList,
     VarDecl,
     AssignStat,
+    AssignStati,
     IfStat,
     ForStat,
     ReadStat,
@@ -379,13 +381,12 @@ pub enum NodeType {
     FParam,
     FParamList,
     AParamList,
-    ScopeSpec,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 enum NodeChildren {
     Single(NodeChildrenGroup),
-    List(Vec<NodeChildrenGroup>), // Take these inverse order.
+    List(Vec<NodeChildrenGroup>),
     Leaf,
 }
 
@@ -403,7 +404,7 @@ impl NodeType {
         use NodeChildrenGroup::*;
         use NodeType::*;
         let expr = vec![
-            RelOp,
+            RelExpr,
             AddOp,
             MultOp,
             VarElementList,
@@ -417,31 +418,38 @@ impl NodeType {
         let factor = vec![AddOp, MultOp, VarElementList, Num, FunctionCall, Not, Sign];
 
         match self {
-            Epsilon => unreachable!(),
+            Epsilon => Leaf,
             Id => Leaf,
             Idi => Leaf,
             Num => Leaf,
             RelOp => Leaf,
             Type => Leaf,
             ClassDeclList => Single(Many(ClassDecl)),
-            FuncDefList => Single(Many(FuncDecl)),
+            FuncDefList => Single(Many(FuncDef)),
             Prog => List(vec![One(ClassDeclList), One(FuncDefList), One(StatBlock)]),
             MemberList => Single(ManyOf(vec![VarDecl, FuncDecl])),
             ClassDecl => List(vec![One(Id), One(InheritList), One(MemberList)]),
             FuncDecl => List(vec![One(Type), One(Id), One(FParamList)]),
             FuncDef => List(vec![
                 One(Type),
-                OneOf(vec![ScopeSpec, Epsilon]),
+                OneOf(vec![Id, Epsilon]),
                 One(Id),
                 One(FParamList),
                 One(StatBlock),
             ]),
             StatBlock => Single(ManyOf(vec![
-                VarDecl, AssignStat, IfStat, ForStat, ReadStat, WriteStat, ReturnStat,
+                VarDecl,
+                AssignStati,
+                IfStat,
+                ForStat,
+                ReadStat,
+                WriteStat,
+                ReturnStat,
             ])),
             DimList => Single(Many(Num)),
             VarDecl => List(vec![One(Type), One(Id), One(DimList)]),
             AssignStat => List(vec![One(VarElementList), OneOf(expr.clone())]),
+            AssignStati => List(vec![One(VarElementList), OneOf(expr.clone())]),
             IfStat => List(vec![One(RelExpr), One(StatBlock), One(StatBlock)]),
             ForStat => List(vec![
                 One(Type),
@@ -467,7 +475,6 @@ impl NodeType {
             FParam => List(vec![One(Type), One(Id), One(DimList)]),
             FParamList => Single(Many(FParam)),
             AParamList => Single(ManyOf(expr.clone())),
-            ScopeSpec => Single(One(Id)),
         }
     }
 }
@@ -494,6 +501,7 @@ impl FromStr for NodeType {
             "#MakeNodeDimList" => Ok(DimList),
             "#MakeNodeVarDecl" => Ok(VarDecl),
             "#MakeNodeAssignStat" => Ok(AssignStat),
+            "#MakeNodeAssignStati" => Ok(AssignStati),
             "#MakeNodeIfStat" => Ok(IfStat),
             "#MakeNodeForStat" => Ok(ForStat),
             "#MakeNodeReadStat" => Ok(ReadStat),
@@ -512,31 +520,23 @@ impl FromStr for NodeType {
             "#MakeNodeFParam" => Ok(FParam),
             "#MakeNodeFParamList" => Ok(FParamList),
             "#MakeNodeAParamList" => Ok(AParamList),
-            "#MakeNodeScopeSpec" => Ok(ScopeSpec),
             _ => Err(()),
         }
     }
 }
 
-//#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub struct NodeElement {
     pub node_type: NodeType,
 }
-
-//Define somewhere what each type of nodes expect.
-//Then call make_node will automatically get the needed element on the stacks.
 
 impl Tree<NodeElement> {
     pub fn make_node(&mut self, semantic_stack: &mut Vec<usize>, new_node_type: NodeType) {
         use NodeChildren::*;
         use NodeChildrenGroup::*;
-        use NodeType::*;
-        let mut new_node_id = self.new_node(NodeElement {
+        let new_node_id = self.new_node(NodeElement {
             node_type: new_node_type,
         });
-
-        //let mut stack = semantic_stack.iter().rev().peekable();
 
         let node_children = new_node_type.get_children();
         match node_children {
@@ -662,7 +662,7 @@ impl Tree<NodeElement> {
 
     fn add_one(&mut self, new_node_id: usize, node_type: NodeType, top_node_id: usize) -> bool {
         if self.get_element(top_node_id).node_type == node_type {
-            self.add_left_child(top_node_id, new_node_id);
+            self.add_left_child(new_node_id, top_node_id);
             true
         } else {
             false
@@ -671,11 +671,11 @@ impl Tree<NodeElement> {
     fn add_one_of(
         &mut self,
         new_node_id: usize,
-        node_list: &Vec<NodeType>,
+        node_list: &[NodeType],
         top_node_id: usize,
     ) -> bool {
         if node_list.contains(&self.get_element(top_node_id).node_type) {
-            self.add_left_child(top_node_id, new_node_id);
+            self.add_left_child(new_node_id, top_node_id);
             true
         } else {
             false

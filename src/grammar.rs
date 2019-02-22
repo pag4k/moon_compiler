@@ -45,6 +45,16 @@ impl<T: Debug> Debug for FirstType<T> {
     }
 }
 
+impl<T> From<FollowType<T>> for FirstType<T> {
+    fn from(grammar_symbol: FollowType<T>) -> Self {
+        match grammar_symbol {
+            FollowType::Terminal(terminal) => FirstType::Terminal(terminal),
+            //FIXME: Not sure what to do with this.
+            FollowType::DollarSign => unreachable!(),
+        }
+    }
+}
+
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
 pub enum ParserSymbol<V, T, A> {
     Variable(V),
@@ -340,11 +350,15 @@ where
         //let mut production_number = 0;
         for (production_number, production) in self.productions.iter().enumerate() {
             assert!(!production.rhs.is_empty());
-            assert!(match production.rhs[0] {
-                GrammarSymbol::SemanticAction(_) => false,
-                _ => true,
-            });
-            match production.rhs[0] {
+            let first_symbol = production
+                .rhs
+                .iter()
+                .find(|&symbol| match symbol {
+                    GrammarSymbol::SemanticAction(_) => false,
+                    _ => true,
+                })
+                .unwrap();
+            match *first_symbol {
                 GrammarSymbol::Epsilon => {
                     for terminal in follow_sets[&production.lhs].iter() {
                         if self.add_cell(&mut table, production.lhs, *terminal, production_number) {

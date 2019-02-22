@@ -81,12 +81,12 @@ fn main() {
 
     // Create LexicalAnalyzer and iterate over the tokens.
     let lexical_analyzer = LexicalAnalyzer::from_string(&source);
-    let mut tokens: Vec<TokenType> = Vec::new();
+    let mut tokens: Vec<Token> = Vec::new();
     for token in lexical_analyzer {
         match token {
             Ok(token) => {
                 //println!("{}", token);
-                tokens.push(token.token_type);
+                tokens.push(token.clone());
                 atocc_file
                     .write_fmt(format_args!("{} ", token.token_type))
                     .expect("Could not write to AtoCC file.");
