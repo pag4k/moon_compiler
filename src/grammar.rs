@@ -342,79 +342,42 @@ where
         first_sets: &HashMap<V, FirstSet<T>>,
         follow_sets: &HashMap<V, FollowSet<T>>,
     ) -> ParserTable<V, T> {
-        //use Symbol::*;
-
         let mut table: ParserTable<V, T> = HashMap::new();
         let mut collisions = 0;
 
-        //let mut production_number = 0;
         for (production_number, production) in self.productions.iter().enumerate() {
             assert!(!production.rhs.is_empty());
-            let first_symbol = production
-                .rhs
-                .iter()
-                .find(|&symbol| match symbol {
-                    GrammarSymbol::SemanticAction(_) => false,
-                    _ => true,
-                })
-                .unwrap();
-            match *first_symbol {
-                GrammarSymbol::Epsilon => {
-                    for terminal in follow_sets[&production.lhs].iter() {
-                        if self.add_cell(&mut table, production.lhs, *terminal, production_number) {
-                            collisions += 1;
-                        }
-                    }
-                }
-                GrammarSymbol::Terminal(terminal) => {
-                    if self.add_cell(
-                        &mut table,
-                        production.lhs,
-                        FollowType::Terminal(terminal),
-                        production_number,
-                    ) {
+
+            let set = self.get_first_from_rhs(&first_sets, &production.rhs);
+
+            if set.contains(&FirstType::Epsilon) {
+                for terminal in follow_sets[&production.lhs].iter() {
+                    if self.add_cell(&mut table, production.lhs, *terminal, production_number) {
                         collisions += 1;
                     }
                 }
-                GrammarSymbol::Variable(_) => {
-                    let set = self.get_first_from_rhs(&first_sets, &production.rhs);
-
-                    if set.contains(&FirstType::Epsilon) {
-                        //println!("Adding Variable with None.");
-                        for terminal in follow_sets[&production.lhs].iter() {
-                            if self.add_cell(
-                                &mut table,
-                                production.lhs,
-                                *terminal,
-                                production_number,
-                            ) {
-                                collisions += 1;
-                            }
+            }
+            for symbol in set.iter() {
+                match symbol {
+                    FirstType::Terminal(terminal) => {
+                        if self.add_cell(
+                            &mut table,
+                            production.lhs,
+                            FollowType::Terminal(*terminal),
+                            production_number,
+                        ) {
+                            collisions += 1;
                         }
                     }
-                    //println!("Adding Variable without None.");
-                    for symbol in set.iter() {
-                        match symbol {
-                            FirstType::Terminal(terminal) => {
-                                if self.add_cell(
-                                    &mut table,
-                                    production.lhs,
-                                    FollowType::Terminal(*terminal),
-                                    production_number,
-                                ) {
-                                    collisions += 1;
-                                }
-                            }
-                            FirstType::Epsilon => {}
-                        }
-                    }
+                    FirstType::Epsilon => {}
                 }
-                GrammarSymbol::SemanticAction(_) => unreachable!(),
             }
         }
-        println!("Total number of collisions: {}.", collisions);
-        if collisions > 0 {
-            panic!();
+
+        if collisions == 0 {
+            println!("Parsing table generated succesfully!");
+        } else {
+            panic!("Collisions in the parsing table detected: {}.", collisions);
         }
         table
     }
@@ -449,10 +412,7 @@ where
         use GrammarSymbol::*;
         let mut set: FirstSet<T> = HashSet::new();
         let mut add_epsilon = true;
-        for symbol in rhs.iter().filter(|&symbol| match symbol {
-            GrammarSymbol::SemanticAction(_) => false,
-            _ => true,
-        }) {
+        for symbol in rhs {
             match symbol {
                 Terminal(terminal) => {
                     set.insert(FirstType::Terminal(*terminal));
@@ -475,7 +435,7 @@ where
                     add_epsilon = false;
                     break;
                 }
-                SemanticAction(_) => unreachable!(),
+                SemanticAction(_) => {}
             }
         }
         if add_epsilon {
@@ -485,16 +445,16 @@ where
     }
 }
 
-fn to_parser_set<T>(grammar_set: &HashSet<FirstType<T>>) -> HashSet<FollowType<T>>
-where
-    T: Eq + Hash + Clone,
-{
-    grammar_set
-        .iter()
-        .cloned()
-        .map(|symbol| FollowType::from(symbol))
-        .collect()
-}
+// fn to_parser_set<T>(grammar_set: &HashSet<FirstType<T>>) -> HashSet<FollowType<T>>
+// where
+//     T: Eq + Hash + Clone,
+// {
+//     grammar_set
+//         .iter()
+//         .cloned()
+//         .map(|symbol| FollowType::from(symbol))
+//         .collect()
+// }
 
 #[cfg(test)]
 mod tests {

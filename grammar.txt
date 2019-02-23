@@ -59,7 +59,6 @@ factor                    -> sign factor #MakeNodeSign
 factor'                   -> indexList #MakeNodeIndexList #MakeNodeDataMember
 factor'                   -> '(' aParamList ')' #MakeNodeAParamList #MakeNodeFunctionCall
 variable                  -> 'id' #MakeNodeId indexList #MakeNodeIndexList #MakeNodeDataMember idnestRep #MakeNodeVarElementList
-functionCall              -> 'id' #MakeNodeId '(' aParamList ')' #MakeNodeAParamList #MakeNodeFunctionCall idnestRep #MakeNodeVarElementList
 idnest                    -> '.' 'id' #MakeNodeId idnest'
 idnest'	                  -> indexList #MakeNodeIndexList #MakeNodeDataMember
 idnest'                   -> '(' aParamList ')' #MakeNodeAParamList #MakeNodeFunctionCall

@@ -5,13 +5,41 @@ use super::syntactic_analyzer_table::*;
 use super::tree::*;
 
 use std::fmt::Debug;
+use std::fmt::{Display, Formatter};
 use std::hash::Hash;
 use std::str::FromStr;
 
-enum SyntacticError {
-    WrongTerminal(TokenType, Location),
-    NotInTableButInFollow(TokenType, Location),
-    NotInTableNorInFollow(TokenType, Location),
+#[derive(Debug)]
+enum SyntacticError<V> {
+    WrongTerminal(Location, TokenType, TokenType),
+    NotInTableButInFollow(Location, V, TokenType),
+    NotInTableNorInFollow(Location, V, TokenType),
+}
+
+impl<V> Display for SyntacticError<V>
+where
+    V: Debug,
+{
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        use SyntacticError::*;
+        match self {
+            WrongTerminal(location, expected_type, top_type) => write!(
+                f,
+                "Syntactic error at {}: Expecting {} but found {}.",
+                location, expected_type, top_type
+            ),
+            NotInTableButInFollow(location, variable, top_type) => write!(
+                f,
+                "Syntactic error at {} with {:?}: not expecting {}. Skipping and continuing.",
+                location, variable, top_type
+            ),
+            NotInTableNorInFollow(location, variable, top_type) => write!(
+                f,
+                "Syntactic error at {} with {:?}: not expecting {}.",
+                location, variable, top_type
+            ),
+        }
+    }
 }
 
 pub struct SyntacticAnalyzer<V, T, A> {
@@ -33,6 +61,7 @@ where
     }
 
     pub fn parse(&self, tokens: &[Token]) {
+        use SyntacticError::*;
         // Convert token stream and add '$' at the end.
         let mut parser_symbols: Vec<FollowType<TokenType>> = tokens
             .iter()
@@ -50,6 +79,7 @@ where
             root: None,
             nodes: Vec::new(),
         };
+        let mut errors: Vec<SyntacticError<V>> = Vec::new();
         let mut semantic_stack: Vec<usize> = Vec::new();
         let mut token = token_iter.next().unwrap();
         let mut token_type = *token_type_iter.next().unwrap();
@@ -69,6 +99,7 @@ where
                             "Syntactic error at {}: Expecting {:?} but found {:?}.",
                             token.location, terminal, token_type
                         );
+                        errors.push(WrongTerminal(token.location, *terminal, token.token_type));
                         while FollowType::Terminal(*terminal) != token_type {
                             token_type = *token_type_iter.next().unwrap();
                             if token_type == FollowType::DollarSign {
@@ -100,7 +131,7 @@ where
                         }
                         None => {
                             // TODO: Add $ case?
-                            let first_set = &self.table.first_sets[variable];
+                            //let first_set = &self.table.first_sets[variable];
                             let follow_set = &self.table.follow_sets[variable];
                             //dbg!(first_set);
                             //dbg!(follow_set);
@@ -108,15 +139,26 @@ where
                                 || follow_set.contains(&token_type)
                             {
                                 println!(
-                                    "Syntactic error at {}: not expecting {:?}. Skipping and continuing.",
-                                    token.location, token_type
+                                    "Syntactic error at {} with {:?}: not expecting {:?}. Skipping and continuing.",
+                                    token.location, variable,token_type
                                 );
+                                errors.push(NotInTableButInFollow(
+                                    token.location,
+                                    *variable,
+                                    token.token_type,
+                                ));
+                                // dbg!(stack.clone());
                                 stack.pop();
                             } else {
                                 println!(
-                                    "Syntactic error at {}: not expecting {:?}.",
-                                    token.location, token_type
+                                    "Syntactic error at {} with {:?}: not expecting {:?}.",
+                                    token.location, variable, token_type
                                 );
+                                errors.push(NotInTableNorInFollow(
+                                    token.location,
+                                    *variable,
+                                    token.token_type,
+                                ));
                                 while self.table.get(*variable, token_type).is_none()
                                 // !first_set.contains(&FirstType::from(token_type))
                                 //     && (first_set.contains(&FirstType::Epsilon)
@@ -144,31 +186,43 @@ where
                     }
                 }
                 ParserSymbol::SemanticAction(semantic_action) => {
-                    ast.make_node(&mut semantic_stack, *semantic_action);
-                    // println!(
-                    //     "Semantic stack: {:?}",
-                    //     semantic_stack
-                    //         .iter()
-                    //         .map(|id| ast.get_element(*id).node_type)
-                    //         .collect::<Vec<NodeType>>()
-                    // );
+                    if errors.is_empty() {
+                        dbg!(semantic_action);
+                        ast.make_node(&mut semantic_stack, *semantic_action);
+                        // println!(
+                        //     "Semantic stack: {:?}",
+                        //     semantic_stack
+                        //         .iter()
+                        //         .map(|id| ast.get_element(*id).node_type)
+                        //         .collect::<Vec<NodeType>>()
+                        // );
+                    }
                     stack.pop();
                 }
                 ParserSymbol::DollarSign => break,
             }
         }
         if token_type == FollowType::DollarSign && stack.len() == 1 {
-            assert!(semantic_stack.len() == 1);
-            ast.root = semantic_stack.pop();
-            // dbg!(ast);
-            println!("Parse completed succesfully!");
-            println!("Tokens: {:?}", token_type_iter.next());
-            println!("Stack: {:?}.", stack);
+            if errors.is_empty() {
+                assert!(semantic_stack.len() == 1);
+                ast.root = semantic_stack.pop();
+                println!("Parse completed succesfully!");
+                println!("Tokens: {:?}", token_type_iter.next());
+                println!("Stack: {:?}.", stack);
+            } else {
+                println!("Parse completed but with {} errors:", errors.len());
+                for error in errors.iter() {
+                    println!("{}", error);
+                }
+            }
         } else {
-            println!("Parsing failed: token_type: {:?}", token_type);
-            println!("Stack: {:?}.", stack);
+            println!(
+                "Parsing could not be completed because of {} errors:",
+                errors.len()
+            );
+            for error in errors.iter() {
+                println!("{}", error);
+            }
         }
-
-        //dbg!(semantic_stack);
     }
 }
