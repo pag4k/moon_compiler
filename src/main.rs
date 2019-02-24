@@ -131,5 +131,5 @@ fn main() {
         }
     };
 
-    ast.print_tree_to("ast.dot");
+    ast.print_tree_to("ast.gv");
 }

@@ -75,6 +75,8 @@ impl SyntacticAnalyzer {
         let mut token = token_iter.next().unwrap();
         let mut last_token = None;
         let mut token_type = *token_type_iter.next().unwrap();
+        let mut derivation: Vec<GrammarSymbol<VariableType, TokenType, NodeType>> =
+            vec![GrammarSymbol::Variable(VariableType::Prog)];
         'main: while let Some(symbol) = stack.last() {
             //dbg!(&symbol);
             match symbol {
@@ -116,11 +118,33 @@ impl SyntacticAnalyzer {
                     match self.table.get(*variable, token_type) {
                         Some(production) => {
                             stack.pop();
+                            let position = derivation
+                                .iter()
+                                .position(|&symbol| match symbol {
+                                    GrammarSymbol::Variable(variable) => {
+                                        if variable == production.lhs {
+                                            true
+                                        } else {
+                                            unreachable!()
+                                        }
+                                    }
+                                    _ => false,
+                                })
+                                .unwrap();
+                            derivation.remove(position);
                             if production.rhs[0] == GrammarSymbol::Epsilon {
-                                continue;
-                            }
-                            for grammar_symbol in production.rhs.iter().rev() {
-                                stack.push(ParserSymbol::from(*grammar_symbol));
+
+                            } else {
+                                for grammar_symbol in production.rhs.iter().rev() {
+                                    stack.push(ParserSymbol::from(*grammar_symbol));
+                                    match grammar_symbol {
+                                        GrammarSymbol::Variable(variable) => derivation
+                                            .insert(position, GrammarSymbol::Variable(*variable)),
+                                        GrammarSymbol::Terminal(terminal) => derivation
+                                            .insert(position, GrammarSymbol::Terminal(*terminal)),
+                                        _ => {}
+                                    }
+                                }
                             }
                         }
                         None => {
@@ -213,13 +237,22 @@ impl SyntacticAnalyzer {
             assert!(stack.len() == 1);
             assert!(semantic_stack.len() == 1);
             ast.root = semantic_stack.pop();
-            dbg!(ast.get_children(ast.root.unwrap()));
-            dbg!(ast.get_element(46));
-            dbg!(ast.get_element(278));
-            dbg!(ast.get_element(454));
+            // dbg!(ast.get_children(ast.root.unwrap()));
+            // dbg!(ast.get_element(46));
+            // dbg!(ast.get_element(278));
+            // dbg!(ast.get_element(454));
+            //dbg!(derivation);
             println!("Parse completed succesfully!");
             println!("Tokens: {:?}", token_type_iter.next());
             println!("Stack: {:?}.", stack);
+            if tokens
+                .iter()
+                .map(|token| GrammarSymbol::Terminal(token.token_type))
+                .collect::<Vec<GrammarSymbol<VariableType, TokenType, NodeType>>>()
+                == derivation
+            {
+                println!("Result of derivation is equal to the token stream!");
+            }
             Ok(ast)
         } else {
             Err(errors)
