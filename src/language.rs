@@ -343,6 +343,7 @@ impl FromStr for VariableType {
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum NodeType {
+    Data,
     Epsilon,
     Id,
     Idi,
@@ -416,6 +417,7 @@ impl NodeType {
         let factor = vec![AddOp, MultOp, VarElementList, Num, FunctionCall, Not, Sign];
 
         match self {
+            Data => unreachable!(),
             Epsilon => Leaf,
             Id => Leaf,
             Idi => Leaf,
@@ -475,6 +477,14 @@ impl NodeType {
             AParamList => Single(ManyOf(expr.clone())),
         }
     }
+
+    fn need_data(self) -> bool {
+        use NodeType::*;
+        match self {
+            Id | Idi | Num | RelOp | Type | AddOp | MultOp | Sign => true,
+            _ => false,
+        }
+    }
 }
 
 impl FromStr for NodeType {
@@ -482,6 +492,7 @@ impl FromStr for NodeType {
     fn from_str(s: &str) -> Result<Self, ()> {
         use NodeType::*;
         match s {
+            "#GetData" => Ok(Data),
             "#MakeNodeEpsilon" => Ok(Epsilon),
             "#MakeNodeId" => Ok(Id),
             "#MakeNodeIdi" => Ok(Idi),
@@ -523,17 +534,38 @@ impl FromStr for NodeType {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct NodeElement {
     pub node_type: NodeType,
+    pub data: Option<String>,
+}
+
+impl Display for NodeElement {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        match &self.data {
+            Some(data) => write!(f, "{:?}: {}", self.node_type, data),
+            None => write!(f, "{:?}", self.node_type),
+        }
+    }
 }
 
 impl Tree<NodeElement> {
-    pub fn make_node(&mut self, semantic_stack: &mut Vec<usize>, new_node_type: NodeType) {
+    pub fn make_node(
+        &mut self,
+        semantic_stack: &mut Vec<usize>,
+        data_stack: &mut Vec<String>,
+        new_node_type: NodeType,
+    ) {
         use NodeChildren::*;
         use NodeChildrenGroup::*;
+
         let new_node_id = self.new_node(NodeElement {
             node_type: new_node_type,
+            data: if new_node_type.need_data() {
+                data_stack.pop()
+            } else {
+                None
+            },
         });
 
         let node_children = new_node_type.get_children();

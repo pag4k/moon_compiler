@@ -14,7 +14,7 @@ pub struct Node<E> {
 
 impl<E> Tree<E>
 where
-    E: Copy,
+    E: Clone,
 {
     // fn get_right_sibling(&self, node: usize) -> Option<usize> {
     //     match self.nodes[node].parent {
@@ -69,8 +69,12 @@ where
         }
     }
 
-    pub fn get_element(&self, node_id: usize) -> E {
-        self.nodes[node_id].element
+    pub fn get_element(&self, node_id: usize) -> &E {
+        &self.nodes[node_id].element
+    }
+
+    pub fn get_children(&self, node_id: usize) -> &[usize] {
+        &self.nodes[node_id].children
     }
 }
 

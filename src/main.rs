@@ -8,6 +8,7 @@ mod nfa_generator;
 mod syntactic_analyzer;
 mod syntactic_analyzer_table;
 mod tree;
+mod tree_dot_printer;
 
 use language::*;
 use lexical_analyzer::*;
@@ -117,8 +118,18 @@ fn main() {
     //     .map(|token| token.unwrap().token_type)
     //     .collect();
 
-    let syntactic_analyzer: SyntacticAnalyzer<VariableType, TokenType, NodeType> =
-        SyntacticAnalyzer::from_file(&grammar_source);
+    let syntactic_analyzer: SyntacticAnalyzer = SyntacticAnalyzer::from_file(&grammar_source);
 
-    syntactic_analyzer.parse(&tokens);
+    let ast = match syntactic_analyzer.parse(&tokens) {
+        Ok(ast) => ast,
+        Err(errors) => {
+            println!("ERROR: Parser found with {} errors:", errors.len());
+            for error in errors.iter() {
+                println!("{}", error);
+            }
+            return;
+        }
+    };
+
+    ast.print_tree_to("ast.dot");
 }

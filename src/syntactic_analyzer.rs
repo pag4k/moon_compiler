@@ -4,22 +4,16 @@ use super::lexical_analyzer::*;
 use super::syntactic_analyzer_table::*;
 use super::tree::*;
 
-use std::fmt::Debug;
 use std::fmt::{Display, Formatter};
-use std::hash::Hash;
-use std::str::FromStr;
 
 #[derive(Debug)]
-enum SyntacticError<V> {
+pub enum SyntacticError {
     WrongTerminal(Location, TokenType, TokenType),
-    NotInTableButInFollow(Location, V, TokenType),
-    NotInTableNorInFollow(Location, V, TokenType),
+    NotInTableButInFollow(Location, VariableType, TokenType),
+    NotInTableNorInFollow(Location, VariableType, TokenType),
 }
 
-impl<V> Display for SyntacticError<V>
-where
-    V: Debug,
-{
+impl Display for SyntacticError {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         use SyntacticError::*;
         match self {
@@ -42,17 +36,13 @@ where
     }
 }
 
-pub struct SyntacticAnalyzer<V, T, A> {
-    pub table: SyntacticAnalyzerTable<V, T, A>,
+pub struct SyntacticAnalyzer {
+    pub table: SyntacticAnalyzerTable<VariableType, TokenType, NodeType>,
 }
 
-impl<V> SyntacticAnalyzer<V, TokenType, NodeType>
-where
-    V: Debug + Eq + Hash + Copy + FromStr,
-    //T: Debug + Eq + Hash + Copy + FromStr,
-{
+impl SyntacticAnalyzer {
     pub fn from_file(source: &str) -> Self {
-        let grammar: ContextFreeGrammar<V, TokenType, NodeType> =
+        let grammar: ContextFreeGrammar<VariableType, TokenType, NodeType> =
             ContextFreeGrammar::from_file(source);
 
         let table = SyntacticAnalyzerTable::from_grammar(grammar);
@@ -60,7 +50,7 @@ where
         SyntacticAnalyzer { table }
     }
 
-    pub fn parse(&self, tokens: &[Token]) {
+    pub fn parse(&self, tokens: &[Token]) -> Result<Tree<NodeElement>, Vec<SyntacticError>> {
         use SyntacticError::*;
         // Convert token stream and add '$' at the end.
         let mut parser_symbols: Vec<FollowType<TokenType>> = tokens
@@ -79,9 +69,11 @@ where
             root: None,
             nodes: Vec::new(),
         };
-        let mut errors: Vec<SyntacticError<V>> = Vec::new();
+        let mut errors: Vec<SyntacticError> = Vec::new();
         let mut semantic_stack: Vec<usize> = Vec::new();
+        let mut data_stack: Vec<String> = Vec::new();
         let mut token = token_iter.next().unwrap();
+        let mut last_token = None;
         let mut token_type = *token_type_iter.next().unwrap();
         'main: while let Some(symbol) = stack.last() {
             //dbg!(&symbol);
@@ -93,6 +85,7 @@ where
                         if token_type == FollowType::DollarSign {
                             continue;
                         }
+                        last_token = Some(token);
                         token = token_iter.next().unwrap();
                     } else {
                         println!(
@@ -108,6 +101,7 @@ where
                                 );
                                 break 'main;
                             }
+                            last_token = Some(token);
                             token = token_iter.next().unwrap();
                         }
                         println!(
@@ -173,6 +167,7 @@ where
                                         println!("Reached end of program while trying to recover from error.");
                                         break 'main;
                                     }
+                                    last_token = Some(token);
                                     token = token_iter.next().unwrap();
                                 }
                                 println!(
@@ -187,42 +182,47 @@ where
                 }
                 ParserSymbol::SemanticAction(semantic_action) => {
                     if errors.is_empty() {
-                        dbg!(semantic_action);
-                        ast.make_node(&mut semantic_stack, *semantic_action);
-                        // println!(
-                        //     "Semantic stack: {:?}",
-                        //     semantic_stack
-                        //         .iter()
-                        //         .map(|id| ast.get_element(*id).node_type)
-                        //         .collect::<Vec<NodeType>>()
-                        // );
+                        match semantic_action {
+                            NodeType::Data => {
+                                data_stack.push(last_token.unwrap().lexeme.clone().unwrap());
+                            }
+                            _ => {
+                                //dbg!(semantic_action);
+                                ast.make_node(
+                                    &mut semantic_stack,
+                                    &mut data_stack,
+                                    *semantic_action,
+                                );
+                                // println!(
+                                //     "Semantic stack: {:?}",
+                                //     semantic_stack
+                                //         .iter()
+                                //         .map(|id| ast.get_element(*id).node_type)
+                                //         .collect::<Vec<NodeType>>()
+                                // );
+                            }
+                        }
                     }
                     stack.pop();
                 }
                 ParserSymbol::DollarSign => break,
             }
         }
-        if token_type == FollowType::DollarSign && stack.len() == 1 {
-            if errors.is_empty() {
-                assert!(semantic_stack.len() == 1);
-                ast.root = semantic_stack.pop();
-                println!("Parse completed succesfully!");
-                println!("Tokens: {:?}", token_type_iter.next());
-                println!("Stack: {:?}.", stack);
-            } else {
-                println!("Parse completed but with {} errors:", errors.len());
-                for error in errors.iter() {
-                    println!("{}", error);
-                }
-            }
+        if errors.is_empty() {
+            assert!(token_type == FollowType::DollarSign);
+            assert!(stack.len() == 1);
+            assert!(semantic_stack.len() == 1);
+            ast.root = semantic_stack.pop();
+            dbg!(ast.get_children(ast.root.unwrap()));
+            dbg!(ast.get_element(46));
+            dbg!(ast.get_element(278));
+            dbg!(ast.get_element(454));
+            println!("Parse completed succesfully!");
+            println!("Tokens: {:?}", token_type_iter.next());
+            println!("Stack: {:?}.", stack);
+            Ok(ast)
         } else {
-            println!(
-                "Parsing could not be completed because of {} errors:",
-                errors.len()
-            );
-            for error in errors.iter() {
-                println!("{}", error);
-            }
+            Err(errors)
         }
     }
 }
