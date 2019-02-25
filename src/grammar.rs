@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet};
-use std::fmt::{Debug, Formatter, Result};
+use std::fmt::{Display, Formatter};
 use std::hash::Hash;
 use std::str::FromStr;
 
@@ -15,16 +15,26 @@ pub enum GrammarSymbol<V, T, A> {
     Epsilon,
 }
 
-impl<V: Debug, T: Debug, A: Debug> Debug for GrammarSymbol<V, T, A> {
-    fn fmt(&self, f: &mut Formatter) -> Result {
+impl<V: Display, T: Display, A: Display> Display for GrammarSymbol<V, T, A> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         use GrammarSymbol::*;
         let output = match self {
-            Variable(variable) => format!("{:?}", variable),
-            Terminal(terminal) => format!("'{:?}'", terminal),
-            SemanticAction(semantic_action) => format!("'{:?}'", semantic_action),
+            Variable(variable) => format!("{}", variable),
+            Terminal(terminal) => format!("'{}'", terminal),
+            SemanticAction(semantic_action) => format!("'{}'", semantic_action),
             Epsilon => "EPSILON".to_string(),
         };
         write!(f, "{}", output)
+    }
+}
+
+impl<V, T, A> GrammarSymbol<V, T, A> {
+    pub fn is_variable(&self) -> bool {
+        use GrammarSymbol::*;
+        match self {
+            Variable(_) => true,
+            _ => false,
+        }
     }
 }
 
@@ -34,11 +44,11 @@ pub enum FirstType<T> {
     Epsilon,
 }
 
-impl<T: Debug> Debug for FirstType<T> {
-    fn fmt(&self, f: &mut Formatter) -> Result {
+impl<T: Display> Display for FirstType<T> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         use FirstType::*;
         let output = match self {
-            Terminal(terminal) => format!("'{:?}'", terminal),
+            Terminal(terminal) => format!("'{}'", terminal),
             Epsilon => "EPSILON".to_string(),
         };
         write!(f, "{}", output)
@@ -63,13 +73,13 @@ pub enum ParserSymbol<V, T, A> {
     DollarSign,
 }
 
-impl<V: Debug, T: Debug, A: Debug> Debug for ParserSymbol<V, T, A> {
-    fn fmt(&self, f: &mut Formatter) -> Result {
+impl<V: Display, T: Display, A: Display> Display for ParserSymbol<V, T, A> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         use ParserSymbol::*;
         let output = match self {
-            Variable(variable) => format!("{:?}", variable),
-            Terminal(terminal) => format!("'{:?}'", terminal),
-            SemanticAction(semantic_action) => format!("'{:?}'", semantic_action),
+            Variable(variable) => format!("{}", variable),
+            Terminal(terminal) => format!("'{}'", terminal),
+            SemanticAction(semantic_action) => format!("'{}'", semantic_action),
             DollarSign => "$".to_string(),
         };
         write!(f, "{}", output)
@@ -82,12 +92,12 @@ pub enum FollowType<T> {
     DollarSign,
 }
 
-impl<T: Debug> Debug for FollowType<T> {
-    fn fmt(&self, f: &mut Formatter) -> Result {
+impl<T: Display> Display for FollowType<T> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         use FollowType::*;
         let output = match self {
             //Variable(variable) => format!("{:?}", variable),
-            Terminal(terminal) => format!("'{:?}'", terminal),
+            Terminal(terminal) => format!("'{}'", terminal),
             DollarSign => "$".to_string(),
         };
         write!(f, "{}", output)
@@ -123,14 +133,46 @@ pub struct Production<V, T, A> {
     pub rhs: Vec<GrammarSymbol<V, T, A>>,
 }
 
-impl<V: Debug, T: Debug, A: Debug> Debug for Production<V, T, A> {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        let mut output = format!("{:?} -> ", self.lhs);
+impl<V: Display, T: Display, A: Display> Display for Production<V, T, A> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        let mut output = format!("{} -> ", self.lhs);
         for symbol in &self.rhs {
-            output.push_str(&format!("{:?} ", symbol));
+            output.push_str(&format!("{} ", symbol));
         }
         output.pop();
         write!(f, "{}", output)
+    }
+}
+
+pub enum GrammarError {
+    CollisionsInTable(Vec<String>),
+    InvalidVariable(String),
+    InvalidSymbol(String),
+    EpsilonNotFirstOnRHS(String),
+}
+
+impl Display for GrammarError {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        use GrammarError::*;
+        match self {
+            CollisionsInTable(collisions) => {
+                let mut output = format!(
+                    "ERROR: {} collision(s) where found in the parsing table:\n",
+                    collisions.len()
+                );
+                for collision in collisions {
+                    output.push_str(&format!("{}\n", collision));
+                }
+                write!(f, "{}", output)
+            }
+            InvalidVariable(string) => write!(f, "ERROR: Invalid variable on LHS: {}", string),
+            InvalidSymbol(string) => write!(f, "ERROR: Invalid symbol on RHS: {}", string),
+            EpsilonNotFirstOnRHS(string) => write!(
+                f,
+                "ERROR: Epsilon not in first position of production: {}",
+                string
+            ),
+        }
     }
 }
 
@@ -143,16 +185,17 @@ pub struct ContextFreeGrammar<V, T, A> {
 
 impl<V, T, A> ContextFreeGrammar<V, T, A>
 where
-    V: Debug + Eq + Hash + Copy,
-    T: Debug + Eq + Hash + Copy,
-    A: Debug + Eq + Hash + Copy,
+    V: Display + Eq + Hash + Copy,
+    T: Display + Eq + Hash + Copy,
+    A: Display + Eq + Hash + Copy,
 {
-    pub fn from_file(source: &str) -> Self
+    pub fn from_string(source: &str) -> Result<Self, GrammarError>
     where
         V: FromStr,
         T: FromStr,
         A: FromStr,
     {
+        use GrammarError::*;
         use GrammarSymbol::*;
 
         let mut variables: HashSet<V> = HashSet::new();
@@ -161,48 +204,40 @@ where
         let mut productions: Vec<Production<V, T, A>> = Vec::new();
 
         for line in source.lines() {
-            let line = line;
             let words: Vec<&str> = line.split_whitespace().collect();
             let lhs = match V::from_str(words[0]) {
                 Ok(lhs) => {
                     variables.insert(lhs);
                     lhs
                 }
-                Err(_) => {
-                    println!("Error: Cannot find non-terminal: {}", words[0]);
-                    unreachable!();
-                }
+                Err(_) => return Err(InvalidVariable(words[0].to_string())),
             };
-            let rhs: Vec<GrammarSymbol<V, T, A>> = words
-                .iter()
-                .skip(2)
-                .map(|symbol| {
-                    if symbol.eq_ignore_ascii_case("EPSILON") {
-                        Epsilon
-                    } else if let Ok(variable) = V::from_str(symbol) {
-                        variables.insert(variable);
-                        Variable(variable)
-                    } else if let Ok(terminal) = T::from_str(symbol) {
-                        terminals.insert(terminal);
-                        Terminal(terminal)
-                    } else if let Ok(semantic_action) = A::from_str(symbol) {
-                        semantic_actions.insert(semantic_action);
-                        SemanticAction(semantic_action)
-                    } else {
-                        println!("Error: Cannot find symbol: {}", symbol);
-                        unreachable!();
-                    }
-                })
-                .collect();
+            let mut rhs: Vec<GrammarSymbol<V, T, A>> = Vec::new();
+            for symbol in words.iter().skip(2) {
+                if symbol.eq_ignore_ascii_case("EPSILON") {
+                    rhs.push(Epsilon);
+                } else if let Ok(variable) = V::from_str(symbol) {
+                    variables.insert(variable);
+                    rhs.push(Variable(variable));
+                } else if let Ok(terminal) = T::from_str(symbol) {
+                    terminals.insert(terminal);
+                    rhs.push(Terminal(terminal));
+                } else if let Ok(semantic_action) = A::from_str(symbol) {
+                    semantic_actions.insert(semantic_action);
+                    rhs.push(SemanticAction(semantic_action));
+                } else {
+                    return Err(InvalidSymbol(symbol.to_string()));
+                }
+            }
             productions.push(Production { lhs, rhs });
         }
 
-        ContextFreeGrammar {
+        Ok(ContextFreeGrammar {
             variables,
             terminals,
             start: productions[0].lhs,
             productions,
-        }
+        })
     }
 
     pub fn get_first_sets(&self) -> HashMap<V, FirstSet<T>> {
@@ -232,7 +267,10 @@ where
     pub fn get_follow_sets(
         &self,
         first_sets: &HashMap<V, FirstSet<T>>,
-    ) -> HashMap<V, FollowSet<T>> {
+    ) -> Result<HashMap<V, FollowSet<T>>, GrammarError> {
+        use GrammarError::*;
+        use GrammarSymbol::*;
+
         let mut follow: HashMap<V, FollowSet<T>> = HashMap::new();
 
         for variable in self.variables.iter().cloned() {
@@ -252,16 +290,16 @@ where
                     .rhs
                     .iter()
                     .filter(|&symbol| match symbol {
-                        GrammarSymbol::SemanticAction(_) => false,
+                        SemanticAction(_) => false,
                         _ => true,
                     })
                     .peekable();
                 while iterator.peek().is_some() {
-                    if let GrammarSymbol::Variable(first_variable) = iterator.next().unwrap() {
+                    if let Variable(first_variable) = iterator.next().unwrap() {
                         // Check if there is another symbol after the current one.
                         let set = match iterator.peek() {
                             Some(second_symbol) => match second_symbol {
-                                GrammarSymbol::Variable(second_symbol) => {
+                                Variable(second_symbol) => {
                                     // Get the FirstSet of the second variable and remove Epsilon.
                                     first_sets[second_symbol]
                                         .iter()
@@ -270,11 +308,15 @@ where
                                         .map(FollowType::from)
                                         .collect()
                                 }
-                                GrammarSymbol::Terminal(terminal) => {
+                                Terminal(terminal) => {
                                     vec![FollowType::Terminal(*terminal)].into_iter().collect()
                                 }
-                                GrammarSymbol::SemanticAction(_) => unreachable!(),
-                                GrammarSymbol::Epsilon => unreachable!(),
+                                SemanticAction(_) => {
+                                    unreachable!("Semantic actions should be filtered out.")
+                                }
+                                Epsilon => {
+                                    return Err(EpsilonNotFirstOnRHS(production.to_string()))
+                                }
                             },
                             //Case: First_variable is the last symbol
                             None => break,
@@ -296,28 +338,30 @@ where
                     .rhs
                     .iter()
                     .filter(|&symbol| match symbol {
-                        GrammarSymbol::SemanticAction(_) => false,
+                        SemanticAction(_) => false,
                         _ => true,
                     })
                     .peekable();
 
                 while iterator.peek().is_some() {
-                    if let GrammarSymbol::Variable(first_variable) = iterator.next().unwrap() {
+                    if let Variable(first_variable) = iterator.next().unwrap() {
                         // Check if there is another symbol after the current one.
                         let set = match iterator.peek() {
                             Some(second_symbol) => match second_symbol {
-                                GrammarSymbol::Variable(second_variable) => {
+                                Variable(second_variable) => {
                                     if first_sets[second_variable].contains(&FirstType::Epsilon) {
                                         follow[&production.lhs].clone()
                                     } else {
                                         HashSet::new()
                                     }
                                 }
-                                GrammarSymbol::Terminal(_) => HashSet::new(),
-                                GrammarSymbol::SemanticAction(_) => unreachable!(),
-                                GrammarSymbol::Epsilon => panic!(
-                                    "Error in grammar: Cannot have EPSILON after first symbol."
-                                ),
+                                Terminal(_) => HashSet::new(),
+                                SemanticAction(_) => {
+                                    unreachable!("Semantic actions should be filtered out.")
+                                }
+                                Epsilon => {
+                                    return Err(EpsilonNotFirstOnRHS(production.to_string()))
+                                }
                             },
                             //Case: First_variable is the last symbol
                             None => follow[&production.lhs].clone(),
@@ -334,16 +378,18 @@ where
             }
         }
 
-        follow
+        Ok(follow)
     }
 
     pub fn get_table(
         &self,
         first_sets: &HashMap<V, FirstSet<T>>,
         follow_sets: &HashMap<V, FollowSet<T>>,
-    ) -> ParserTable<V, T> {
+    ) -> Result<ParserTable<V, T>, GrammarError> {
+        use GrammarError::*;
+
         let mut table: ParserTable<V, T> = HashMap::new();
-        let mut collisions = 0;
+        let mut collisions = Vec::new();
 
         for (production_number, production) in self.productions.iter().enumerate() {
             assert!(!production.rhs.is_empty());
@@ -352,21 +398,23 @@ where
 
             if set.contains(&FirstType::Epsilon) {
                 for terminal in follow_sets[&production.lhs].iter() {
-                    if self.add_cell(&mut table, production.lhs, *terminal, production_number) {
-                        collisions += 1;
+                    match self.add_cell(&mut table, production.lhs, *terminal, production_number) {
+                        Ok(_) => {}
+                        Err(collision) => collisions.push(collision),
                     }
                 }
             }
             for symbol in set.iter() {
                 match symbol {
                     FirstType::Terminal(terminal) => {
-                        if self.add_cell(
+                        match self.add_cell(
                             &mut table,
                             production.lhs,
                             FollowType::Terminal(*terminal),
                             production_number,
                         ) {
-                            collisions += 1;
+                            Ok(_) => {}
+                            Err(collision) => collisions.push(collision),
                         }
                     }
                     FirstType::Epsilon => {}
@@ -374,12 +422,11 @@ where
             }
         }
 
-        if collisions == 0 {
-            println!("Parsing table generated succesfully!");
+        if collisions.is_empty() {
+            Ok(table)
         } else {
-            panic!("Collisions in the parsing table detected: {}.", collisions);
+            Err(CollisionsInTable(collisions))
         }
-        table
     }
 
     fn add_cell(
@@ -388,19 +435,16 @@ where
         variable: V,
         terminal: FollowType<T>,
         new_production_number: usize,
-    ) -> bool {
+    ) -> Result<(), String> {
         match table.insert((variable, terminal), new_production_number) {
-            Some(old_production_number) => {
-                println!(
-                    "Collison at ({:?}, {:?}) between:\nOld: {:?}\nNew: {:?}",
-                    variable,
-                    terminal,
-                    self.productions[old_production_number],
-                    self.productions[new_production_number]
-                );
-                true
-            }
-            None => false,
+            Some(old_production_number) => Err(format!(
+                "Collison at ({}, {}) between:\nOld: {}\nNew: {}",
+                variable,
+                terminal,
+                self.productions[old_production_number],
+                self.productions[new_production_number]
+            )),
+            None => Ok(()),
         }
     }
 
@@ -442,43 +486,5 @@ where
             set.insert(FirstType::Epsilon);
         }
         set
-    }
-}
-
-// fn to_parser_set<T>(grammar_set: &HashSet<FirstType<T>>) -> HashSet<FollowType<T>>
-// where
-//     T: Eq + Hash + Clone,
-// {
-//     grammar_set
-//         .iter()
-//         .cloned()
-//         .map(|symbol| FollowType::from(symbol))
-//         .collect()
-// }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn file_grammar() {
-        use super::super::language::*;
-
-        let grammar: ContextFreeGrammar<VariableType, TokenType, NodeType> =
-            ContextFreeGrammar::from_file("test.txt");
-
-        dbg!(&grammar.productions);
-
-        let first_sets = grammar.get_first_sets();
-        // //dbg!(&first);
-        let follow_sets = grammar.get_follow_sets(&first_sets);
-        // //dbg!(&follow);
-        let table = grammar.get_table(&first_sets, &follow_sets);
-        // for (key, value) in table.iter() {
-        //     println!("({:?}): {:?}", key, grammar.productions[*value]);
-        // }
-
-        //dbg!(&table);
-        assert!(table.is_empty());
     }
 }

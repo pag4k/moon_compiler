@@ -12,6 +12,15 @@ pub struct Node<E> {
     pub element: E,
 }
 
+impl<E> Default for Tree<E> {
+    fn default() -> Self {
+        Tree {
+            root: None,
+            nodes: Vec::new(),
+        }
+    }
+}
+
 impl<E> Tree<E>
 where
     E: Clone,

@@ -9,7 +9,7 @@ impl<E> Tree<E>
 where
     E: Display + Clone,
 {
-    pub fn print_tree_to(&self, filename: &str) -> Result<(), ()> {
+    pub fn print_tree_to(&self, filename: &str) -> Result<(), String> {
         let mut string = String::new();
 
         string.push_str("digraph AST {\n");
@@ -23,26 +23,31 @@ where
                 self.print_node_to(&mut string, root);
                 self.print_edge_to(&mut string, root);
                 string.push_str("}\n");
-                // Add espace character for '<' and '>' since they cause problem in DOT.
+                // Add espace character for '||', '<' and '>' since they cause problem in DOT.
+                string = string.replace(" ||", " \\|\\|");
                 string = string.replace(" <", " \\<");
                 string = string.replace(" >", " \\>");
             }
-            None => return Err(()),
+            None => return Err("ERROR: AST has not root.".to_string()),
         }
 
         let path = Path::new(filename);
         match File::create(&path).as_mut() {
             Ok(file) => match file.write_all(string.as_bytes()) {
                 Ok(_) => {}
-                Err(_) => println!(
-                    "ERROR: Something went wrong writing DOT file: {}. Exiting...",
-                    filename
-                ),
+                Err(_) => {
+                    return Err(format!(
+                        "ERROR: Something went wrong writing DOT file: {}.",
+                        filename
+                    ))
+                }
             },
-            Err(_) => println!(
-                "ERROR: Something went wrong creating DOT file: {}. Exiting...",
-                filename
-            ),
+            Err(_) => {
+                return Err(format!(
+                    "Something went wrong creating DOT file: {}.",
+                    filename
+                ))
+            }
         }
 
         Ok(())

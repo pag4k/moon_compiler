@@ -50,8 +50,8 @@ impl Display for TokenType {
 }
 
 impl FromStr for TokenType {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, ()> {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         use KeywordType::*;
         use OperatorType::*;
         use SeparatorType::*;
@@ -96,7 +96,7 @@ impl FromStr for TokenType {
             "'}'" => Ok(Separator(RightCurlyBracket)),
             "'['" => Ok(Separator(LeftSquareBracket)),
             "']'" => Ok(Separator(RightSquareBracket)),
-            _ => Err(()),
+            _ => Err(s.to_string()),
         }
     }
 }
@@ -118,8 +118,8 @@ pub enum KeywordType {
 }
 
 impl FromStr for KeywordType {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, ()> {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         use KeywordType::*;
         match s {
             "if" => Ok(If),
@@ -133,7 +133,7 @@ impl FromStr for KeywordType {
             "write" => Ok(Write),
             "return" => Ok(Return),
             "main" => Ok(Main),
-            _ => Err(()),
+            _ => Err(s.to_string()),
         }
     }
 }
@@ -278,9 +278,15 @@ pub enum VariableType {
     MultOp,
 }
 
+impl Display for VariableType {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 impl FromStr for VariableType {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, ()> {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         use VariableType::*;
         match s {
             "prog" => Ok(Prog),
@@ -336,7 +342,7 @@ impl FromStr for VariableType {
             "relOp" => Ok(RelOp),
             "addOp" => Ok(AddOp),
             "multOp" => Ok(MultOp),
-            _ => Err(()),
+            _ => Err(s.to_string()),
         }
     }
 }
@@ -380,6 +386,12 @@ pub enum NodeType {
     FParam,
     FParamList,
     AParamList,
+}
+
+impl Display for NodeType {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -450,7 +462,7 @@ impl NodeType {
             VarDecl => List(vec![One(Type), One(Id), One(DimList)]),
             AssignStat => List(vec![One(VarElementList), OneOf(expr.clone())]),
             AssignStati => List(vec![One(VarElementList), OneOf(expr.clone())]),
-            IfStat => List(vec![One(RelExpr), One(StatBlock), One(StatBlock)]),
+            IfStat => List(vec![OneOf(expr.clone()), One(StatBlock), One(StatBlock)]),
             ForStat => List(vec![
                 One(Type),
                 One(Id),
@@ -488,8 +500,8 @@ impl NodeType {
 }
 
 impl FromStr for NodeType {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, ()> {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         use NodeType::*;
         match s {
             "#GetData" => Ok(Data),
@@ -529,7 +541,7 @@ impl FromStr for NodeType {
             "#MakeNodeFParam" => Ok(FParam),
             "#MakeNodeFParamList" => Ok(FParamList),
             "#MakeNodeAParamList" => Ok(AParamList),
-            _ => Err(()),
+            _ => Err(s.to_string()),
         }
     }
 }

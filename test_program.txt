@@ -1,0 +1,70 @@
+//Base classDecl
+class SuperClass {
+  //Some cases of varDecl
+  integer member1;
+  float member2;
+  type member3;
+  integer member4[1];
+  float member5[1][2];
+  type member6[1][2][3];
+  //Some cases of funcDecl
+  integer function1();
+  float function2(integer parameter1);
+  type function3(float parameter1[1], type parameter2[1][2]);
+};
+
+//Single inheritance
+class SubClass : SuperClass {
+  //Empty class
+};
+
+//Multiple inheritance
+class SubClass : SuperClass1, SuperClass2, SuperClass3 {
+  //Empty class
+};
+
+//Free function
+integer function1() {
+  //Empty function
+};
+
+//Free function
+integer function2(integer parameter1) {
+  //Some cases of varDecl
+  integer local1;
+  float local2[1];
+  type local3[1][2][3];
+  //Some cases of assignStat
+  variable1 = b;
+  variable2[1] = 5 + (6);
+  variable3[index] = (a) / 5 / 5;
+  variable4[5/4][ttt][a.f(b)] = f(g);
+};
+
+//Member function
+integer SuperClass::function3(float parameter1[1], type parameter2[1][2]) {
+  //if statement with empty else and expr as condition
+  if(a) then {
+    a = b;}
+  else{};
+  //if statement with else and relExpr as condition
+  if(a + b / 5 && 3) then {}
+  else{
+    a=b.c;};
+  //for statement
+  for (type i = 11/0; i == variable ; j[5].f(p1) = j /99) {
+    i = 4;
+  };
+  //read statement
+  read(aaa);
+  //write statement
+  write (f + g[6] / f());
+  return
+  (a && b || c);
+};
+
+main {
+  //Some cases with mix of arithExpr, addOp, multOp, and relExpr
+  variable1 = 1.05 + ( not (2.04 * 2.47)  - 3.0) +  -7.0006 > 1 && ! - 1;
+  variable2.variable1[f(1)][f(f, 1, 4.5)].f() = ! - ! - f(6, f(f(test)));
+};

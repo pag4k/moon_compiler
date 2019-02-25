@@ -11,3 +11,6 @@ Cargo.lock
 
 # Graph files
 **/*.gv
+
+# PNG files
+**/*.pgn

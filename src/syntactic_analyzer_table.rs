@@ -1,7 +1,7 @@
 use super::grammar::*;
 use std::collections::HashMap;
 
-use std::fmt::Debug;
+use std::fmt::Display;
 use std::hash::Hash;
 
 pub struct SyntacticAnalyzerTable<V, T, A> {
@@ -13,21 +13,21 @@ pub struct SyntacticAnalyzerTable<V, T, A> {
 
 impl<V, T, A> SyntacticAnalyzerTable<V, T, A>
 where
-    V: Debug + Eq + Hash + Copy,
-    T: Debug + Eq + Hash + Copy,
-    A: Debug + Eq + Hash + Copy,
+    V: Display + Eq + Hash + Copy,
+    T: Display + Eq + Hash + Copy,
+    A: Display + Eq + Hash + Copy,
 {
     /// Create a SyntacticAnalyzerTable from a ContextFreeGrammar.
-    pub fn from_grammar(grammar: ContextFreeGrammar<V, T, A>) -> Self {
+    pub fn from_grammar(grammar: ContextFreeGrammar<V, T, A>) -> Result<Self, GrammarError> {
         let first_sets = grammar.get_first_sets();
-        let follow_sets = grammar.get_follow_sets(&first_sets);
-        let table = grammar.get_table(&first_sets, &follow_sets);
-        SyntacticAnalyzerTable {
+        let follow_sets = grammar.get_follow_sets(&first_sets)?;
+        let table = grammar.get_table(&first_sets, &follow_sets)?;
+        Ok(SyntacticAnalyzerTable {
             grammar,
             table,
             first_sets,
             follow_sets,
-        }
+        })
     }
 
     //TODO: MAYBE RETURN A RESULT INSTEAD? I'LL SEE WITH ERROR HANDLING.

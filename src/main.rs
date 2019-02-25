@@ -10,6 +10,7 @@ mod syntactic_analyzer_table;
 mod tree;
 mod tree_dot_printer;
 
+use grammar::*;
 use language::*;
 use lexical_analyzer::*;
 use std::env;
@@ -25,7 +26,7 @@ fn main() {
 
     // If there was a first argument, use it as source file, otherwise default.txt.
     let source_filename = if args.len() < 2 {
-        "default.txt"
+        "test_program.txt"
     } else {
         &args[1]
     };
@@ -83,24 +84,42 @@ fn main() {
     // Create LexicalAnalyzer and iterate over the tokens.
     let lexical_analyzer = LexicalAnalyzer::from_string(&source);
     let mut tokens: Vec<Token> = Vec::new();
+    let mut lexical_errors = Vec::new();
     for token in lexical_analyzer {
         match token {
             Ok(token) => {
                 //println!("{}", token);
-                tokens.push(token.clone());
+                match token.token_type {
+                    TokenType::Comment(_) => {}
+                    _ => tokens.push(token.clone()),
+                }
                 atocc_file
                     .write_fmt(format_args!("{} ", token.token_type))
                     .expect("Could not write to AtoCC file.");
             }
             Err(error) => {
-                println!("{}", error);
-                error_file
-                    .write_fmt(format_args!("{}\n", error))
-                    .expect("Could not write to error file.");
+                lexical_errors.push(error);
             }
         }
     }
 
+    if lexical_errors.is_empty() {
+        println!("Lexical analysis completed succesfully!")
+    } else {
+        println!(
+            "ERROR: Lexical analyzer found {} errors:",
+            lexical_errors.len()
+        );
+        for error in lexical_errors {
+            println!("{}", error);
+            error_file
+                .write_fmt(format_args!("{}\n", error))
+                .expect("Could not write to error file.");
+        }
+        return;
+    }
+
+    let grammar_filename = "grammar.txt";
     let grammar_source = match fs::read_to_string("grammar.txt") {
         Ok(file) => file,
         Err(_) => {
@@ -112,24 +131,59 @@ fn main() {
         }
     };
 
-    // let tokens: Vec<TokenType> = lexical_analyzer
-    //     .into_iter()
-    //     .filter(|element| element.is_ok())
-    //     .map(|token| token.unwrap().token_type)
-    //     .collect();
+    let grammar = match ContextFreeGrammar::from_string(&grammar_source) {
+        Ok(grammar) => {
+            println!(
+                "Context-free grammar generated succesfully from {}!",
+                grammar_filename
+            );
+            grammar
+        }
+        Err(error) => {
+            println!("{}", error);
+            return;
+        }
+    };
 
-    let syntactic_analyzer: SyntacticAnalyzer = SyntacticAnalyzer::from_file(&grammar_source);
+    let syntactic_analyzer = match SyntacticAnalyzer::from_grammar(grammar) {
+        Ok(syntactic_analyzer) => {
+            println!("Parsing table generated succesfully from LL(1) grammar!");
+            syntactic_analyzer
+        }
+        Err(error) => {
+            println!("{}", error);
+            return;
+        }
+    };
 
     let ast = match syntactic_analyzer.parse(&tokens) {
-        Ok(ast) => ast,
-        Err(errors) => {
-            println!("ERROR: Parser found with {} errors:", errors.len());
-            for error in errors.iter() {
+        Ok((ast, mut derivation_table)) => {
+            println!("Parse completed succesfully!");
+            if tokens
+                .iter()
+                .map(|token| GrammarSymbol::Terminal(token.token_type))
+                .collect::<Vec<GrammarSymbol<VariableType, TokenType, NodeType>>>()
+                == derivation_table.pop().unwrap().0
+            {
+                println!("Result of derivation is equal to the token stream!");
+            }
+            ast
+        }
+        Err(syntactic_errors) => {
+            println!("ERROR: Parser found {} errors:", syntactic_errors.len());
+            for error in syntactic_errors {
                 println!("{}", error);
+                error_file
+                    .write_fmt(format_args!("{}\n", error))
+                    .expect("Could not write to error file.");
             }
             return;
         }
     };
 
-    ast.print_tree_to("ast.gv");
+    let ast_filename = "ast.gv";
+    match ast.print_tree_to(ast_filename) {
+        Ok(()) => println!("Succesfully generated AST graph file: {}.", ast_filename),
+        Err(error) => println!("{}", error),
+    };
 }
