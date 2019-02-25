@@ -13,4 +13,4 @@ Cargo.lock
 **/*.gv
 
 # PNG files
-**/*.pgn
+**/*.png

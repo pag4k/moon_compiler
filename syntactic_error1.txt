@@ -1,0 +1,25 @@
+integer function1() {};
+
+//Error 1: Function defition before class declaration
+//Error 2: Wrong error, it tries to define a function with my_class return type
+class my_class {};
+
+//Recovered using function2 as function id.
+integer function2() {};
+
+//Recovered error 1
+main {
+  //Error 3: Missing ;
+  integer a
+  //Recovered using the following one.
+  class b;
+
+  //Error 4: Missing ]
+  integer a[1][;
+  //Recovered using the following one.
+  integer b[2];
+
+  //Error 5: Missing )
+  a = f(;
+  //Could not recover since there is nothing to synchronize with
+};

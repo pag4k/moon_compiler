@@ -110,8 +110,8 @@ fn main() {
             "ERROR: Lexical analyzer found {} errors:",
             lexical_errors.len()
         );
-        for error in lexical_errors {
-            println!("{}", error);
+        for (n, error) in lexical_errors.iter().enumerate() {
+            println!("{}. {}", n + 1, error);
             error_file
                 .write_fmt(format_args!("{}\n", error))
                 .expect("Could not write to error file.");
@@ -170,9 +170,9 @@ fn main() {
             ast
         }
         Err(syntactic_errors) => {
-            println!("ERROR: Parser found {} errors:", syntactic_errors.len());
-            for error in syntactic_errors {
-                println!("{}", error);
+            println!("ERROR: Parser found {} error(s):", syntactic_errors.len());
+            for (n, error) in syntactic_errors.iter().enumerate() {
+                println!("{}. {}", n + 1, error);
                 error_file
                     .write_fmt(format_args!("{}\n", error))
                     .expect("Could not write to error file.");

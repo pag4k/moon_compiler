@@ -25,7 +25,7 @@ impl Display for SyntacticError {
                 top_type,
                 match recovery_location {
                     Some(location) => format!("Recovered at {}", location),
-                    None => "Could recover, reached end of program".to_string(),
+                    None => "Could not recover, reached end of program".to_string(),
                 }
             ),
             NotInTableButInFollow(location, variable, top_type) => write!(
@@ -41,7 +41,7 @@ impl Display for SyntacticError {
                 top_type,
                 match recovery_location {
                     Some(location) => format!("Recovered at {}", location),
-                    None => "Could recover, reached end of program".to_string(),
+                    None => "Could not recover, reached end of program".to_string(),
                 }
             ),
         }
@@ -203,6 +203,7 @@ impl SyntacticAnalyzer {
                                         _ => {}
                                     }
                                 }
+                                //dbg!(&derivation);
                             }
                         }
                         None => {
@@ -250,6 +251,8 @@ impl SyntacticAnalyzer {
                                             error_type,
                                             None,
                                         ));
+                                        // dbg!(first_set);
+                                        // dbg!(follow_set);
                                         break 'main;
                                     }
                                     last_token = Some(token);
@@ -299,6 +302,13 @@ impl SyntacticAnalyzer {
                 ParserSymbol::DollarSign => break,
             }
         }
+        // dbg!(&self.table.first_sets[&VariableType::Prog]);
+        // dbg!(&self.table.follow_sets[&VariableType::Prog]);
+        // dbg!(&self.table.first_sets[&VariableType::ClassDeclList]);
+        // dbg!(&self.table.follow_sets[&VariableType::ClassDeclList]);
+        // dbg!(&self.table.first_sets[&VariableType::FuncDefList]);
+        // dbg!(&self.table.follow_sets[&VariableType::FuncDefList]);
+
         if errors.is_empty() {
             assert!(token_type == FollowType::DollarSign);
             assert!(stack.len() == 1);

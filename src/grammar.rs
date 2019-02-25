@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet};
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
 use std::str::FromStr;
 
@@ -7,7 +7,7 @@ pub type FirstSet<T> = HashSet<FirstType<T>>;
 pub type FollowSet<T> = HashSet<FollowType<T>>;
 pub type ParserTable<V, T> = HashMap<(V, FollowType<T>), usize>;
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum GrammarSymbol<V, T, A> {
     Variable(V),
     Terminal(T),
@@ -38,7 +38,7 @@ impl<V, T, A> GrammarSymbol<V, T, A> {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum FirstType<T> {
     Terminal(T),
     Epsilon,
@@ -86,7 +86,7 @@ impl<V: Display, T: Display, A: Display> Display for ParserSymbol<V, T, A> {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum FollowType<T> {
     Terminal(T),
     DollarSign,
@@ -148,7 +148,6 @@ pub enum GrammarError {
     CollisionsInTable(Vec<String>),
     InvalidVariable(String),
     InvalidSymbol(String),
-    EpsilonNotFirstOnRHS(String),
 }
 
 impl Display for GrammarError {
@@ -167,11 +166,6 @@ impl Display for GrammarError {
             }
             InvalidVariable(string) => write!(f, "ERROR: Invalid variable on LHS: {}", string),
             InvalidSymbol(string) => write!(f, "ERROR: Invalid symbol on RHS: {}", string),
-            EpsilonNotFirstOnRHS(string) => write!(
-                f,
-                "ERROR: Epsilon not in first position of production: {}",
-                string
-            ),
         }
     }
 }
@@ -185,9 +179,9 @@ pub struct ContextFreeGrammar<V, T, A> {
 
 impl<V, T, A> ContextFreeGrammar<V, T, A>
 where
-    V: Display + Eq + Hash + Copy,
-    T: Display + Eq + Hash + Copy,
-    A: Display + Eq + Hash + Copy,
+    V: Debug + Display + Eq + Hash + Copy,
+    T: Debug + Display + Eq + Hash + Copy,
+    A: Debug + Display + Eq + Hash + Copy,
 {
     pub fn from_string(source: &str) -> Result<Self, GrammarError>
     where
@@ -241,135 +235,80 @@ where
     }
 
     pub fn get_first_sets(&self) -> HashMap<V, FirstSet<T>> {
-        let mut first: HashMap<V, FirstSet<T>> = HashMap::new();
+        let mut first_sets: HashMap<V, FirstSet<T>> = HashMap::new();
 
         for variable in self.variables.iter().cloned() {
-            first.insert(variable, HashSet::new());
+            first_sets.insert(variable, HashSet::new());
         }
 
         let mut modified = true;
         while modified {
             modified = false;
             for production in self.productions.iter() {
-                let set = self.get_first_from_rhs(&first, &production.rhs);
-                if !first[&production.lhs].is_superset(&set) {
-                    first.insert(
+                let set = self.get_first_from_rhs(&first_sets, &production.rhs);
+                if !first_sets[&production.lhs].is_superset(&set) {
+                    first_sets.insert(
                         production.lhs,
-                        first[&production.lhs].union(&set).cloned().collect(),
+                        first_sets[&production.lhs].union(&set).cloned().collect(),
                     );
                     modified = true;
                 }
             }
         }
-        first
+        first_sets
     }
 
     pub fn get_follow_sets(
         &self,
         first_sets: &HashMap<V, FirstSet<T>>,
-    ) -> Result<HashMap<V, FollowSet<T>>, GrammarError> {
-        use GrammarError::*;
+    ) -> HashMap<V, FollowSet<T>> {
         use GrammarSymbol::*;
 
-        let mut follow: HashMap<V, FollowSet<T>> = HashMap::new();
+        let mut follow_sets: HashMap<V, FollowSet<T>> = HashMap::new();
 
         for variable in self.variables.iter().cloned() {
             if variable == self.start {
-                follow.insert(variable, vec![FollowType::DollarSign].into_iter().collect());
+                follow_sets.insert(variable, vec![FollowType::DollarSign].into_iter().collect());
             } else {
-                follow.insert(variable, HashSet::new());
+                follow_sets.insert(variable, HashSet::new());
             }
         }
 
         let mut modified = true;
         while modified {
             modified = false;
-            //Step 2
             for production in self.productions.iter() {
-                let mut iterator = production
-                    .rhs
-                    .iter()
-                    .filter(|&symbol| match symbol {
-                        SemanticAction(_) => false,
-                        _ => true,
-                    })
-                    .peekable();
-                while iterator.peek().is_some() {
-                    if let Variable(first_variable) = iterator.next().unwrap() {
-                        // Check if there is another symbol after the current one.
-                        let set = match iterator.peek() {
-                            Some(second_symbol) => match second_symbol {
-                                Variable(second_symbol) => {
-                                    // Get the FirstSet of the second variable and remove Epsilon.
-                                    first_sets[second_symbol]
-                                        .iter()
-                                        .filter(|&symbol| *symbol != FirstType::Epsilon)
-                                        .cloned()
-                                        .map(FollowType::from)
-                                        .collect()
-                                }
-                                Terminal(terminal) => {
-                                    vec![FollowType::Terminal(*terminal)].into_iter().collect()
-                                }
-                                SemanticAction(_) => {
-                                    unreachable!("Semantic actions should be filtered out.")
-                                }
-                                Epsilon => {
-                                    return Err(EpsilonNotFirstOnRHS(production.to_string()))
-                                }
-                            },
-                            //Case: First_variable is the last symbol
-                            None => break,
-                        };
-                        if !follow[first_variable].is_superset(&set) {
-                            follow.insert(
-                                *first_variable,
-                                follow[first_variable].union(&set).cloned().collect(),
-                            );
-                            modified = true;
-                        }
-                    };
-                }
-            }
+                let mut iterator = production.rhs.iter();
+                while let Some(symbol) = iterator.next() {
+                    if let Variable(variable) = symbol {
+                        // Get the first set of everything after the variable.
+                        let first_after_varible = self.get_first_from_rhs(
+                            first_sets,
+                            &iterator
+                                .clone()
+                                .cloned()
+                                .collect::<Vec<GrammarSymbol<V, T, A>>>(),
+                        );
 
-            //Step 3
-            for production in self.productions.iter() {
-                let mut iterator = production
-                    .rhs
-                    .iter()
-                    .filter(|&symbol| match symbol {
-                        SemanticAction(_) => false,
-                        _ => true,
-                    })
-                    .peekable();
-
-                while iterator.peek().is_some() {
-                    if let Variable(first_variable) = iterator.next().unwrap() {
-                        // Check if there is another symbol after the current one.
-                        let set = match iterator.peek() {
-                            Some(second_symbol) => match second_symbol {
-                                Variable(second_variable) => {
-                                    if first_sets[second_variable].contains(&FirstType::Epsilon) {
-                                        follow[&production.lhs].clone()
-                                    } else {
-                                        HashSet::new()
-                                    }
-                                }
-                                Terminal(_) => HashSet::new(),
-                                SemanticAction(_) => {
-                                    unreachable!("Semantic actions should be filtered out.")
-                                }
-                                Epsilon => {
-                                    return Err(EpsilonNotFirstOnRHS(production.to_string()))
-                                }
-                            },
-                            //Case: First_variable is the last symbol
-                            None => follow[&production.lhs].clone(),
+                        // Step 2: Add the first set minus epsilon.
+                        let set_2: HashSet<FollowType<T>> = first_after_varible
+                            .iter()
+                            .filter(|&symbol| *symbol != FirstType::Epsilon)
+                            .cloned()
+                            .map(FollowType::from)
+                            .collect();
+                        // Step 3: If first set includes epsilson, add the follow of LHS.
+                        let set_3 = if first_after_varible.contains(&FirstType::Epsilon) {
+                            follow_sets[&production.lhs].clone()
+                        } else {
+                            HashSet::new()
                         };
-                        if !follow[first_variable].is_superset(&set) {
-                            follow.insert(
-                                *first_variable,
-                                follow[first_variable].union(&set).cloned().collect(),
+                        // Add new symbols and force another iteration if necessary.
+                        let set = set_2.union(&set_3).cloned().collect();
+                        if !follow_sets[variable].is_superset(&set) {
+                            follow_sets.insert(
+                                *variable,
+                                follow_sets[variable].union(&set).cloned().collect(),
                             );
                             modified = true;
                         }
@@ -378,7 +317,7 @@ where
             }
         }
 
-        Ok(follow)
+        follow_sets
     }
 
     pub fn get_table(
