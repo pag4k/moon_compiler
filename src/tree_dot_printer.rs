@@ -1,4 +1,4 @@
-use super::tree::*;
+use crate::tree::*;
 
 use std::fmt::Display;
 use std::fs::File;

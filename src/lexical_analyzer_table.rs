@@ -1,6 +1,6 @@
-use super::finite_accepter::*;
-use super::language::*;
-use super::nfa_generator::*;
+use crate::finite_accepter::*;
+use crate::language::*;
+use crate::nfa_generator::*;
 
 use std::collections::{HashMap, HashSet};
 

@@ -1,5 +1,5 @@
-use super::language::*;
-use super::lexical_analyzer_table::*;
+use crate::language::*;
+use crate::lexical_analyzer_table::*;
 
 use std::fmt;
 use std::fmt::{Display, Formatter};
@@ -47,7 +47,7 @@ impl Token {
 }
 
 /// TokenError ADT
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct TokenError {
     pub error_type: LexicalError,
     lexeme: String,

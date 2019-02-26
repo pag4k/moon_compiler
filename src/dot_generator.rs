@@ -1,11 +1,11 @@
-use super::finite_accepter::*;
-use super::language::*;
+use crate::finite_accepter::*;
+use crate::language::*;
 
 use std::collections::{HashMap, HashSet};
-// use std::fs::File;
-// use std::io::prelude::*;
+use std::fs::File;
+use std::io::prelude::*;
 use std::ops::RangeInclusive;
-// use std::path::Path;
+use std::path::Path;
 
 /// DotGraph ADT
 pub struct DotGraph {
@@ -20,7 +20,7 @@ impl DotGraph {
         tokens: &HashMap<usize, TokenType>,
         backtrack: &HashSet<usize>,
         states: RangeInclusive<usize>,
-        _filename: &str,
+        filename: &str,
     ) {
         let mut dot_graph = DotGraph {
             code: String::new(),
@@ -81,20 +81,20 @@ impl DotGraph {
         }
         dot_graph.add_line("}");
 
-        // let path = Path::new(filename);
-        // match File::create(&path).as_mut() {
-        //     Ok(file) => match file.write_all(dot_graph.code.as_bytes()) {
-        //         Ok(_) => {}
-        //         Err(_) => println!(
-        //             "ERROR: Something went wrong writing DOT file: {}. Exiting...",
-        //             filename
-        //         ),
-        //     },
-        //     Err(_) => println!(
-        //         "ERROR: Something went wrong creating DOT file: {}. Exiting...",
-        //         filename
-        //     ),
-        // }
+        let path = Path::new(filename);
+        match File::create(&path).as_mut() {
+            Ok(file) => match file.write_all(dot_graph.code.as_bytes()) {
+                Ok(_) => {}
+                Err(_) => println!(
+                    "ERROR: Something went wrong writing DOT file: {}. Exiting...",
+                    filename
+                ),
+            },
+            Err(_) => println!(
+                "ERROR: Something went wrong creating DOT file: {}. Exiting...",
+                filename
+            ),
+        }
     }
     /// Helper function to add a line to the output String.
     fn add_line(&mut self, line: &str) {

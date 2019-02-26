@@ -1,6 +1,6 @@
-use super::dot_generator::*;
-use super::finite_accepter::*;
-use super::language::*;
+use crate::dot_generator::*;
+use crate::finite_accepter::*;
+use crate::language::*;
 
 use std::collections::{HashMap, HashSet};
 

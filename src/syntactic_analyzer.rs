@@ -1,16 +1,21 @@
-use super::grammar::*;
-use super::language::*;
-use super::lexical_analyzer::*;
-use super::syntactic_analyzer_table::*;
-use super::tree::*;
+use crate::ast_node::*;
+use crate::grammar::*;
+use crate::language::*;
+use crate::lexical_analyzer::*;
+use crate::syntactic_analyzer_table::*;
+use crate::tree::*;
 
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug)]
 pub enum SyntacticError {
     WrongTerminal(Location, TokenType, TokenType, Option<Location>),
     NotInTableButInFollow(Location, VariableType, TokenType),
     NotInTableNorInFollow(Location, VariableType, TokenType, Option<Location>),
+    NoNodeOnDataStack(NodeType),
+    NoNodeOnStackOne(NodeType, NodeType),
+    NoNodeOnStackList(NodeType, Vec<NodeType>),
+    WrongNodeOnStackOne(NodeType, NodeType, NodeType),
+    WrongNodeOnStackList(NodeType, Vec<NodeType>, NodeType),
 }
 
 impl Display for SyntacticError {
@@ -43,6 +48,31 @@ impl Display for SyntacticError {
                     Some(location) => format!("Recovered at {}", location),
                     None => "Could not recover, reached end of program".to_string(),
                 }
+            ),
+            NoNodeOnDataStack(node_type) => write!(
+                f,
+                "AST error: No data found on data stack to make node: {}.",
+                node_type
+            ),
+            NoNodeOnStackOne(node_type, child_node_type) => write!(
+                f,
+                "AST error: Trying to make node {} and is expecting {}, but there is node on stack.",
+                node_type, child_node_type
+            ),
+            NoNodeOnStackList(node_type, node_list) => write!(
+                f,
+                "AST error: Trying to make node {} and is expecting {:?}, but there is node on stack.",
+                node_type, node_list
+            ),
+            WrongNodeOnStackOne(node_type, child_node_type, actual_node_type) => write!(
+                f,
+                "AST error: Trying to make node {} and is expecting {}, but found {} on stack.",
+                node_type, child_node_type, actual_node_type
+            ),
+            WrongNodeOnStackList(node_type, node_list, actual_node_type) => write!(
+                f,
+                "AST error: Trying to make node {} and is expecting {:?}, but found {} on stack.",
+                node_type, node_list, actual_node_type
             ),
         }
     }
@@ -105,7 +135,6 @@ impl SyntacticAnalyzer {
         let mut derivation_table: DerivationTable = Vec::new();
 
         'main: while let Some(symbol) = stack.last() {
-            //dbg!(&symbol);
             match symbol {
                 ParserSymbol::Terminal(terminal) => {
                     use FollowType::*;
@@ -121,18 +150,13 @@ impl SyntacticAnalyzer {
                         token = token_iter.next().unwrap();
                     } else {
                         // If not, there is an error.
-                        // println!(
-                        //     "Syntactic error at {}: Expecting {:?} but found {:?}.",
-                        //     token.location, terminal, token_type
-                        // );
                         let (error_location, error_terminal, error_type) =
                             (token.location, *terminal, token.token_type);
+                        // Skip tokens until one the one on the stack is found.
                         while Terminal(*terminal) != token_type {
                             token_type = *token_type_iter.next().unwrap();
+                            // If end of progam is reached, break from main loop.
                             if token_type == DollarSign {
-                                // println!(
-                                //     "Reached end of program while trying to recover from error."
-                                // );
                                 errors.push(WrongTerminal(
                                     error_location,
                                     error_terminal,
@@ -150,13 +174,6 @@ impl SyntacticAnalyzer {
                             error_type,
                             Some(token.location),
                         ));
-
-                        // println!(
-                        //     "Recovered from error at {} with {:?}.",
-                        //     token.location, token_type
-                        // );
-
-                        //println!("Stack: {:?}.", stack);
                     }
                 }
                 ParserSymbol::Variable(variable) => {
@@ -203,46 +220,27 @@ impl SyntacticAnalyzer {
                                         _ => {}
                                     }
                                 }
-                                //dbg!(&derivation);
                             }
                         }
                         None => {
                             // If not production is found, error.
-                            //let first_set = &self.table.first_sets[variable];
-                            let follow_set = &self.table.follow_sets[variable];
-                            //dbg!(first_set);
-                            //dbg!(follow_set);
+                            // If token is in follow set of the variable on top of the stack.
                             if token_type == FollowType::DollarSign
-                                || follow_set.contains(&token_type)
+                                || self.table.follow_sets[variable].contains(&token_type)
                             {
-                                // println!(
-                                //     "Syntactic error at {} with {:?}: not expecting {:?}. Skipping and continuing.",
-                                //     token.location, variable,token_type
-                                // );
                                 errors.push(NotInTableButInFollow(
                                     token.location,
                                     *variable,
                                     token.token_type,
                                 ));
-                                // dbg!(stack.clone());
                                 stack.pop();
                             } else {
-                                // println!(
-                                //     "Syntactic error at {} with {:?}: not expecting {:?}.",
-                                //     token.location, variable, token_type
-                                // );
                                 let (error_location, error_variable, error_type) =
                                     (token.location, *variable, token.token_type);
-                                while self.table.get(*variable, token_type).is_none()
-                                // !first_set.contains(&FirstType::from(token_type))
-                                //     && (first_set.contains(&FirstType::Epsilon)
-                                //         && !follow_set.contains(&token_type))
-                                {
+                                // Otherwise, skip tokens until one that leads to a production is found.
+                                while self.table.get(*variable, token_type).is_none() {
                                     token_type = *token_type_iter.next().unwrap();
-                                    // println!(
-                                    //     "Scanning: token_type {:?} top {:?}.",
-                                    //     token_type, variable
-                                    // );
+                                    // If end of progam is reached, break from main loop.
                                     if token_type == FollowType::DollarSign {
                                         println!("Reached end of program while trying to recover from error.");
                                         errors.push(NotInTableNorInFollow(
@@ -251,8 +249,6 @@ impl SyntacticAnalyzer {
                                             error_type,
                                             None,
                                         ));
-                                        // dbg!(first_set);
-                                        // dbg!(follow_set);
                                         break 'main;
                                     }
                                     last_token = Some(token);
@@ -264,36 +260,27 @@ impl SyntacticAnalyzer {
                                     error_type,
                                     Some(token.location),
                                 ));
-                                // println!(
-                                //     "Recovered from error at {} with {:?}.",
-                                //     token.location, token_type
-                                // );
-                                //panic!();
                             }
-                            //println!("Not in table ({:?}, {:?}).", variable, token_type);
                         }
                     }
                 }
                 ParserSymbol::SemanticAction(semantic_action) => {
+                    // Do not handle semantic actions if an error was found.
                     if errors.is_empty() {
                         match semantic_action {
+                            // If data action, push on data stack.
                             NodeType::Data => {
                                 data_stack.push(last_token.unwrap().lexeme.clone().unwrap());
                             }
+                            // Otherwise, try to make a node.
                             _ => {
-                                //dbg!(semantic_action);
-                                ast.make_node(
+                                if let Err(error) = ast.make_node(
                                     &mut semantic_stack,
                                     &mut data_stack,
                                     *semantic_action,
-                                );
-                                // println!(
-                                //     "Semantic stack: {:?}",
-                                //     semantic_stack
-                                //         .iter()
-                                //         .map(|id| ast.get_element(*id).node_type)
-                                //         .collect::<Vec<NodeType>>()
-                                // );
+                                ) {
+                                    return Err(vec![error]);
+                                }
                             }
                         }
                     }
@@ -302,30 +289,13 @@ impl SyntacticAnalyzer {
                 ParserSymbol::DollarSign => break,
             }
         }
-        // dbg!(&self.table.first_sets[&VariableType::Prog]);
-        // dbg!(&self.table.follow_sets[&VariableType::Prog]);
-        // dbg!(&self.table.first_sets[&VariableType::ClassDeclList]);
-        // dbg!(&self.table.follow_sets[&VariableType::ClassDeclList]);
-        // dbg!(&self.table.first_sets[&VariableType::FuncDefList]);
-        // dbg!(&self.table.follow_sets[&VariableType::FuncDefList]);
 
         if errors.is_empty() {
             assert!(token_type == FollowType::DollarSign);
             assert!(stack.len() == 1);
             assert!(semantic_stack.len() == 1);
             ast.root = semantic_stack.pop();
-            // dbg!(ast.get_children(ast.root.unwrap()));
-            // dbg!(ast.get_element(46));
-            // dbg!(ast.get_element(278));
-            // dbg!(ast.get_element(454));
-            //dbg!(derivation);
-            // println!("Tokens: {:?}", token_type_iter.next());
-            // println!("Stack: {:?}.", stack);
-            //Push the final state of derivation.
             derivation_table.push((derivation.clone(), None));
-            //dbg!(derivation_table);
-            //Verify if derivation is equal to the token stream.
-
             Ok((ast, derivation_table))
         } else {
             Err(errors)

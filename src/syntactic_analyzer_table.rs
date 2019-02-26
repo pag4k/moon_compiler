@@ -1,7 +1,8 @@
-use super::grammar::*;
+use crate::grammar::*;
+
 use std::collections::HashMap;
 
-use std::fmt::{Debug, Display};
+use std::fmt::Display;
 use std::hash::Hash;
 
 pub struct SyntacticAnalyzerTable<V, T, A> {
@@ -13,13 +14,14 @@ pub struct SyntacticAnalyzerTable<V, T, A> {
 
 impl<V, T, A> SyntacticAnalyzerTable<V, T, A>
 where
-    V: Debug + Display + Eq + Hash + Copy,
-    T: Debug + Display + Eq + Hash + Copy,
-    A: Debug + Display + Eq + Hash + Copy,
+    V: Display + Eq + Hash + Copy,
+    T: Display + Eq + Hash + Copy,
+    A: Display + Eq + Hash + Copy,
 {
     /// Create a SyntacticAnalyzerTable from a ContextFreeGrammar.
     pub fn from_grammar(grammar: ContextFreeGrammar<V, T, A>) -> Result<Self, GrammarError> {
         let first_sets = grammar.get_first_sets();
+
         let follow_sets = grammar.get_follow_sets(&first_sets);
         let table = grammar.get_table(&first_sets, &follow_sets)?;
         Ok(SyntacticAnalyzerTable {
@@ -39,5 +41,31 @@ where
 
     pub fn get_start(&self) -> V {
         self.grammar.start
+    }
+
+    #[allow(dead_code)]
+    pub fn first_sets_as_string(&self) -> String {
+        let mut string = String::new();
+        for (lhs, rhs) in self.first_sets.iter() {
+            string.push_str(&format!("{}: {} ", lhs, '{'));
+            for symbol in rhs.iter() {
+                string.push_str(&format!(" {}", symbol));
+            }
+            string.push_str(" }\n");
+        }
+        string
+    }
+
+    #[allow(dead_code)]
+    pub fn follow_sets_as_string(&self) -> String {
+        let mut string = String::new();
+        for (lhs, rhs) in self.follow_sets.iter() {
+            string.push_str(&format!("{}: {}", lhs, '{'));
+            for symbol in rhs.iter() {
+                string.push_str(&format!(" {}", symbol));
+            }
+            string.push_str(" }\n");
+        }
+        string
     }
 }

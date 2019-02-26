@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet};
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::{Display, Formatter};
 use std::hash::Hash;
 use std::str::FromStr;
 
@@ -7,7 +7,7 @@ pub type FirstSet<T> = HashSet<FirstType<T>>;
 pub type FollowSet<T> = HashSet<FollowType<T>>;
 pub type ParserTable<V, T> = HashMap<(V, FollowType<T>), usize>;
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy)]
 pub enum GrammarSymbol<V, T, A> {
     Variable(V),
     Terminal(T),
@@ -38,7 +38,7 @@ impl<V, T, A> GrammarSymbol<V, T, A> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy)]
 pub enum FirstType<T> {
     Terminal(T),
     Epsilon,
@@ -59,8 +59,33 @@ impl<T> From<FollowType<T>> for FirstType<T> {
     fn from(grammar_symbol: FollowType<T>) -> Self {
         match grammar_symbol {
             FollowType::Terminal(terminal) => FirstType::Terminal(terminal),
-            //FIXME: Not sure what to do with this.
             FollowType::DollarSign => unreachable!(),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+pub enum FollowType<T> {
+    Terminal(T),
+    DollarSign,
+}
+
+impl<T: Display> Display for FollowType<T> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        use FollowType::*;
+        let output = match self {
+            Terminal(terminal) => format!("'{}'", terminal),
+            DollarSign => "$".to_string(),
+        };
+        write!(f, "{}", output)
+    }
+}
+
+impl<T> From<FirstType<T>> for FollowType<T> {
+    fn from(grammar_symbol: FirstType<T>) -> Self {
+        match grammar_symbol {
+            FirstType::Terminal(terminal) => FollowType::Terminal(terminal),
+            FirstType::Epsilon => unreachable!(),
         }
     }
 }
@@ -83,34 +108,6 @@ impl<V: Display, T: Display, A: Display> Display for ParserSymbol<V, T, A> {
             DollarSign => "$".to_string(),
         };
         write!(f, "{}", output)
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-pub enum FollowType<T> {
-    Terminal(T),
-    DollarSign,
-}
-
-impl<T: Display> Display for FollowType<T> {
-    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        use FollowType::*;
-        let output = match self {
-            //Variable(variable) => format!("{:?}", variable),
-            Terminal(terminal) => format!("'{}'", terminal),
-            DollarSign => "$".to_string(),
-        };
-        write!(f, "{}", output)
-    }
-}
-
-impl<T> From<FirstType<T>> for FollowType<T> {
-    fn from(grammar_symbol: FirstType<T>) -> Self {
-        match grammar_symbol {
-            //FirstType::Variable(variable) => FollowType::Variable(variable),
-            FirstType::Terminal(terminal) => FollowType::Terminal(terminal),
-            FirstType::Epsilon => unreachable!(),
-        }
     }
 }
 
@@ -179,9 +176,9 @@ pub struct ContextFreeGrammar<V, T, A> {
 
 impl<V, T, A> ContextFreeGrammar<V, T, A>
 where
-    V: Debug + Display + Eq + Hash + Copy,
-    T: Debug + Display + Eq + Hash + Copy,
-    A: Debug + Display + Eq + Hash + Copy,
+    V: Display + Eq + Hash + Copy,
+    T: Display + Eq + Hash + Copy,
+    A: Display + Eq + Hash + Copy,
 {
     pub fn from_string(source: &str) -> Result<Self, GrammarError>
     where

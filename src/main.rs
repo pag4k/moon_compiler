@@ -1,3 +1,4 @@
+mod ast_node;
 mod dot_generator;
 mod finite_accepter;
 mod grammar;
@@ -10,6 +11,7 @@ mod syntactic_analyzer_table;
 mod tree;
 mod tree_dot_printer;
 
+use ast_node::*;
 use grammar::*;
 use language::*;
 use lexical_analyzer::*;
@@ -26,7 +28,7 @@ fn main() {
 
     // If there was a first argument, use it as source file, otherwise default.txt.
     let source_filename = if args.len() < 2 {
-        "test_program.txt"
+        "default.txt"
     } else {
         &args[1]
     };
@@ -42,12 +44,7 @@ fn main() {
         }
     };
 
-    // If there was a second argument, use it as AtoCC file, otherwise atocc.txt.
-    let atocc_filename = if args.len() < 3 {
-        "atocc.txt"
-    } else {
-        &args[2]
-    };
+    let atocc_filename = "atocc.txt";
     let path = Path::new(atocc_filename);
     let mut atocc_file = match File::create(&path) {
         Ok(file) => file,
@@ -60,12 +57,7 @@ fn main() {
         }
     };
 
-    // If there was a third argument, use it as error file, otherwise error.txt.
-    let error_filename = if args.len() < 4 {
-        "error.txt"
-    } else {
-        &args[3]
-    };
+    let error_filename = "error.txt";
     let path = Path::new(error_filename);
     let mut error_file = match File::create(&path) {
         Ok(file) => file,
@@ -77,9 +69,6 @@ fn main() {
             return;
         }
     };
-
-    // Print the source file content.
-    //println!("File content:\n{}", source);
 
     // Create LexicalAnalyzer and iterate over the tokens.
     let lexical_analyzer = LexicalAnalyzer::from_string(&source);
@@ -165,7 +154,36 @@ fn main() {
                 .collect::<Vec<GrammarSymbol<VariableType, TokenType, NodeType>>>()
                 == derivation_table.pop().unwrap().0
             {
-                println!("Result of derivation is equal to the token stream!");
+                let derivation_filename = "derivation.txt";
+                let path = Path::new(derivation_filename);
+                let mut derivation_filename = match File::create(&path) {
+                    Ok(file) => file,
+                    Err(_) => {
+                        println!(
+                            "ERROR: Something went wrong creating derivation file: {}. Exiting...",
+                            error_filename
+                        );
+                        return;
+                    }
+                };
+                for (derivation, production) in derivation_table.iter() {
+                    for symbol in derivation.iter() {
+                        derivation_filename
+                            .write_fmt(format_args!("{} ", symbol))
+                            .expect("Could not write to derivation file.");
+                    }
+                    if let Some(production) = production {
+                        derivation_filename
+                            .write_fmt(format_args!("\nPRODUCTION: {}\n", production))
+                            .expect("Could not write to derivation file.");
+                    } else {
+                        derivation_filename
+                            .write_fmt(format_args!("\n"))
+                            .expect("Could not write to derivation file.");
+                    }
+                }
+
+                println!("Result of derivation is equal to the token stream! Printed in 'derivation.txt.'");
             }
             ast
         }
