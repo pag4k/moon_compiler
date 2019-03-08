@@ -2,6 +2,7 @@ use crate::ast_node::*;
 use crate::grammar::*;
 use crate::language::*;
 use crate::lexical_analyzer::*;
+use crate::symbol_table::*;
 use crate::syntactic_analyzer_table::*;
 use crate::tree::*;
 
@@ -99,7 +100,7 @@ impl SyntacticAnalyzer {
     pub fn parse(
         &self,
         tokens: &[Token],
-    ) -> Result<(Tree<NodeElement>, DerivationTable), Vec<SyntacticError>> {
+    ) -> Result<(Tree<NodeElement, SymbolTableArena>, DerivationTable), Vec<SyntacticError>> {
         use SyntacticError::*;
 
         // Convert token stream and add '$' at the end.

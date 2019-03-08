@@ -36,7 +36,7 @@ statOrAssignOrVarDecl'    -> #GetData #MakeNodeId indexList #MakeNodeIndexList #
 statOrAssignOrVarDeclList -> statOrAssignOrVarDecl statOrAssignOrVarDeclList
 statOrAssignOrVarDeclList -> EPSILON
 statBlock                 -> '{' statOrAssignList '}' #MakeNodeStatBlock
-statBlock                 -> statOrAssign #MakeNodeAssignStati #MakeNodeStatBlock
+statBlock                 -> statOrAssign #MakeNodeStatBlock
 statBlock                 -> EPSILON
 expr                      -> arithExpr expr'
 expr'                     -> relOp arithExpr #MakeNodeRelExpr

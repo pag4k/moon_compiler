@@ -6,6 +6,8 @@ mod language;
 mod lexical_analyzer;
 mod lexical_analyzer_table;
 mod nfa_generator;
+mod symbol_table;
+mod symbol_table_generator;
 mod syntactic_analyzer;
 mod syntactic_analyzer_table;
 mod tree;
@@ -145,46 +147,46 @@ fn main() {
         }
     };
 
-    let ast = match syntactic_analyzer.parse(&tokens) {
+    let mut ast = match syntactic_analyzer.parse(&tokens) {
         Ok((ast, mut derivation_table)) => {
             println!("Parse completed succesfully!");
-            if tokens
-                .iter()
-                .map(|token| GrammarSymbol::Terminal(token.token_type))
-                .collect::<Vec<GrammarSymbol<VariableType, TokenType, NodeType>>>()
-                == derivation_table.pop().unwrap().0
-            {
-                let derivation_filename = "derivation.txt";
-                let path = Path::new(derivation_filename);
-                let mut derivation_filename = match File::create(&path) {
-                    Ok(file) => file,
-                    Err(_) => {
-                        println!(
-                            "ERROR: Something went wrong creating derivation file: {}. Exiting...",
-                            error_filename
-                        );
-                        return;
-                    }
-                };
-                for (derivation, production) in derivation_table.iter() {
-                    for symbol in derivation.iter() {
-                        derivation_filename
-                            .write_fmt(format_args!("{} ", symbol))
-                            .expect("Could not write to derivation file.");
-                    }
-                    if let Some(production) = production {
-                        derivation_filename
-                            .write_fmt(format_args!("\nPRODUCTION: {}\n", production))
-                            .expect("Could not write to derivation file.");
-                    } else {
-                        derivation_filename
-                            .write_fmt(format_args!("\n"))
-                            .expect("Could not write to derivation file.");
-                    }
-                }
-
-                println!("Result of derivation is equal to the token stream! Printed in 'derivation.txt.'");
-            }
+            // if tokens
+            //     .iter()
+            //     .map(|token| GrammarSymbol::Terminal(token.token_type))
+            //     .collect::<Vec<GrammarSymbol<VariableType, TokenType, NodeType>>>()
+            //     == derivation_table.pop().unwrap().0
+            // {
+            //     let derivation_filename = "derivation.txt";
+            //     let path = Path::new(derivation_filename);
+            //     let mut derivation_filename = match File::create(&path) {
+            //         Ok(file) => file,
+            //         Err(_) => {
+            //             println!(
+            //                 "ERROR: Something went wrong creating derivation file: {}. Exiting...",
+            //                 error_filename
+            //             );
+            //             return;
+            //         }
+            //     };
+            //     for (derivation, production) in derivation_table.iter() {
+            //         for symbol in derivation.iter() {
+            //             derivation_filename
+            //                 .write_fmt(format_args!("{} ", symbol))
+            //                 .expect("Could not write to derivation file.");
+            //         }
+            //         if let Some(production) = production {
+            //             derivation_filename
+            //                 .write_fmt(format_args!("\nPRODUCTION: {}\n", production))
+            //                 .expect("Could not write to derivation file.");
+            //         } else {
+            //             derivation_filename
+            //                 .write_fmt(format_args!("\n"))
+            //                 .expect("Could not write to derivation file.");
+            //         }
+            //     }
+            //
+            //     println!("Result of derivation is equal to the token stream! Printed in 'derivation.txt.'");
+            // }
             ast
         }
         Err(syntactic_errors) => {
@@ -204,4 +206,8 @@ fn main() {
         Ok(()) => println!("Succesfully generated AST graph file: {}.", ast_filename),
         Err(error) => println!("{}", error),
     };
+
+    ast.generate_symbol_table();
+
+    ast.symbol_table_arena.print();
 }

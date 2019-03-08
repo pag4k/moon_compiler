@@ -1,3 +1,4 @@
+use crate::symbol_table::*;
 use crate::syntactic_analyzer::*;
 use crate::tree::Tree;
 
@@ -207,6 +208,8 @@ impl FromStr for NodeType {
 pub struct NodeElement {
     pub node_type: NodeType,
     pub data: Option<String>,
+    pub symbol_table: Option<usize>,
+    pub symbol_table_entry: Option<usize>,
 }
 
 impl Display for NodeElement {
@@ -218,7 +221,7 @@ impl Display for NodeElement {
     }
 }
 
-impl Tree<NodeElement> {
+impl Tree<NodeElement, SymbolTableArena> {
     pub fn make_node(
         &mut self,
         semantic_stack: &mut Vec<usize>,
@@ -240,6 +243,8 @@ impl Tree<NodeElement> {
             } else {
                 None
             },
+            symbol_table: None,
+            symbol_table_entry: None,
         });
 
         let node_children = new_node_type.get_children();

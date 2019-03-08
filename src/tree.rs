@@ -1,6 +1,9 @@
-pub struct Tree<E> {
+use crate::symbol_table::*;
+
+pub struct Tree<E, T> {
     pub root: Option<usize>,
     pub nodes: Vec<Node<E>>,
+    pub symbol_table_arena: T,
 }
 
 pub struct Node<E> {
@@ -10,16 +13,20 @@ pub struct Node<E> {
     pub element: E,
 }
 
-impl<E> Default for Tree<E> {
+impl<E, T> Default for Tree<E, T>
+where
+    T: Default,
+{
     fn default() -> Self {
         Tree {
             root: None,
             nodes: Vec::new(),
+            symbol_table_arena: T::default(),
         }
     }
 }
 
-impl<E> Tree<E>
+impl<E, T> Tree<E, T>
 where
     E: Clone,
 {
@@ -48,6 +55,10 @@ where
 
     pub fn get_element(&self, node_id: usize) -> &E {
         &self.nodes[node_id].element
+    }
+
+    pub fn get_mut_element(&mut self, node_id: usize) -> &mut E {
+        &mut self.nodes[node_id].element
     }
 
     pub fn get_children(&self, node_id: usize) -> &[usize] {
