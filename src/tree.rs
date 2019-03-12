@@ -64,4 +64,9 @@ where
     pub fn get_children(&self, node_id: usize) -> &[usize] {
         &self.nodes[node_id].children
     }
+
+    pub fn get_children_of_child(&self, node_index: usize, child_index: usize) -> Vec<usize> {
+        self.get_children(self.get_children(node_index)[child_index])
+            .to_vec()
+    }
 }

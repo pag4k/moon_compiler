@@ -5,7 +5,7 @@ const integer: &str = "integer";
 const float: &str = "float";
 const none: &str = "None";
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum SymbolType {
     Integer(Vec<usize>),
     Float(Vec<usize>),
@@ -52,6 +52,7 @@ impl Display for SymbolType {
     }
 }
 
+#[derive(Clone, PartialEq, Eq)]
 pub enum SymbolKind {
     Class,
     Function(Option<SymbolType>, Vec<SymbolType>),
@@ -137,6 +138,9 @@ impl SymbolTableArena {
     pub fn get_symbol_table_entry(&self, index: usize) -> &SymbolTableEntry {
         &self.symbol_table_entries[index]
     }
+    pub fn get_mut_symbol_table_entry(&mut self, index: usize) -> &mut SymbolTableEntry {
+        &mut self.symbol_table_entries[index]
+    }
     pub fn search(&self, name: &str) -> Option<(usize, usize)> {
         let root = self.root?;
         self.search_in_symbol_table(root, name)
@@ -187,7 +191,7 @@ impl SymbolTableArena {
 
 pub struct SymbolTable {
     index: usize,
-    name: String,
+    pub name: String,
     entries: Vec<usize>,
 }
 
@@ -206,12 +210,11 @@ impl Display for SymbolTable {
     }
 }
 
-impl SymbolTable {}
-
-struct SymbolTableEntry {
-    name: String,
-    kind: SymbolKind,
-    link: Option<usize>,
+#[derive(Clone, PartialEq, Eq)]
+pub struct SymbolTableEntry {
+    pub name: String,
+    pub kind: SymbolKind,
+    pub link: Option<usize>,
 }
 
 impl Display for SymbolTableEntry {

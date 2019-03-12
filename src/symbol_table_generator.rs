@@ -1,18 +1,27 @@
 use crate::ast_node::*;
+use crate::semantic_analysis::*;
 use crate::symbol_table::*;
 use crate::tree::*;
 
+use std::collections::HashMap;
+
 impl Tree<NodeElement, SymbolTableArena> {
-    pub fn generate_symbol_table(&mut self) {
+    pub fn generate_symbol_table(&mut self) -> Result<Vec<SemanticWarning>, SymbolTableError> {
         //FIXME: Verify if there is a root node.
-        self.create_symbol_table(self.root.unwrap());
+        let mut semantic_warnings: Vec<SemanticWarning> = Vec::new();
+        self.create_symbol_table(&mut semantic_warnings, self.root.unwrap())?;
+        Ok(semantic_warnings.to_vec())
     }
 
-    fn create_symbol_table(&mut self, node_index: usize) {
+    fn create_symbol_table(
+        &mut self,
+        semantic_warnings: &mut Vec<SemanticWarning>,
+        node_index: usize,
+    ) -> Result<(), SymbolTableError> {
         use NodeType::*;
 
         for child_index in self.get_children(node_index).to_vec() {
-            self.create_symbol_table(child_index);
+            self.create_symbol_table(semantic_warnings, child_index)?;
         }
 
         match self.get_element(node_index).node_type {
@@ -25,22 +34,116 @@ impl Tree<NodeElement, SymbolTableArena> {
                 // Set root.
                 self.symbol_table_arena.root = Some(table_index);
 
+                let mut class_table_map: HashMap<String, usize> = HashMap::new();
+
                 // Add classes.
-                for node_index in self.get_children(self.get_children(node_index)[0]).to_vec() {
-                    self.symbol_table_arena.add_entry(
-                        table_index,
-                        self.get_element(node_index).symbol_table_entry.unwrap(),
-                    );
-                }
-                // Add functions.
-                for node_index in self.get_children(self.get_children(node_index)[1]).to_vec() {
-                    self.symbol_table_arena.add_entry(
-                        table_index,
-                        self.get_element(node_index).symbol_table_entry.unwrap(),
-                    );
+                for node_index in self.get_children_of_child(node_index, 0) {
+                    let class_table_index = self.get_element(node_index).symbol_table.unwrap();
+                    let class_name = self
+                        .symbol_table_arena
+                        .get_symbol_table(class_table_index)
+                        .name
+                        .clone();
+                    class_table_map.insert(class_name, class_table_index);
+                    let entry_index = self.get_element(node_index).symbol_table_entry.unwrap();
+                    self.add_entry_to_table(table_index, entry_index)?;
                 }
 
-                // TODO: ADD PROGRAM/MAIN
+                // Add functions.
+                for node_index in self.get_children_of_child(node_index, 1) {
+                    let function_definition_table_index =
+                        self.get_element(node_index).symbol_table.unwrap();
+                    let function_definition_table_entry_index =
+                        self.get_element(node_index).symbol_table_entry.unwrap();
+                    let function_name = self
+                        .symbol_table_arena
+                        .get_symbol_table(function_definition_table_index)
+                        .name
+                        .clone();
+                    match self
+                        .get_element(self.get_children(node_index)[1])
+                        .data
+                        .clone()
+                    {
+                        // If scope, link it in its class.
+                        Some(class_name) => match class_table_map.get(&class_name) {
+                            Some(class_table_index) => {
+                                match self
+                                    .find_function_in_class(*class_table_index, &function_name)
+                                {
+                                    Some(function_declaration_entry_index) => {
+                                        let mut function_definition_entry =
+                                            (*self.symbol_table_arena.get_symbol_table_entry(
+                                                function_declaration_entry_index,
+                                            ))
+                                            .clone();
+                                        function_definition_entry.link = None;
+                                        let function_declaration_entry =
+                                            (*self.symbol_table_arena.get_symbol_table_entry(
+                                                function_declaration_entry_index,
+                                            ))
+                                            .clone();
+                                        // Compare declaration and definition, assumin neither has a link.
+                                        if function_declaration_entry == function_definition_entry {
+                                            self.symbol_table_arena
+                                                .get_mut_symbol_table_entry(
+                                                    function_declaration_entry_index,
+                                                )
+                                                .link = Some(function_definition_table_index);
+                                        } else {
+                                            return Err(
+                                                SymbolTableError::FunctionDefDoesNotMatchDecl(
+                                                    function_name,
+                                                ),
+                                            );
+                                        }
+                                    }
+                                    None => {
+                                        return Err(SymbolTableError::FunctionNotFound(
+                                            class_name,
+                                            function_name,
+                                        ));
+                                    }
+                                }
+                            }
+                            None => {
+                                return Err(SymbolTableError::ClassNotFound(class_name));
+                            }
+                        },
+                        // If no scope, add to global.
+                        None => {
+                            self.add_entry_to_table(
+                                table_index,
+                                function_definition_table_entry_index,
+                            )?;
+                        }
+                    }
+                }
+
+                // Add program on StatBlock. SPECIAL CASE!
+                let program_table_index = self
+                    .symbol_table_arena
+                    .new_symbol_table("Program".to_string());
+
+                let block_node_index = self.get_children(node_index)[2];
+                self.get_mut_element(block_node_index).symbol_table = Some(program_table_index);
+
+                let entry_index = self.symbol_table_arena.new_symbol_table_entry(
+                    "Program".to_string(),
+                    SymbolKind::Function(None, Vec::new()),
+                    Some(program_table_index),
+                );
+                self.add_entry_to_table(table_index, entry_index)?;
+                self.get_mut_element(block_node_index).symbol_table_entry = Some(entry_index);
+
+                // Get variables
+                for variable_index in self.get_children(block_node_index).to_vec() {
+                    if let Some(entry_index) =
+                        self.get_mut_element(variable_index).symbol_table_entry
+                    {
+                        self.add_entry_to_table(table_index, entry_index)?;
+                    }
+                }
             }
             ClassDecl => {
                 let name = self.get_name(node_index, 0);
@@ -49,11 +152,20 @@ impl Tree<NodeElement, SymbolTableArena> {
                 self.get_mut_element(node_index).symbol_table = Some(table_index);
 
                 let entry_index = self.symbol_table_arena.new_symbol_table_entry(
-                    name,
+                    name.clone(),
                     SymbolKind::Class,
                     Some(table_index),
                 );
                 self.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
+
+                // Get variables
+                for variable_index in self.get_children_of_child(node_index, 2) {
+                    if let Some(entry_index) =
+                        self.get_mut_element(variable_index).symbol_table_entry
+                    {
+                        self.add_entry_to_table(table_index, entry_index)?;
+                    }
+                }
             }
             FuncDef => {
                 let name = self.get_name(node_index, 2);
@@ -63,21 +175,34 @@ impl Tree<NodeElement, SymbolTableArena> {
 
                 let return_type = self.get_type(node_index, 0, Vec::new());
 
+                // Get parameters
                 let mut parameters = Vec::new();
-                for parameter in self.get_children(self.get_children(node_index)[3]).to_vec() {
-                    let name = self.get_name(parameter, 1);
-                    let mut indices = Vec::new();
-                    for index in self.get_children(self.get_children(parameter)[2]) {
-                        indices.push(self.get_index(*index));
-                    }
-                    let parameter_type = self.get_type(parameter, 0, indices);
+                for parameter_index in self.get_children_of_child(node_index, 3) {
+                    let entry_index = self
+                        .get_mut_element(parameter_index)
+                        .symbol_table_entry
+                        .unwrap();
+                    let parameter_type = match self
+                        .symbol_table_arena
+                        .get_symbol_table_entry(entry_index)
+                        .kind
+                        .clone()
+                    {
+                        SymbolKind::Parameter(parameter_type) => parameter_type,
+                        _ => unreachable!(),
+                    };
 
                     parameters.push(parameter_type.clone());
-                    self.symbol_table_arena.new_symbol_table_entry(
-                        name,
-                        SymbolKind::Parameter(parameter_type),
-                        None,
-                    );
+                    self.add_entry_to_table(table_index, entry_index)?;
+                }
+
+                // Get variables
+                for variable_index in self.get_children_of_child(node_index, 4) {
+                    if let Some(entry_index) =
+                        self.get_mut_element(variable_index).symbol_table_entry
+                    {
+                        self.add_entry_to_table(table_index, entry_index)?;
+                    }
                 }
 
                 let entry_index = self.symbol_table_arena.new_symbol_table_entry(
@@ -87,16 +212,68 @@ impl Tree<NodeElement, SymbolTableArena> {
                 );
                 self.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
             }
-            VarDecl => {}
+            FuncDecl => {
+                let name = self.get_name(node_index, 1);
+                let return_type = self.get_type(node_index, 0, Vec::new());
+
+                // Get parameters
+                let mut parameters = Vec::new();
+                for parameter_index in self.get_children_of_child(node_index, 2) {
+                    let entry_index = self
+                        .get_mut_element(parameter_index)
+                        .symbol_table_entry
+                        .unwrap();
+                    let parameter_type = match self
+                        .symbol_table_arena
+                        .get_symbol_table_entry(entry_index)
+                        .kind
+                        .clone()
+                    {
+                        SymbolKind::Parameter(parameter_type) => parameter_type,
+                        _ => unreachable!(),
+                    };
+
+                    parameters.push(parameter_type.clone());
+                }
+
+                let entry_index = self.symbol_table_arena.new_symbol_table_entry(
+                    name,
+                    SymbolKind::Function(Some(return_type), parameters),
+                    None,
+                );
+                self.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
+            }
+            VarDecl => {
+                let name = self.get_name(node_index, 1);
+                let mut indices = Vec::new();
+                for index in self.get_children_of_child(node_index, 2) {
+                    indices.push(self.get_index(index));
+                }
+                let parameter_type = self.get_type(node_index, 0, indices);
+                let entry_index = self.symbol_table_arena.new_symbol_table_entry(
+                    name,
+                    SymbolKind::Variable(parameter_type),
+                    None,
+                );
+                self.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
+            }
+            FParam => {
+                let name = self.get_name(node_index, 1);
+                let mut indices = Vec::new();
+                for index in self.get_children_of_child(node_index, 2) {
+                    indices.push(self.get_index(index));
+                }
+                let parameter_type = self.get_type(node_index, 0, indices);
+                let entry_index = self.symbol_table_arena.new_symbol_table_entry(
+                    name,
+                    SymbolKind::Parameter(parameter_type),
+                    None,
+                );
+                self.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
+            }
             _ => {}
         };
-    }
-
-    fn get_name(&self, node_index: usize, child_index: usize) -> String {
-        self.get_element(self.get_children(node_index)[child_index])
-            .clone()
-            .data
-            .unwrap()
+        Ok(())
     }
 
     fn get_type(&self, node_index: usize, child_index: usize, indices: Vec<usize>) -> SymbolType {
@@ -117,5 +294,21 @@ impl Tree<NodeElement, SymbolTableArena> {
             .unwrap()
             .parse::<usize>()
             .unwrap()
+    }
+
+    fn find_function_in_class(&self, table_index: usize, name: &str) -> Option<usize> {
+        for entry_index in self
+            .symbol_table_arena
+            .get_symbol_table_entries(table_index)
+        {
+            let symbol_entry = self.symbol_table_arena.get_symbol_table_entry(*entry_index);
+            if symbol_entry.name == name {
+                if let SymbolKind::Function(_, _) = symbol_entry.kind {
+                    return Some(*entry_index);
+                }
+            }
+        }
+
+        None
     }
 }

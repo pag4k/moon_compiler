@@ -6,6 +6,9 @@ mod language;
 mod lexical_analyzer;
 mod lexical_analyzer_table;
 mod nfa_generator;
+mod semantic_analysis;
+mod semantic_checking;
+mod semantic_class_checker;
 mod symbol_table;
 mod symbol_table_generator;
 mod syntactic_analyzer;
@@ -17,6 +20,7 @@ use ast_node::*;
 use grammar::*;
 use language::*;
 use lexical_analyzer::*;
+use semantic_class_checker::*;
 use std::env;
 use std::fs;
 use std::fs::File;
@@ -207,7 +211,22 @@ fn main() {
         Err(error) => println!("{}", error),
     };
 
-    ast.generate_symbol_table();
+    if let Err(error) = ast.generate_symbol_table() {
+        dbg!(error);
+        return;
+    }
+
+    if let Err(error) = ast.semantic_class_checker() {
+        dbg!(error);
+        return;
+    }
 
     ast.symbol_table_arena.print();
+    //Second pass
+    //Add inherited classes in table
+    //Check inherited class existence
+    //Check circular dependancy
+    //Check shadow variable
+
+    //ast.semantic_checking();
 }

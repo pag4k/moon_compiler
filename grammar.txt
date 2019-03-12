@@ -3,10 +3,9 @@ classDecl                 -> 'class' 'id' #GetData #MakeNodeId inherListOp #Make
 classDeclList             -> classDecl classDeclList
 classDeclList             -> EPSILON
 funcDecl                  -> type 'id' #GetData #MakeNodeId '(' fParamList #MakeNodeFParamList ')' ';' #MakeNodeFuncDecl
-funcHead                  -> type 'id' scopeOp #GetData #MakeNodeId '(' fParamList #MakeNodeFParamList ')'
-scopeOp                   -> 'sr' 'id' #GetData #MakeNodeId
-scopeOp                   -> #MakeNodeEpsilon scopeOp'
-scopeOp'                  -> EPSILON
+funcHead                  -> type 'id' scopeOp '(' fParamList #MakeNodeFParamList ')'
+scopeOp                   -> #GetData #MakeNodeId  'sr' 'id' #GetData #MakeNodeId
+scopeOp                   -> #MakeNodeEpsilon #GetData #MakeNodeId
 funcDef                   -> funcHead funcBody ';' #MakeNodeFuncDef
 funcDefList               -> funcDef funcDefList
 funcDefList               -> EPSILON
