@@ -14,3 +14,5 @@ Cargo.lock
 
 # PNG files
 **/*.png
+
+*.xml

@@ -1,5 +1,3 @@
-use crate::symbol_table::*;
-
 pub struct Tree<E, T> {
     pub root: Option<usize>,
     pub nodes: Vec<Node<E>>,

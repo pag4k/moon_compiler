@@ -6,7 +6,7 @@ use crate::tree::*;
 use std::collections::HashMap;
 
 impl Tree<NodeElement, SymbolTableArena> {
-    pub fn generate_symbol_table(&mut self) -> Result<Vec<SemanticWarning>, SymbolTableError> {
+    pub fn generate_symbol_table(&mut self) -> Result<Vec<SemanticWarning>, SemanticError> {
         //FIXME: Verify if there is a root node.
         let mut semantic_warnings: Vec<SemanticWarning> = Vec::new();
         self.create_symbol_table(&mut semantic_warnings, self.root.unwrap())?;
@@ -17,7 +17,7 @@ impl Tree<NodeElement, SymbolTableArena> {
         &mut self,
         semantic_warnings: &mut Vec<SemanticWarning>,
         node_index: usize,
-    ) -> Result<(), SymbolTableError> {
+    ) -> Result<(), SemanticError> {
         use NodeType::*;
 
         for child_index in self.get_children(node_index).to_vec() {
@@ -91,15 +91,13 @@ impl Tree<NodeElement, SymbolTableArena> {
                                                 )
                                                 .link = Some(function_definition_table_index);
                                         } else {
-                                            return Err(
-                                                SymbolTableError::FunctionDefDoesNotMatchDecl(
-                                                    function_name,
-                                                ),
-                                            );
+                                            return Err(SemanticError::FunctionDefDoesNotMatchDecl(
+                                                function_name,
+                                            ));
                                         }
                                     }
                                     None => {
-                                        return Err(SymbolTableError::FunctionNotFound(
+                                        return Err(SemanticError::FunctionNotFound(
                                             class_name,
                                             function_name,
                                         ));
@@ -107,7 +105,7 @@ impl Tree<NodeElement, SymbolTableArena> {
                                 }
                             }
                             None => {
-                                return Err(SymbolTableError::ClassNotFound(class_name));
+                                return Err(SemanticError::ClassNotFound(class_name));
                             }
                         },
                         // If no scope, add to global.
@@ -141,7 +139,7 @@ impl Tree<NodeElement, SymbolTableArena> {
                     if let Some(entry_index) =
                         self.get_mut_element(variable_index).symbol_table_entry
                     {
-                        self.add_entry_to_table(table_index, entry_index)?;
+                        self.add_entry_to_table(program_table_index, entry_index)?;
                     }
                 }
             }
@@ -294,21 +292,5 @@ impl Tree<NodeElement, SymbolTableArena> {
             .unwrap()
             .parse::<usize>()
             .unwrap()
-    }
-
-    fn find_function_in_class(&self, table_index: usize, name: &str) -> Option<usize> {
-        for entry_index in self
-            .symbol_table_arena
-            .get_symbol_table_entries(table_index)
-        {
-            let symbol_entry = self.symbol_table_arena.get_symbol_table_entry(*entry_index);
-            if symbol_entry.name == name {
-                if let SymbolKind::Function(_, _) = symbol_entry.kind {
-                    return Some(*entry_index);
-                }
-            }
-        }
-
-        None
     }
 }

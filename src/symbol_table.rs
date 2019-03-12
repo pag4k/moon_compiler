@@ -183,6 +183,11 @@ impl SymbolTableArena {
         print!("{}", output);
         for entry in symbol_table.entries.iter() {
             if let Some(link_index) = self.get_symbol_table_entry(*entry).link {
+                if let SymbolKind::Class = self.get_symbol_table_entry(*entry).kind {
+                    if index != self.root.unwrap() {
+                        continue;
+                    }
+                }
                 self.print_symbol_table(link_index);
             }
         }

@@ -1,4 +1,4 @@
-class InheritedUtility: Utility {
+class InheritedUtility {
   integer member1;};
 
 class Utility : InheritedUtility {

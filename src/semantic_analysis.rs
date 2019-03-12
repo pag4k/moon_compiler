@@ -3,19 +3,20 @@ use crate::symbol_table::*;
 use crate::tree::*;
 
 #[derive(Debug)]
-pub enum SymbolTableError {
+pub enum SemanticError {
     ClassNotFound(String),
     ParentClassNotFound(String, String),
     CircularClassDependency(Vec<String>),
     FunctionDefDoesNotMatchDecl(String),
     FunctionNotFound(String, String),
+    MemberFunctionDeclHasNotDef(String, String),
     DuplicateIdentifier(String),
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum SemanticWarning {
-    ShadowParentVariable(String, String),
-    ShadowParentFunction(String, String),
+    ShadowInheritedMemberVariable(String, String, String),
+    ShadowInheritedMemberFunction(String, String, String),
 }
 
 impl Tree<NodeElement, SymbolTableArena> {
@@ -30,7 +31,7 @@ impl Tree<NodeElement, SymbolTableArena> {
         &self,
         table_index: usize,
         entry_index: usize,
-    ) -> Result<(), SymbolTableError> {
+    ) -> Result<(), SemanticError> {
         let name = &self
             .symbol_table_arena
             .get_symbol_table_entry(entry_index)
@@ -40,7 +41,7 @@ impl Tree<NodeElement, SymbolTableArena> {
             .get_symbol_table_entries(table_index)
         {
             if self.symbol_table_arena.get_symbol_table_entry(*entry).name == *name {
-                return Err(SymbolTableError::DuplicateIdentifier(name.to_string()));
+                return Err(SemanticError::DuplicateIdentifier(name.to_string()));
             }
         }
 
@@ -51,14 +52,87 @@ impl Tree<NodeElement, SymbolTableArena> {
         &mut self,
         table_index: usize,
         entry_index: usize,
-    ) -> Result<(), SymbolTableError> {
+    ) -> Result<(), SemanticError> {
         self.check_duplicate(table_index, entry_index)?;
         self.symbol_table_arena.add_entry(table_index, entry_index);
 
         Ok(())
     }
 
-    pub fn is_member_variable(&self, name: &str) -> Option<(usize, usize)> {
+    pub fn get_class_tables_in_table(&self, table_index: usize) -> Vec<usize> {
+        let mut class_table_indices = Vec::new();
+
+        for entry_index in self
+            .symbol_table_arena
+            .get_symbol_table_entries(table_index)
+        {
+            let symbol_entry = self.symbol_table_arena.get_symbol_table_entry(*entry_index);
+            if let SymbolKind::Class = symbol_entry.kind {
+                if let Some(class_table_index) = symbol_entry.link {
+                    class_table_indices.push(class_table_index);
+                }
+            }
+        }
+        class_table_indices
+    }
+
+    pub fn find_variable_in_class(&self, table_index: usize, name: &str) -> Option<usize> {
+        for entry_index in self
+            .symbol_table_arena
+            .get_symbol_table_entries(table_index)
+        {
+            let symbol_entry = self.symbol_table_arena.get_symbol_table_entry(*entry_index);
+            if symbol_entry.name == name {
+                if let SymbolKind::Variable(_) = symbol_entry.kind {
+                    return Some(*entry_index);
+                }
+            }
+        }
+
+        None
+    }
+
+    pub fn find_function_in_class(&self, table_index: usize, name: &str) -> Option<usize> {
+        for entry_index in self
+            .symbol_table_arena
+            .get_symbol_table_entries(table_index)
+        {
+            let symbol_entry = self.symbol_table_arena.get_symbol_table_entry(*entry_index);
+            if symbol_entry.name == name {
+                if let SymbolKind::Function(_, _) = symbol_entry.kind {
+                    return Some(*entry_index);
+                }
+            }
+        }
+
+        None
+    }
+
+    pub fn is_member_variable(&self, table_index: usize, name: &str) -> Option<usize> {
+        let result = self.find_variable_in_class(table_index, name);
+        if result.is_some() {
+            return Some(table_index);
+        }
+        for inherited_class_index in self.get_class_tables_in_table(table_index) {
+            let result = self.is_member_function(inherited_class_index, name);
+            if result.is_some() {
+                return result;
+            }
+        }
+        None
+    }
+
+    pub fn is_member_function(&self, table_index: usize, name: &str) -> Option<usize> {
+        let result = self.find_function_in_class(table_index, name);
+        if result.is_some() {
+            return Some(table_index);
+        }
+        for inherited_class_index in self.get_class_tables_in_table(table_index) {
+            let result = self.is_member_function(inherited_class_index, name);
+            if result.is_some() {
+                return result;
+            }
+        }
         None
     }
 }

@@ -99,7 +99,7 @@ impl FromStr for TokenType {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-pub enum KeywordType {
+pub enum KeywordType      {
     If,
     Then,
     Else,

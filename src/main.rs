@@ -216,17 +216,17 @@ fn main() {
         return;
     }
 
-    if let Err(error) = ast.semantic_class_checker() {
-        dbg!(error);
-        return;
+    match ast.semantic_class_checker() {
+        Ok(semantic_warnings) => {
+            dbg!(semantic_warnings);
+        }
+        Err(error) => {
+            dbg!(error);
+            return;
+        }
     }
 
     ast.symbol_table_arena.print();
-    //Second pass
-    //Add inherited classes in table
-    //Check inherited class existence
-    //Check circular dependancy
-    //Check shadow variable
 
     //ast.semantic_checking();
 }
