@@ -12,7 +12,7 @@ pub enum SyntacticError {
     WrongTerminal(Location, TokenType, TokenType, Option<Location>),
     NotInTableButInFollow(Location, VariableType, TokenType),
     NotInTableNorInFollow(Location, VariableType, TokenType, Option<Location>),
-    NoNodeOnDataStack(NodeType),
+    TokenStackIsEmpty(NodeType),
     NoNodeOnStackOne(NodeType, NodeType),
     NoNodeOnStackList(NodeType, Vec<NodeType>),
     WrongNodeOnStackOne(NodeType, NodeType, NodeType),
@@ -50,9 +50,9 @@ impl Display for SyntacticError {
                     None => "Could not recover, reached end of program".to_string(),
                 }
             ),
-            NoNodeOnDataStack(node_type) => write!(
+            TokenStackIsEmpty(node_type) => write!(
                 f,
-                "AST error: No data found on data stack to make node: {}.",
+                "AST error: No token found on token stack to make node: {}.",
                 node_type
             ),
             NoNodeOnStackOne(node_type, child_node_type) => write!(
@@ -126,7 +126,7 @@ impl SyntacticAnalyzer {
         // Initialize AST, semantic stack and data stack.
         let mut ast = Tree::default();
         let mut semantic_stack: Vec<usize> = Vec::new();
-        let mut data_stack: Vec<String> = Vec::new();
+        let mut token_stack: Vec<Token> = Vec::new();
 
         // Initialize vector to accumulate syntatic errors.
         let mut errors: Vec<SyntacticError> = Vec::new();
@@ -271,13 +271,13 @@ impl SyntacticAnalyzer {
                         match semantic_action {
                             // If data action, push on data stack.
                             NodeType::Data => {
-                                data_stack.push(last_token.unwrap().lexeme.clone().unwrap());
+                                token_stack.push(last_token.unwrap().clone());
                             }
                             // Otherwise, try to make a node.
                             _ => {
                                 if let Err(error) = ast.make_node(
                                     &mut semantic_stack,
-                                    &mut data_stack,
+                                    &mut token_stack,
                                     *semantic_action,
                                 ) {
                                     return Err(vec![error]);

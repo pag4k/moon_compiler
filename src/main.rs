@@ -7,14 +7,15 @@ mod lexical_analyzer;
 mod lexical_analyzer_table;
 mod nfa_generator;
 mod semantic_analysis;
-mod semantic_checking;
 mod semantic_class_checker;
+mod semantic_function_checker;
 mod symbol_table;
 mod symbol_table_generator;
 mod syntactic_analyzer;
 mod syntactic_analyzer_table;
 mod tree;
 mod tree_dot_printer;
+mod type_checker;
 
 use ast_node::*;
 use grammar::*;
@@ -27,6 +28,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 use syntactic_analyzer::*;
+use type_checker::*;
 
 fn main() {
     // Get the command line arguments.
@@ -224,6 +226,16 @@ fn main() {
             dbg!(error);
             return;
         }
+    }
+
+    if let Err(error) = ast.semantic_function_checker() {
+        dbg!(error);
+        return;
+    }
+
+    if let Err(error) = ast.type_checker() {
+        dbg!(error);
+        return;
     }
 
     ast.symbol_table_arena.print();

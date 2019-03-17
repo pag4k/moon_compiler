@@ -1,3 +1,4 @@
+use crate::lexical_analyzer::*;
 use crate::symbol_table::*;
 use crate::syntactic_analyzer::*;
 use crate::tree::Tree;
@@ -72,19 +73,10 @@ impl NodeType {
         use NodeChildren::*;
         use NodeChildrenGroup::*;
         use NodeType::*;
-        let expr = vec![
-            RelExpr,
-            AddOp,
-            MultOp,
-            VarElementList,
-            Num,
-            FunctionCall,
-            Not,
-            Sign,
-        ];
-        let arith_expr = vec![AddOp, MultOp, VarElementList, Num, FunctionCall, Not, Sign];
-        let term = vec![AddOp, MultOp, VarElementList, Num, FunctionCall, Not, Sign];
-        let factor = vec![AddOp, MultOp, VarElementList, Num, FunctionCall, Not, Sign];
+        let expr = vec![RelExpr, AddOp, MultOp, VarElementList, Num, Not, Sign];
+        let arith_expr = vec![AddOp, MultOp, VarElementList, Num, Not, Sign];
+        let term = vec![AddOp, MultOp, VarElementList, Num, Not, Sign];
+        let factor = vec![AddOp, MultOp, VarElementList, Num, Not, Sign];
 
         match self {
             Data => unreachable!(),
@@ -207,16 +199,20 @@ impl FromStr for NodeType {
 #[derive(Clone)]
 pub struct NodeElement {
     pub node_type: NodeType,
-    pub data: Option<String>,
+    pub token: Option<Token>,
     pub symbol_table: Option<usize>,
     pub symbol_table_entry: Option<usize>,
+    pub data_type: Option<SymbolType>,
 }
 
 impl Display for NodeElement {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        match &self.data {
-            Some(data) => write!(f, "{:?}: {}", self.node_type, data),
-            None => write!(f, "{:?}", self.node_type),
+        match &self.token {
+            Some(token) => match token.clone().lexeme {
+                Some(data) => write!(f, "{:?}: {}", self.node_type, data),
+                None => write!(f, "{:?}", self.node_type),
+            },
+            None => write!(f, ""),
         }
     }
 }
@@ -225,7 +221,7 @@ impl Tree<NodeElement, SymbolTableArena> {
     pub fn make_node(
         &mut self,
         semantic_stack: &mut Vec<usize>,
-        data_stack: &mut Vec<String>,
+        token_stack: &mut Vec<Token>,
         new_node_type: NodeType,
     ) -> Result<(), SyntacticError> {
         use NodeChildren::*;
@@ -233,18 +229,19 @@ impl Tree<NodeElement, SymbolTableArena> {
 
         let new_node_id = self.new_node(NodeElement {
             node_type: new_node_type,
-            data: if new_node_type.need_data() {
-                let data = data_stack.pop();
-                if data.is_some() {
-                    data
+            token: if new_node_type.need_data() {
+                let token = token_stack.pop();
+                if token.is_some() {
+                    token
                 } else {
-                    return Err(NoNodeOnDataStack(new_node_type));
+                    return Err(TokenStackIsEmpty(new_node_type));
                 }
             } else {
                 None
             },
             symbol_table: None,
             symbol_table_entry: None,
+            data_type: None,
         });
 
         let node_children = new_node_type.get_children();

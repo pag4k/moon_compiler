@@ -18,7 +18,7 @@ pub const LETTER: [char; 53] = [
     'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
 ];
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum TokenType {
     Id,
     IntNum,
@@ -99,7 +99,7 @@ impl FromStr for TokenType {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-pub enum KeywordType      {
+pub enum KeywordType {
     If,
     Then,
     Else,
@@ -173,7 +173,7 @@ pub enum CommentType {
     LineComment,
 }
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum LexicalError {
     InvalidCharacter,
     InvalidToken,

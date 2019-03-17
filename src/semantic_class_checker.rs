@@ -116,13 +116,13 @@ impl Tree<NodeElement, SymbolTableArena> {
                 }
             }
             ClassDecl => {
-                let name = self.get_name(node_index, 0);
+                let name = self.get_child_lexeme(node_index, 0);
 
                 let table_index = self.get_element(node_index).symbol_table.unwrap();
 
                 // Get parents.
                 for class_node_index in self.get_children_of_child(node_index, 1) {
-                    let parent_name = self.get_element(class_node_index).clone().data.unwrap();
+                    let parent_name = self.get_lexeme(class_node_index);
                     match self.find_class_symbol_table(&parent_name) {
                         Some(parent_table_index) => {
                             let entry_index = self.symbol_table_arena.new_symbol_table_entry(
@@ -157,22 +157,6 @@ impl Tree<NodeElement, SymbolTableArena> {
     //     }
     //     class_entry_indices
     // }
-
-    fn find_class_symbol_table(&self, name: &str) -> Option<usize> {
-        for class_table_index in
-            self.get_class_tables_in_table(self.symbol_table_arena.root.unwrap())
-        {
-            let class_name = self
-                .symbol_table_arena
-                .get_symbol_table(class_table_index)
-                .name
-                .clone();
-            if name == class_name {
-                return Some(class_table_index);
-            }
-        }
-        None
-    }
 
     fn check_circular_dependency(&self) -> Result<(), SemanticError> {
         for class_table_index in

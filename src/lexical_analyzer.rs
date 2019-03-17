@@ -20,7 +20,7 @@ impl Display for Location {
 }
 
 /// Token ADT
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Token {
     pub token_type: TokenType,
     pub lexeme: Option<String>,

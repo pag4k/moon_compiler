@@ -3,8 +3,6 @@ use crate::semantic_analysis::*;
 use crate::symbol_table::*;
 use crate::tree::*;
 
-use std::collections::HashMap;
-
 impl Tree<NodeElement, SymbolTableArena> {
     pub fn generate_symbol_table(&mut self) -> Result<Vec<SemanticWarning>, SemanticError> {
         //FIXME: Verify if there is a root node.
@@ -34,8 +32,6 @@ impl Tree<NodeElement, SymbolTableArena> {
                 // Set root.
                 self.symbol_table_arena.root = Some(table_index);
 
-                let mut class_table_map: HashMap<String, usize> = HashMap::new();
-
                 // Add classes.
                 for node_index in self.get_children_of_child(node_index, 0) {
                     let class_table_index = self.get_element(node_index).symbol_table.unwrap();
@@ -44,12 +40,12 @@ impl Tree<NodeElement, SymbolTableArena> {
                         .get_symbol_table(class_table_index)
                         .name
                         .clone();
-                    class_table_map.insert(class_name, class_table_index);
                     let entry_index = self.get_element(node_index).symbol_table_entry.unwrap();
                     self.add_entry_to_table(table_index, entry_index)?;
                 }
 
                 // Add functions.
+                // Here we assume that the list of classes is complete to validate types.
                 for node_index in self.get_children_of_child(node_index, 1) {
                     let function_definition_table_index =
                         self.get_element(node_index).symbol_table.unwrap();
@@ -62,52 +58,63 @@ impl Tree<NodeElement, SymbolTableArena> {
                         .clone();
                     match self
                         .get_element(self.get_children(node_index)[1])
-                        .data
+                        .token
                         .clone()
                     {
                         // If scope, link it in its class.
-                        Some(class_name) => match class_table_map.get(&class_name) {
-                            Some(class_table_index) => {
-                                match self
-                                    .find_function_in_class(*class_table_index, &function_name)
-                                {
-                                    Some(function_declaration_entry_index) => {
-                                        let mut function_definition_entry =
-                                            (*self.symbol_table_arena.get_symbol_table_entry(
-                                                function_declaration_entry_index,
-                                            ))
-                                            .clone();
-                                        function_definition_entry.link = None;
-                                        let function_declaration_entry =
-                                            (*self.symbol_table_arena.get_symbol_table_entry(
-                                                function_declaration_entry_index,
-                                            ))
-                                            .clone();
-                                        // Compare declaration and definition, assumin neither has a link.
-                                        if function_declaration_entry == function_definition_entry {
-                                            self.symbol_table_arena
-                                                .get_mut_symbol_table_entry(
+                        Some(token) => {
+                            let class_name = token.lexeme.unwrap();
+                            match self.find_class_symbol_table(&class_name) {
+                                Some(class_table_index) => {
+                                    match self
+                                        .find_function_in_table(class_table_index, &function_name)
+                                    {
+                                        Some(function_declaration_entry_index) => {
+                                            // Get a clone of the definition entry and remore link.
+                                            let mut function_definition_entry =
+                                                (*self.symbol_table_arena.get_symbol_table_entry(
                                                     function_declaration_entry_index,
-                                                )
-                                                .link = Some(function_definition_table_index);
-                                        } else {
-                                            return Err(SemanticError::FunctionDefDoesNotMatchDecl(
-                                                function_name,
-                                            ));
+                                                ))
+                                                .clone();
+                                            function_definition_entry.link = None;
+                                            // Get a clone of the definition entry.
+                                            let function_declaration_entry =
+                                                (*self.symbol_table_arena.get_symbol_table_entry(
+                                                    function_declaration_entry_index,
+                                                ))
+                                                .clone();
+                                            // Compare declaration and definition, assumin neither has a link.
+                                            if function_declaration_entry
+                                                == function_definition_entry
+                                            {
+                                                self.symbol_table_arena
+                                                    .get_mut_symbol_table_entry(
+                                                        function_declaration_entry_index,
+                                                    )
+                                                    .link = Some(function_definition_table_index);
+                                            } else {
+                                                return Err(
+                                                SemanticError::MemberFunctionDefDoesNotMatchDecl(
+                                                    function_name,
+                                                ),
+                                            );
+                                            }
+                                        }
+                                        None => {
+                                            return Err(
+                                                SemanticError::MemberFunctionDefDoesNotHaveDecl(
+                                                    class_name,
+                                                    function_name,
+                                                ),
+                                            );
                                         }
                                     }
-                                    None => {
-                                        return Err(SemanticError::FunctionNotFound(
-                                            class_name,
-                                            function_name,
-                                        ));
-                                    }
+                                }
+                                None => {
+                                    return Err(SemanticError::ClassNotFound(class_name));
                                 }
                             }
-                            None => {
-                                return Err(SemanticError::ClassNotFound(class_name));
-                            }
-                        },
+                        }
                         // If no scope, add to global.
                         None => {
                             self.add_entry_to_table(
@@ -115,6 +122,33 @@ impl Tree<NodeElement, SymbolTableArena> {
                                 function_definition_table_entry_index,
                             )?;
                         }
+                    }
+
+                    // Check if return value and parameters are valid
+                    let function_symbol_enty = self
+                        .symbol_table_arena
+                        .get_symbol_table_entry(function_definition_table_entry_index);
+                    //dbg!(&function_symbol_enty);
+                    match function_symbol_enty.kind.clone() {
+                        SymbolKind::Function(return_type, parameter_types) => {
+                            if let Some(return_symbole_type) = return_type {
+                                if let Err(class_name) =
+                                    self.get_valid_class_table_from_type(&return_symbole_type)
+                                {
+                                    // FIXME: ADD ERROR ABOUT RETURN TYPE
+                                    return Err(SemanticError::ClassNotFound(class_name));
+                                }
+                            }
+                            for parameter_type in parameter_types {
+                                if let Err(class_name) =
+                                    self.get_valid_class_table_from_type(&parameter_type)
+                                {
+                                    // FIXME: ADD ERROR ABOUT PARAMETER TYPE
+                                    return Err(SemanticError::ClassNotFound(class_name));
+                                }
+                            }
+                        }
+                        _ => unreachable!(),
                     }
                 }
 
@@ -144,7 +178,7 @@ impl Tree<NodeElement, SymbolTableArena> {
                 }
             }
             ClassDecl => {
-                let name = self.get_name(node_index, 0);
+                let name = self.get_child_lexeme(node_index, 0);
 
                 let table_index = self.symbol_table_arena.new_symbol_table(name.clone());
                 self.get_mut_element(node_index).symbol_table = Some(table_index);
@@ -166,12 +200,13 @@ impl Tree<NodeElement, SymbolTableArena> {
                 }
             }
             FuncDef => {
-                let name = self.get_name(node_index, 2);
+                // Function Definition has an entry and a table.
+                let name = self.get_child_lexeme(node_index, 2);
 
                 let table_index = self.symbol_table_arena.new_symbol_table(name.clone());
                 self.get_mut_element(node_index).symbol_table = Some(table_index);
 
-                let return_type = self.get_type(node_index, 0, Vec::new());
+                let return_type = self.make_type_from_child(node_index, 0, Vec::new());
 
                 // Get parameters
                 let mut parameters = Vec::new();
@@ -211,8 +246,9 @@ impl Tree<NodeElement, SymbolTableArena> {
                 self.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
             }
             FuncDecl => {
-                let name = self.get_name(node_index, 1);
-                let return_type = self.get_type(node_index, 0, Vec::new());
+                // Function Declaration just has an entry.
+                let name = self.get_child_lexeme(node_index, 1);
+                let return_type = self.make_type_from_child(node_index, 0, Vec::new());
 
                 // Get parameters
                 let mut parameters = Vec::new();
@@ -242,12 +278,12 @@ impl Tree<NodeElement, SymbolTableArena> {
                 self.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
             }
             VarDecl => {
-                let name = self.get_name(node_index, 1);
+                let name = self.get_child_lexeme(node_index, 1);
                 let mut indices = Vec::new();
                 for index in self.get_children_of_child(node_index, 2) {
                     indices.push(self.get_index(index));
                 }
-                let parameter_type = self.get_type(node_index, 0, indices);
+                let parameter_type = self.make_type_from_child(node_index, 0, indices);
                 let entry_index = self.symbol_table_arena.new_symbol_table_entry(
                     name,
                     SymbolKind::Variable(parameter_type),
@@ -256,12 +292,12 @@ impl Tree<NodeElement, SymbolTableArena> {
                 self.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
             }
             FParam => {
-                let name = self.get_name(node_index, 1);
+                let name = self.get_child_lexeme(node_index, 1);
                 let mut indices = Vec::new();
                 for index in self.get_children_of_child(node_index, 2) {
                     indices.push(self.get_index(index));
                 }
-                let parameter_type = self.get_type(node_index, 0, indices);
+                let parameter_type = self.make_type_from_child(node_index, 0, indices);
                 let entry_index = self.symbol_table_arena.new_symbol_table_entry(
                     name,
                     SymbolKind::Parameter(parameter_type),
@@ -269,17 +305,36 @@ impl Tree<NodeElement, SymbolTableArena> {
                 );
                 self.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
             }
+            ForStat => {
+                let symbol_type = self.make_type_from_child(node_index, 0, Vec::new());
+                let name = self.get_child_lexeme(node_index, 1);
+                let table_index = self.symbol_table_arena.new_symbol_table(name.clone());
+                let entry_index = self.symbol_table_arena.new_symbol_table_entry(
+                    name,
+                    SymbolKind::Variable(symbol_type),
+                    None,
+                );
+                self.add_entry_to_table(table_index, entry_index)?;
+                self.get_mut_element(node_index).symbol_table = Some(table_index);
+            }
             _ => {}
         };
         Ok(())
     }
 
-    fn get_type(&self, node_index: usize, child_index: usize, indices: Vec<usize>) -> SymbolType {
+    fn make_type_from_child(
+        &self,
+        node_index: usize,
+        child_index: usize,
+        indices: Vec<usize>,
+    ) -> SymbolType {
         SymbolType::new(
             &self
                 .get_element(self.get_children(node_index)[child_index])
                 .clone()
-                .data
+                .token
+                .unwrap()
+                .lexeme
                 .unwrap(),
             indices,
         )
@@ -288,7 +343,9 @@ impl Tree<NodeElement, SymbolTableArena> {
     fn get_index(&self, node_index: usize) -> usize {
         self.get_element(node_index)
             .clone()
-            .data
+            .token
+            .unwrap()
+            .lexeme
             .unwrap()
             .parse::<usize>()
             .unwrap()

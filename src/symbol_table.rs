@@ -5,7 +5,7 @@ const integer: &str = "integer";
 const float: &str = "float";
 const none: &str = "None";
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SymbolType {
     Integer(Vec<usize>),
     Float(Vec<usize>),
@@ -28,8 +28,8 @@ impl SymbolType {
     pub fn new(symbol_type: &str, indices: Vec<usize>) -> Self {
         use SymbolType::*;
         match symbol_type {
-            "Integer" => Integer(indices),
-            "Float" => Float(indices),
+            "integer" => Integer(indices),
+            "float" => Float(indices),
             _ => Class(symbol_type.to_string(), indices),
         }
     }
@@ -52,7 +52,7 @@ impl Display for SymbolType {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SymbolKind {
     Class,
     Function(Option<SymbolType>, Vec<SymbolType>),
@@ -194,6 +194,7 @@ impl SymbolTableArena {
     }
 }
 
+#[derive(Debug)]
 pub struct SymbolTable {
     index: usize,
     pub name: String,
@@ -215,7 +216,7 @@ impl Display for SymbolTable {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SymbolTableEntry {
     pub name: String,
     pub kind: SymbolKind,
