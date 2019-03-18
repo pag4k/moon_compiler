@@ -5,7 +5,6 @@ class Utility : InheritedUtility {
   integer var1[4][5][7][8][9][1][0];
   float var2;
   //integer member1;
-  integer findMax(integer aray[100]);
   integer findMin(integer array[100]);};
 
 integer Utility::findMax(integer array[100]){
@@ -28,7 +27,7 @@ integer Utility::findMin(integer array[100]){
         minValue = array[idx];}
       else{};
   };
-  return (1);};
+  return (minValue);};
 
 integer randomize(){
   integer value;
@@ -54,4 +53,3 @@ main {
   arrayUtility[utility.var1[1][2][3][4][5][6][idx+maxValue]][1][1][1].var2 = 2.5;
   write(maxValue);
   write(minValue);};
-

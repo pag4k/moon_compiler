@@ -1,28 +1,23 @@
 use crate::ast_node::*;
-use crate::semantic_analysis::*;
+use crate::semantic_error::*;
 use crate::symbol_table::*;
 use crate::tree::*;
 
 impl Tree<NodeElement, SymbolTableArena> {
-    pub fn generate_symbol_table(&mut self) -> Result<Vec<SemanticWarning>, SemanticError> {
-        //FIXME: Verify if there is a root node.
-        let mut semantic_warnings: Vec<SemanticWarning> = Vec::new();
-        self.create_symbol_table(&mut semantic_warnings, self.root.unwrap())?;
-        Ok(semantic_warnings.to_vec())
+    pub fn generate_symbol_table(&mut self) -> Vec<SemanticError> {
+        let mut semantic_errors: Vec<SemanticError> = Vec::new();
+        self.create_symbol_table(&mut semantic_errors, self.root.unwrap());
+        semantic_errors
     }
 
-    fn create_symbol_table(
-        &mut self,
-        semantic_warnings: &mut Vec<SemanticWarning>,
-        node_index: usize,
-    ) -> Result<(), SemanticError> {
+    fn create_symbol_table(&mut self, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
         use NodeType::*;
 
         for child_index in self.get_children(node_index).to_vec() {
-            self.create_symbol_table(semantic_warnings, child_index)?;
+            self.create_symbol_table(semantic_errors, child_index);
         }
 
-        match self.get_element(node_index).node_type {
+        match self.get_note_type(node_index) {
             Prog => {
                 let table_index = self
                     .symbol_table_arena
@@ -34,121 +29,16 @@ impl Tree<NodeElement, SymbolTableArena> {
 
                 // Add classes.
                 for node_index in self.get_children_of_child(node_index, 0) {
-                    let class_table_index = self.get_element(node_index).symbol_table.unwrap();
-                    let class_name = self
-                        .symbol_table_arena
-                        .get_symbol_table(class_table_index)
-                        .name
-                        .clone();
-                    let entry_index = self.get_element(node_index).symbol_table_entry.unwrap();
-                    self.add_entry_to_table(table_index, entry_index)?;
+                    if let Err(error) = self.add_entry_to_table(table_index, node_index) {
+                        semantic_errors.push(error);
+                    }
                 }
 
                 // Add functions.
                 // Here we assume that the list of classes is complete to validate types.
-                for node_index in self.get_children_of_child(node_index, 1) {
-                    let function_definition_table_index =
-                        self.get_element(node_index).symbol_table.unwrap();
-                    let function_definition_table_entry_index =
-                        self.get_element(node_index).symbol_table_entry.unwrap();
-                    let function_name = self
-                        .symbol_table_arena
-                        .get_symbol_table(function_definition_table_index)
-                        .name
-                        .clone();
-                    match self
-                        .get_element(self.get_children(node_index)[1])
-                        .token
-                        .clone()
-                    {
-                        // If scope, link it in its class.
-                        Some(token) => {
-                            let class_name = token.lexeme.unwrap();
-                            match self.find_class_symbol_table(&class_name) {
-                                Some(class_table_index) => {
-                                    match self
-                                        .find_function_in_table(class_table_index, &function_name)
-                                    {
-                                        Some(function_declaration_entry_index) => {
-                                            // Get a clone of the definition entry and remore link.
-                                            let mut function_definition_entry =
-                                                (*self.symbol_table_arena.get_symbol_table_entry(
-                                                    function_declaration_entry_index,
-                                                ))
-                                                .clone();
-                                            function_definition_entry.link = None;
-                                            // Get a clone of the definition entry.
-                                            let function_declaration_entry =
-                                                (*self.symbol_table_arena.get_symbol_table_entry(
-                                                    function_declaration_entry_index,
-                                                ))
-                                                .clone();
-                                            // Compare declaration and definition, assumin neither has a link.
-                                            if function_declaration_entry
-                                                == function_definition_entry
-                                            {
-                                                self.symbol_table_arena
-                                                    .get_mut_symbol_table_entry(
-                                                        function_declaration_entry_index,
-                                                    )
-                                                    .link = Some(function_definition_table_index);
-                                            } else {
-                                                return Err(
-                                                SemanticError::MemberFunctionDefDoesNotMatchDecl(
-                                                    function_name,
-                                                ),
-                                            );
-                                            }
-                                        }
-                                        None => {
-                                            return Err(
-                                                SemanticError::MemberFunctionDefDoesNotHaveDecl(
-                                                    class_name,
-                                                    function_name,
-                                                ),
-                                            );
-                                        }
-                                    }
-                                }
-                                None => {
-                                    return Err(SemanticError::ClassNotFound(class_name));
-                                }
-                            }
-                        }
-                        // If no scope, add to global.
-                        None => {
-                            self.add_entry_to_table(
-                                table_index,
-                                function_definition_table_entry_index,
-                            )?;
-                        }
-                    }
-
-                    // Check if return value and parameters are valid
-                    let function_symbol_enty = self
-                        .symbol_table_arena
-                        .get_symbol_table_entry(function_definition_table_entry_index);
-                    //dbg!(&function_symbol_enty);
-                    match function_symbol_enty.kind.clone() {
-                        SymbolKind::Function(return_type, parameter_types) => {
-                            if let Some(return_symbole_type) = return_type {
-                                if let Err(class_name) =
-                                    self.get_valid_class_table_from_type(&return_symbole_type)
-                                {
-                                    // FIXME: ADD ERROR ABOUT RETURN TYPE
-                                    return Err(SemanticError::ClassNotFound(class_name));
-                                }
-                            }
-                            for parameter_type in parameter_types {
-                                if let Err(class_name) =
-                                    self.get_valid_class_table_from_type(&parameter_type)
-                                {
-                                    // FIXME: ADD ERROR ABOUT PARAMETER TYPE
-                                    return Err(SemanticError::ClassNotFound(class_name));
-                                }
-                            }
-                        }
-                        _ => unreachable!(),
+                for function_node_index in self.get_children_of_child(node_index, 1) {
+                    if let Err(error) = self.add_function(function_node_index, table_index) {
+                        semantic_errors.push(error);
                     }
                 }
 
@@ -165,15 +55,23 @@ impl Tree<NodeElement, SymbolTableArena> {
                     SymbolKind::Function(None, Vec::new()),
                     Some(program_table_index),
                 );
-                self.add_entry_to_table(table_index, entry_index)?;
                 self.get_mut_element(block_node_index).symbol_table_entry = Some(entry_index);
+                if let Err(error) = self.add_entry_to_table(table_index, block_node_index) {
+                    semantic_errors.push(error);
+                }
 
                 // Get variables
                 for variable_index in self.get_children(block_node_index).to_vec() {
-                    if let Some(entry_index) =
-                        self.get_mut_element(variable_index).symbol_table_entry
+                    if self
+                        .get_mut_element(variable_index)
+                        .symbol_table_entry
+                        .is_some()
                     {
-                        self.add_entry_to_table(program_table_index, entry_index)?;
+                        if let Err(error) =
+                            self.add_entry_to_table(program_table_index, variable_index)
+                        {
+                            semantic_errors.push(error);
+                        }
                     }
                 }
             }
@@ -190,12 +88,12 @@ impl Tree<NodeElement, SymbolTableArena> {
                 );
                 self.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
 
-                // Get variables
-                for variable_index in self.get_children_of_child(node_index, 2) {
-                    if let Some(entry_index) =
-                        self.get_mut_element(variable_index).symbol_table_entry
-                    {
-                        self.add_entry_to_table(table_index, entry_index)?;
+                // Get members
+                for member_index in self.get_children_of_child(node_index, 2) {
+                    if self.get_element(member_index).symbol_table_entry.is_some() {
+                        if let Err(error) = self.add_entry_to_table(table_index, member_index) {
+                            semantic_errors.push(error);
+                        }
                     }
                 }
             }
@@ -226,15 +124,21 @@ impl Tree<NodeElement, SymbolTableArena> {
                     };
 
                     parameters.push(parameter_type.clone());
-                    self.add_entry_to_table(table_index, entry_index)?;
+                    if let Err(error) = self.add_entry_to_table(table_index, parameter_index) {
+                        semantic_errors.push(error);
+                    }
                 }
 
                 // Get variables
                 for variable_index in self.get_children_of_child(node_index, 4) {
-                    if let Some(entry_index) =
-                        self.get_mut_element(variable_index).symbol_table_entry
+                    if self
+                        .get_mut_element(variable_index)
+                        .symbol_table_entry
+                        .is_some()
                     {
-                        self.add_entry_to_table(table_index, entry_index)?;
+                        if let Err(error) = self.add_entry_to_table(table_index, variable_index) {
+                            semantic_errors.push(error);
+                        }
                     }
                 }
 
@@ -314,12 +218,16 @@ impl Tree<NodeElement, SymbolTableArena> {
                     SymbolKind::Variable(symbol_type),
                     None,
                 );
-                self.add_entry_to_table(table_index, entry_index)?;
+                let first_child_index = self.get_children(node_index)[0];
+
+                self.get_mut_element(first_child_index).symbol_table_entry = Some(entry_index);
+                if let Err(error) = self.add_entry_to_table(table_index, first_child_index) {
+                    semantic_errors.push(error);
+                }
                 self.get_mut_element(node_index).symbol_table = Some(table_index);
             }
             _ => {}
         };
-        Ok(())
     }
 
     fn make_type_from_child(
@@ -349,5 +257,82 @@ impl Tree<NodeElement, SymbolTableArena> {
             .unwrap()
             .parse::<usize>()
             .unwrap()
+    }
+
+    fn add_function(
+        &mut self,
+        function_node_index: usize,
+        table_index: usize,
+    ) -> Result<(), SemanticError> {
+        let function_definition_table_index =
+            self.get_element(function_node_index).symbol_table.unwrap();
+        let function_definition_table_entry_index = self
+            .get_element(function_node_index)
+            .symbol_table_entry
+            .unwrap();
+        let function_name = self
+            .symbol_table_arena
+            .get_symbol_table(function_definition_table_index)
+            .name
+            .clone();
+
+        match self
+            .get_element(self.get_children(function_node_index)[1])
+            .token
+            .clone()
+        {
+            // If scope, link it in its class.
+            Some(token) => {
+                let class_name = token.lexeme.clone().unwrap();
+                let class_table_index = match self.find_class_symbol_table(&class_name) {
+                    Some(class_table_index) => class_table_index,
+                    None => {
+                        return Err(SemanticError::UndefinedClass(
+                            self.get_token(self.get_children(function_node_index)[1]),
+                        ));
+                    }
+                };
+                match self.find_function_in_table(class_table_index, &function_name) {
+                    Some(function_declaration_entry_index) => {
+                        // Get a clone of the definition entry and remore link.
+                        let mut function_definition_entry = (*self
+                            .symbol_table_arena
+                            .get_symbol_table_entry(function_definition_table_entry_index))
+                        .clone();
+                        function_definition_entry.link = None;
+                        // Get a clone of the definition entry.
+                        let function_declaration_entry = (*self
+                            .symbol_table_arena
+                            .get_symbol_table_entry(function_declaration_entry_index))
+                        .clone();
+                        // Compare declaration and definition, assumin neither has a link.
+                        if function_declaration_entry == function_definition_entry {
+                            self.symbol_table_arena
+                                .get_mut_symbol_table_entry(function_declaration_entry_index)
+                                .link = Some(function_definition_table_index);
+                            return Ok(());
+                        } else {
+                            return Err(SemanticError::MismatchMemberFunctionDeclAndDef(
+                                self.get_leftmost_token(function_node_index),
+                                function_name.clone(),
+                                function_declaration_entry.kind,
+                                function_definition_entry.kind,
+                            ));
+                        }
+                    }
+                    None => {
+                        return Err(SemanticError::MemberFunctionDefDoesNotHaveDecl(
+                            self.get_leftmost_token(function_node_index),
+                            function_name.clone(),
+                        ));
+                    }
+                }
+            }
+            // If no scope, add to global.
+            None => {
+                self.add_entry_to_table(table_index, function_node_index)?;
+            }
+        }
+        Ok(())
     }
 }

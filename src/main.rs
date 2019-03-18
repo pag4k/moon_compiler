@@ -5,30 +5,34 @@ mod grammar;
 mod language;
 mod lexical_analyzer;
 mod lexical_analyzer_table;
+mod lexical_error;
 mod nfa_generator;
-mod semantic_analysis;
+mod semantic_analysis_common;
 mod semantic_class_checker;
+mod semantic_error;
 mod semantic_function_checker;
 mod symbol_table;
 mod symbol_table_generator;
 mod syntactic_analyzer;
 mod syntactic_analyzer_table;
+mod syntactic_error;
 mod tree;
 mod tree_dot_printer;
 mod type_checker;
 
-use ast_node::*;
 use grammar::*;
 use language::*;
 use lexical_analyzer::*;
-use semantic_class_checker::*;
+use semantic_error::*;
 use std::env;
 use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 use syntactic_analyzer::*;
-use type_checker::*;
+use syntactic_error::*;
+
+use std::fmt::{Display, Formatter};
 
 fn main() {
     // Get the command line arguments.
@@ -78,6 +82,19 @@ fn main() {
         }
     };
 
+    let symbol_table_filename = "symbol_table.txt";
+    let path = Path::new(symbol_table_filename);
+    let mut symbol_table_file = match File::create(&path) {
+        Ok(file) => file,
+        Err(_) => {
+            println!(
+                "ERROR: Something went wrong creating symbol table file: {}. Exiting...",
+                symbol_table_filename
+            );
+            return;
+        }
+    };
+
     // Create LexicalAnalyzer and iterate over the tokens.
     let lexical_analyzer = LexicalAnalyzer::from_string(&source);
     let mut tokens: Vec<Token> = Vec::new();
@@ -100,20 +117,11 @@ fn main() {
         }
     }
 
-    if lexical_errors.is_empty() {
-        println!("Lexical analysis completed succesfully!")
-    } else {
-        println!(
-            "ERROR: Lexical analyzer found {} errors:",
-            lexical_errors.len()
-        );
-        for (n, error) in lexical_errors.iter().enumerate() {
-            println!("{}. {}", n + 1, error);
-            error_file
-                .write_fmt(format_args!("{}\n", error))
-                .expect("Could not write to error file.");
-        }
+    if tokens.is_empty() {
+        println!("Error: Empty program. Exiting...");
         return;
+    } else {
+        println!("Lexical analysis completed.");
     }
 
     let grammar_filename = "grammar.txt";
@@ -153,9 +161,8 @@ fn main() {
         }
     };
 
-    let mut ast = match syntactic_analyzer.parse(&tokens) {
-        Ok((ast, mut derivation_table)) => {
-            println!("Parse completed succesfully!");
+    let (mut ast, syntactic_errors) = match syntactic_analyzer.parse(tokens) {
+        Ok((ast, mut derivation_table, syntactic_errors)) => {
             // if tokens
             //     .iter()
             //     .map(|token| GrammarSymbol::Terminal(token.token_type))
@@ -193,19 +200,32 @@ fn main() {
             //
             //     println!("Result of derivation is equal to the token stream! Printed in 'derivation.txt.'");
             // }
-            ast
+
+            (ast, syntactic_errors)
         }
-        Err(syntactic_errors) => {
-            println!("ERROR: Parser found {} error(s):", syntactic_errors.len());
-            for (n, error) in syntactic_errors.iter().enumerate() {
-                println!("{}. {}", n + 1, error);
-                error_file
-                    .write_fmt(format_args!("{}\n", error))
-                    .expect("Could not write to error file.");
-            }
+        Err(ast_error) => {
+            println!(
+                "ERROR: Abstract syntaxt tree error: {}. Exiting...",
+                ast_error
+            );
             return;
         }
     };
+
+    println!("Syntactic analysis completed.");
+
+    if syntactic_errors
+        .iter()
+        .any(|syntactic_error| syntactic_error.failed_to_recover())
+    {
+        print_errors(
+            lexical_errors,
+            syntactic_errors,
+            Vec::new(),
+            &mut error_file,
+        );
+        return;
+    }
 
     let ast_filename = "ast.gv";
     match ast.print_tree_to(ast_filename) {
@@ -213,32 +233,160 @@ fn main() {
         Err(error) => println!("{}", error),
     };
 
-    if let Err(error) = ast.generate_symbol_table() {
-        dbg!(error);
+    let semantic_errors = ast.generate_symbol_table();
+
+    println!("Symbol table generation completed.");
+
+    if !semantic_errors.is_empty() {
+        print_errors(
+            lexical_errors,
+            syntactic_errors,
+            semantic_errors,
+            &mut error_file,
+        );
+        print_symbol_table(&ast, &mut symbol_table_file);
         return;
     }
 
-    match ast.semantic_class_checker() {
-        Ok(semantic_warnings) => {
-            dbg!(semantic_warnings);
+    let semantic_warning_and_errors = ast.semantic_class_checker();
+    let mut semantic_warnings = semantic_warning_and_errors.0;
+    let semantic_errors = semantic_warning_and_errors.1;
+    if !semantic_warnings.is_empty() {
+        semantic_warnings.sort_by_key(TokenLocation::get_location);
+        println!("Found {} warnings:", semantic_warnings.len());
+        for semantic_warning in semantic_warnings {
+            println!("{}", semantic_warning);
         }
-        Err(error) => {
-            dbg!(error);
-            return;
+    }
+
+    println!("Semantic class checking completed.");
+
+    if !semantic_errors.is_empty() {
+        print_errors(
+            lexical_errors,
+            syntactic_errors,
+            semantic_errors,
+            &mut error_file,
+        );
+        print_symbol_table(&ast, &mut symbol_table_file);
+        return;
+    }
+
+    let semantic_errors = ast.semantic_function_checker();
+
+    println!("Semantic function checking completed.");
+
+    if !semantic_errors.is_empty() {
+        print_errors(
+            lexical_errors,
+            syntactic_errors,
+            semantic_errors,
+            &mut error_file,
+        );
+        print_symbol_table(&ast, &mut symbol_table_file);
+        return;
+    }
+
+    let semantic_errors = ast.type_checker();
+
+    println!("Type checking completed.");
+
+    if !semantic_errors.is_empty() {
+        print_errors(
+            lexical_errors,
+            syntactic_errors,
+            semantic_errors,
+            &mut error_file,
+        );
+        print_symbol_table(&ast, &mut symbol_table_file);
+        return;
+    }
+
+    if !lexical_errors.is_empty() || !syntactic_errors.is_empty() {
+        print_errors(
+            lexical_errors,
+            syntactic_errors,
+            semantic_errors,
+            &mut error_file,
+        );
+    } else {
+        println!("Compilation completed without errors!");
+        print_symbol_table(&ast, &mut symbol_table_file);
+    }
+}
+
+enum Error {
+    Lexical(TokenError),
+    Syntactic(SyntacticError),
+    Semantic(SemanticError),
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        use Error::*;
+        match self {
+            Lexical(token_error) => write!(f, "{}", token_error),
+            Syntactic(syntactic_error) => write!(f, "{}", syntactic_error),
+            Semantic(semantic_error) => write!(f, "{}", semantic_error),
         }
     }
+}
 
-    if let Err(error) = ast.semantic_function_checker() {
-        dbg!(error);
-        return;
+impl TokenLocation for Error {
+    fn get_location(&self) -> Location {
+        use Error::*;
+        match self {
+            Lexical(token_error) => token_error.get_location(),
+            Syntactic(syntactic_error) => syntactic_error.get_location(),
+            Semantic(semantic_error) => semantic_error.get_location(),
+        }
     }
+}
 
-    if let Err(error) = ast.type_checker() {
-        dbg!(error);
-        return;
+fn print_errors(
+    lexical_errors: Vec<TokenError>,
+    syntactic_errors: Vec<SyntacticError>,
+    semantic_errors: Vec<SemanticError>,
+    error_file: &mut File,
+) {
+    use Error::*;
+    let mut errors = Vec::new();
+    errors.append(
+        lexical_errors
+            .into_iter()
+            .map(Lexical)
+            .collect::<Vec<Error>>()
+            .as_mut(),
+    );
+    errors.append(
+        syntactic_errors
+            .into_iter()
+            .map(Syntactic)
+            .collect::<Vec<Error>>()
+            .as_mut(),
+    );
+    errors.append(
+        semantic_errors
+            .into_iter()
+            .map(Semantic)
+            .collect::<Vec<Error>>()
+            .as_mut(),
+    );
+    errors.sort_by_key(TokenLocation::get_location);
+    println!("Found {} errors:", errors.len());
+    for error in errors {
+        println!("{}", error);
+        error_file
+            .write_fmt(format_args!("{}\n", error))
+            .expect("Could not write to error file.");
     }
+}
 
-    ast.symbol_table_arena.print();
-
-    //ast.semantic_checking();
+fn print_symbol_table(
+    ast: &tree::Tree<ast_node::NodeElement, symbol_table::SymbolTableArena>,
+    symbol_table_filename: &mut File,
+) {
+    symbol_table_filename
+        .write_fmt(format_args!("{} ", ast.symbol_table_arena.print()))
+        .expect("Could not write to symbol table file.");
 }

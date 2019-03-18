@@ -1,0 +1,31 @@
+SYMBOL TABLE: NAME: Global INDEX: 8
+0. Name: InheritedUtility, Class, Link: Some(0)
+1. Name: Utility, Class, Link: Some(1)
+2. Name: randomize, Function: Return Type: integer, Parameters: , Link: Some(6)
+3. Name: Program, Function: Return Type: None, Parameters: , Link: Some(9)
+SYMBOL TABLE: NAME: InheritedUtility INDEX: 0
+0. Name: member1, Variable: integer, Link: None
+SYMBOL TABLE: NAME: Utility INDEX: 1
+0. Name: var1, Variable: integer[4][5][7][8][9][1][0], Link: None
+1. Name: findMax, Function: Return Type: integer, Parameters: integer[100], Link: Some(3)
+2. Name: findMin, Function: Return Type: integer, Parameters: integer[100], Link: Some(5)
+3. Name: InheritedUtility, Class, Link: Some(0)
+SYMBOL TABLE: NAME: findMax INDEX: 3
+0. Name: array, Parameter: integer[100], Link: None
+1. Name: maxValue, Variable: integer, Link: None
+2. Name: idx, Variable: integer, Link: None
+SYMBOL TABLE: NAME: findMin INDEX: 5
+0. Name: array, Parameter: integer[100], Link: None
+1. Name: minValue, Variable: integer, Link: None
+2. Name: idx, Variable: integer, Link: None
+SYMBOL TABLE: NAME: randomize INDEX: 6
+0. Name: value, Variable: integer, Link: None
+1. Name: utility, Variable: Utility, Link: None
+SYMBOL TABLE: NAME: Program INDEX: 9
+0. Name: sample, Variable: integer[100], Link: None
+1. Name: idx, Variable: integer, Link: None
+2. Name: maxValue, Variable: integer, Link: None
+3. Name: minValue, Variable: integer, Link: None
+4. Name: utility, Variable: Utility, Link: None
+5. Name: arrayUtility, Variable: Utility[2][3][6][7], Link: None
+ 

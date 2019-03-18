@@ -1,74 +1,15 @@
 use crate::ast_node::*;
-use crate::language::*;
-use crate::lexical_analyzer::*;
+use crate::semantic_error::*;
 use crate::symbol_table::*;
 use crate::tree::*;
 
-use std::str::FromStr;
-
-#[derive(Debug)]
-pub enum SemanticError {
-    //Class errors
-    ClassNotFound(String),
-    ParentClassNotFound(String, String),
-    CircularClassDependency(Vec<String>),
-    NumericalValuesHaveNoMember(String),
-    //Member function errors
-    MemberFunctionDefDoesNotMatchDecl(String),
-    MemberFunctionDefDoesNotHaveDecl(String, String),
-    MemberFunctionDeclHasNotDef(String, String),
-    //Identifier errors
-    DuplicateIdentifier(String),
-    VariableUsedBeforeBeingDeclared(String),
-    UndefinedLocalVariable(String),
-    UndefinedFunction(String),
-    UndefinedFreeFunction(String),
-    UndefinedMemberVariable(String),
-    UndefinedMemberFunction(String),
-    UndefinedClass(String),
-    DifferentNumberOfDimension(String),
-    InvalidIndex(String),
-    //Type error
-    InvalidAddOperation,
-    InvalidMultOperation,
-    InvalidRelOperation,
-    CannotAssignFloatToInteger,
-    CannotAssignNumericalValueToClass(String),
-    CannotAssignClassToNumericalValue(String),
-    CannotAssignClasseToADifferentOne(String, String),
-    ShouldNotReturnFromMain,
-    ReturnTypeDoesNotMatchFuctionDeclaration(SymbolType, SymbolType),
-}
-
-#[derive(Debug, Clone)]
-pub enum SemanticWarning {
-    ShadowInheritedMemberVariable(String, String, String),
-    ShadowInheritedMemberFunction(String, String, String),
-}
-
 impl Tree<NodeElement, SymbolTableArena> {
-    pub fn get_token(&self, node_index: usize) -> Token {
-        self.get_element(node_index).token.clone().unwrap()
-    }
-
-    pub fn get_lexeme(&self, node_index: usize) -> String {
-        self.get_element(node_index)
-            .token
-            .clone()
-            .unwrap()
-            .lexeme
-            .unwrap()
-    }
-
-    pub fn get_child_lexeme(&self, node_index: usize, child_index: usize) -> String {
-        self.get_lexeme(self.get_children(node_index)[child_index])
-    }
-
     pub fn check_duplicate(
         &self,
         table_index: usize,
-        entry_index: usize,
+        node_index: usize,
     ) -> Result<(), SemanticError> {
+        let entry_index = self.get_element(node_index).symbol_table_entry.unwrap();
         let name = &self
             .symbol_table_arena
             .get_symbol_table_entry(entry_index)
@@ -78,7 +19,14 @@ impl Tree<NodeElement, SymbolTableArena> {
             .get_symbol_table_entries(table_index)
         {
             if self.symbol_table_arena.get_symbol_table_entry(*entry).name == *name {
-                return Err(SemanticError::DuplicateIdentifier(name.to_string()));
+                return Err(SemanticError::DuplicateIdentifier(
+                    self.get_leftmost_token(node_index),
+                    self.symbol_table_arena
+                        .get_symbol_table(table_index)
+                        .name
+                        .clone(),
+                    name.clone(),
+                ));
             }
         }
 
@@ -88,9 +36,10 @@ impl Tree<NodeElement, SymbolTableArena> {
     pub fn add_entry_to_table(
         &mut self,
         table_index: usize,
-        entry_index: usize,
+        node_index: usize,
     ) -> Result<(), SemanticError> {
-        self.check_duplicate(table_index, entry_index)?;
+        self.check_duplicate(table_index, node_index)?;
+        let entry_index = self.get_element(node_index).symbol_table_entry.unwrap();
         self.symbol_table_arena.add_entry(table_index, entry_index);
 
         Ok(())
@@ -219,19 +168,19 @@ impl Tree<NodeElement, SymbolTableArena> {
         }
     }
 
-    pub fn get_valid_class_table_from_name(
-        &self,
-        type_name: &String,
-    ) -> Result<Option<usize>, String> {
-        if KeywordType::from_str(&type_name).is_err() {
-            match self.find_class_symbol_table(type_name) {
-                Some(entry_index) => Ok(Some(entry_index)),
-                None => Err(type_name.clone()),
-            }
-        } else {
-            Ok(None)
-        }
-    }
+    // pub fn get_valid_class_table_from_name(
+    //     &self,
+    //     type_name: &String,
+    // ) -> Result<Option<usize>, String> {
+    //     if KeywordType::from_str(&type_name).is_err() {
+    //         match self.find_class_symbol_table(type_name) {
+    //             Some(entry_index) => Ok(Some(entry_index)),
+    //             None => Err(type_name.clone()),
+    //         }
+    //     } else {
+    //         Ok(None)
+    //     }
+    // }
 
     pub fn get_valid_class_table_from_entry(
         &self,
@@ -255,61 +204,81 @@ impl Tree<NodeElement, SymbolTableArena> {
         }
     }
 
-    // pub fn check_indices(
-    //     &self,
-    //     variable_declaration_entry_index: usize,
-    //     data_member_node: usize,
-    // ) -> Result<(), SemanticError> {
-    //     use SymbolKind::*;
+    pub fn is_array_type(
+        &self,
+        symbol_entry_index: usize,
+        data_member_node: usize,
+    ) -> Result<bool, SemanticError> {
+        use SymbolKind::*;
 
-    //     let symbol_entry = self
-    //         .symbol_table_arena
-    //         .get_symbol_table_entry(variable_declaration_entry_index);
-    //     dbg!(&symbol_entry);
-    //     let dimension_list = match symbol_entry.clone().kind {
-    //         Variable(symbol_type) | Parameter(symbol_type) => match symbol_type {
-    //             SymbolType::Integer(dimension_list) => dimension_list,
-    //             SymbolType::Float(dimension_list) => dimension_list,
-    //             SymbolType::Class(_, dimension_list) => dimension_list,
-    //         },
-    //         _ => unreachable!(),
-    //     };
-    //     dbg!(&self
-    //         .get_children_of_child(data_member_node, 1)
-    //         .iter()
-    //         .map(|&node_index| self
-    //             .get_element(node_index)
-    //             .clone()
-    //             .data
-    //             .unwrap()
-    //             .parse::<usize>()));
-    //     let index_list: Vec<usize> = self
-    //         .get_children_of_child(data_member_node, 1)
-    //         .iter()
-    //         .map(|&node_index| {
-    //             self.get_element(node_index)
-    //                 .clone()
-    //                 .data
-    //                 .expect("Node has no data.")
-    //                 .parse::<usize>()
-    //                 .expect("Index is not an integer.")
-    //         })
-    //         .collect();
-    //     dbg!(&index_list);
-    //     if dimension_list.len() != index_list.len() {
-    //         return Err(SemanticError::DifferentNumberOfDimension(
-    //             symbol_entry.name.clone(),
-    //         ));
-    //     }
+        let symbol_entry = self
+            .symbol_table_arena
+            .get_symbol_table_entry(symbol_entry_index);
+        let dimension_list_len = match symbol_entry.clone().kind {
+            Variable(symbol_type) | Parameter(symbol_type) => {
+                symbol_type.get_dimension_list().len()
+            }
+            _ => unreachable!(),
+        };
 
-    //     if !dimension_list
-    //         .iter()
-    //         .zip(index_list.iter())
-    //         .all(|(dimension, index)| index < dimension)
-    //     {
-    //         return Err(SemanticError::InvalidIndex(symbol_entry.name.clone()));
-    //     }
+        let index_list_len = self.get_children_of_child(data_member_node, 1).len();
+        match (dimension_list_len == 0, index_list_len == 0) {
+            (true, true) => Ok(false),
+            (false, true) => Ok(true),
+            (true, false) => Err(SemanticError::MismatchedNumberOfDimension(
+                self.get_leftmost_token(data_member_node),
+                dimension_list_len,
+                index_list_len,
+            )),
+            (false, false) => Ok(false),
+        }
+    }
 
-    //     Ok(())
-    // }
+    pub fn check_number_of_dimensions(
+        &self,
+        symbol_entry_index: usize,
+        data_member_node: usize,
+    ) -> Result<(), SemanticError> {
+        use SymbolKind::*;
+
+        let symbol_entry = self
+            .symbol_table_arena
+            .get_symbol_table_entry(symbol_entry_index);
+        let dimension_list_len = match symbol_entry.clone().kind {
+            Variable(symbol_type) | Parameter(symbol_type) => {
+                symbol_type.get_dimension_list().len()
+            }
+            _ => unreachable!(),
+        };
+
+        let index_list_len = self.get_children_of_child(data_member_node, 1).len();
+        if dimension_list_len != index_list_len {
+            return Err(SemanticError::MismatchedNumberOfDimension(
+                self.get_leftmost_token(data_member_node),
+                dimension_list_len,
+                index_list_len,
+            ));
+        }
+
+        Ok(())
+    }
+
+    pub fn get_node_index_with_entry_index(
+        &self,
+        node_index: usize,
+        entry_index: usize,
+    ) -> Option<usize> {
+        if let Some(current_entry_index) = self.get_element(node_index).symbol_table_entry {
+            if current_entry_index == entry_index {
+                return Some(node_index);
+            }
+        }
+        for node_child_index in self.get_children(node_index) {
+            let node_index = self.get_node_index_with_entry_index(*node_child_index, entry_index);
+            if node_index.is_some() {
+                return node_index;
+            }
+        }
+        None
+    }
 }

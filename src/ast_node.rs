@@ -1,6 +1,5 @@
 use crate::lexical_analyzer::*;
 use crate::symbol_table::*;
-use crate::syntactic_analyzer::*;
 use crate::tree::Tree;
 
 use std::fmt::{Display, Formatter};
@@ -45,11 +44,53 @@ pub enum NodeType {
     FParam,
     FParamList,
     AParamList,
+    EndProgram,
 }
 
 impl Display for NodeType {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         write!(f, "{:?}", self)
+    }
+}
+
+pub enum ASTError {
+    TokenStackIsEmpty(NodeType),
+    NoNodeOnStackOne(NodeType, NodeType),
+    NoNodeOnStackList(NodeType, Vec<NodeType>),
+    WrongNodeOnStackOne(NodeType, NodeType, NodeType),
+    WrongNodeOnStackList(NodeType, Vec<NodeType>, NodeType),
+}
+
+impl Display for ASTError {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        use ASTError::*;
+        match self {
+            TokenStackIsEmpty(node_type) => write!(
+                f,
+                "AST error: No token found on token stack to make node: {}.",
+                node_type
+            ),
+            NoNodeOnStackOne(node_type, child_node_type) => write!(
+                f,
+                "AST error: Trying to make node {} and is expecting {}, but there is node on stack.",
+                node_type, child_node_type
+            ),
+            NoNodeOnStackList(node_type, node_list) => write!(
+                f,
+                "AST error: Trying to make node {} and is expecting {:?}, but there is node on stack.",
+                node_type, node_list
+            ),
+            WrongNodeOnStackOne(node_type, child_node_type, actual_node_type) => write!(
+                f,
+                "AST error: Trying to make node {} and is expecting {}, but found {} on stack.",
+                node_type, child_node_type, actual_node_type
+            ),
+            WrongNodeOnStackList(node_type, node_list, actual_node_type) => write!(
+                f,
+                "AST error: Trying to make node {} and is expecting {:?}, but found {} on stack.",
+                node_type, node_list, actual_node_type
+            ),
+        }
     }
 }
 
@@ -94,7 +135,7 @@ impl NodeType {
             FuncDecl => List(vec![One(Type), One(Id), One(FParamList)]),
             FuncDef => List(vec![
                 One(Type),
-                OneOf(vec![Id, Epsilon]),
+                OneOf(vec![Type, Epsilon]),
                 One(Id),
                 One(FParamList),
                 One(StatBlock),
@@ -137,6 +178,7 @@ impl NodeType {
             FParam => List(vec![One(Type), One(Id), One(DimList)]),
             FParamList => Single(Many(FParam)),
             AParamList => Single(ManyOf(expr.clone())),
+            EndProgram => unreachable!(),
         }
     }
 
@@ -191,6 +233,7 @@ impl FromStr for NodeType {
             "#MakeNodeFParam" => Ok(FParam),
             "#MakeNodeFParamList" => Ok(FParamList),
             "#MakeNodeAParamList" => Ok(AParamList),
+            "#EndProgram" => Ok(EndProgram),
             _ => Err(s.to_string()),
         }
     }
@@ -212,20 +255,61 @@ impl Display for NodeElement {
                 Some(data) => write!(f, "{:?}: {}", self.node_type, data),
                 None => write!(f, "{:?}", self.node_type),
             },
-            None => write!(f, ""),
+            None => write!(f, "{:?}", self.node_type),
         }
     }
 }
 
 impl Tree<NodeElement, SymbolTableArena> {
+    pub fn get_token(&self, node_index: usize) -> Token {
+        self.get_element(node_index).token.clone().unwrap()
+    }
+
+    pub fn get_child_token(&self, node_index: usize, child_index: usize) -> Token {
+        self.get_token(self.get_children(node_index)[child_index])
+    }
+
+    pub fn get_leftmost_token(&self, node_index: usize) -> Token {
+        let child_index_list = self.get_children(node_index);
+        if child_index_list.is_empty() {
+            self.get_token(node_index)
+        } else {
+            self.get_leftmost_token(child_index_list[0])
+        }
+    }
+
+    pub fn get_lexeme(&self, node_index: usize) -> String {
+        self.get_element(node_index)
+            .token
+            .clone()
+            .unwrap()
+            .lexeme
+            .unwrap()
+    }
+
+    pub fn get_child_lexeme(&self, node_index: usize, child_index: usize) -> String {
+        self.get_lexeme(self.get_children(node_index)[child_index])
+    }
+
+    pub fn get_note_type(&self, node_index: usize) -> NodeType {
+        self.get_element(node_index).node_type
+    }
+
+    pub fn get_child_data_type(&self, node_index: usize, child_index: usize) -> SymbolType {
+        self.get_element(self.get_children(node_index)[child_index])
+            .clone()
+            .data_type
+            .unwrap()
+    }
+
     pub fn make_node(
         &mut self,
         semantic_stack: &mut Vec<usize>,
         token_stack: &mut Vec<Token>,
         new_node_type: NodeType,
-    ) -> Result<(), SyntacticError> {
+    ) -> Result<(), ASTError> {
+        use ASTError::*;
         use NodeChildren::*;
-        use SyntacticError::*;
 
         let new_node_id = self.new_node(NodeElement {
             node_type: new_node_type,
@@ -275,9 +359,9 @@ impl Tree<NodeElement, SymbolTableArena> {
         new_node_type: NodeType,
         new_node_id: usize,
         node_children_group: NodeChildrenGroup,
-    ) -> Result<(), SyntacticError> {
+    ) -> Result<(), ASTError> {
+        use ASTError::*;
         use NodeChildrenGroup::*;
-        use SyntacticError::*;
 
         match node_children_group {
             One(child_node_type) => {
@@ -287,7 +371,7 @@ impl Tree<NodeElement, SymbolTableArena> {
                             return Err(WrongNodeOnStackOne(
                                 new_node_type,
                                 child_node_type,
-                                self.get_element(top_node_id).node_type,
+                                self.get_note_type(top_node_id),
                             ));
                         }
                     }
@@ -301,7 +385,7 @@ impl Tree<NodeElement, SymbolTableArena> {
                             return Err(WrongNodeOnStackList(
                                 new_node_type,
                                 node_list,
-                                self.get_element(top_node_id).node_type,
+                                self.get_note_type(top_node_id),
                             ));
                         }
                     }
@@ -329,7 +413,7 @@ impl Tree<NodeElement, SymbolTableArena> {
     }
 
     fn add_one(&mut self, new_node_id: usize, node_type: NodeType, top_node_id: usize) -> bool {
-        if self.get_element(top_node_id).node_type == node_type {
+        if self.get_note_type(top_node_id) == node_type {
             self.add_left_child(new_node_id, top_node_id);
             true
         } else {
@@ -342,7 +426,7 @@ impl Tree<NodeElement, SymbolTableArena> {
         node_list: &[NodeType],
         top_node_id: usize,
     ) -> bool {
-        if node_list.contains(&self.get_element(top_node_id).node_type) {
+        if node_list.contains(&self.get_note_type(top_node_id)) {
             self.add_left_child(new_node_id, top_node_id);
             true
         } else {

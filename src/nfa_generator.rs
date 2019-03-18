@@ -1,6 +1,7 @@
 use crate::dot_generator::*;
 use crate::finite_accepter::*;
 use crate::language::*;
+use crate::lexical_error::*;
 
 use std::collections::{HashMap, HashSet};
 

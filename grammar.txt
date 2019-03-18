@@ -1,10 +1,10 @@
-prog                      -> classDeclList #MakeNodeClassDeclList funcDefList #MakeNodeFuncDefList 'main' funcBody ';' #MakeNodeProg
+prog                      -> classDeclList #MakeNodeClassDeclList funcDefList #MakeNodeFuncDefList 'main' funcBody ';' #MakeNodeProg #EndProgram
 classDecl                 -> 'class' 'id' #GetData #MakeNodeId inherListOp #MakeNodeInheritList '{' memberList '}' #MakeNodeMemberList ';' #MakeNodeClassDecl
 classDeclList             -> classDecl classDeclList
 classDeclList             -> EPSILON
 funcDecl                  -> type 'id' #GetData #MakeNodeId '(' fParamList #MakeNodeFParamList ')' ';' #MakeNodeFuncDecl
 funcHead                  -> type 'id' scopeOp '(' fParamList #MakeNodeFParamList ')'
-scopeOp                   -> #GetData #MakeNodeId  'sr' 'id' #GetData #MakeNodeId
+scopeOp                   -> #GetData #MakeNodeType  'sr' 'id' #GetData #MakeNodeId
 scopeOp                   -> #MakeNodeEpsilon #GetData #MakeNodeId
 funcDef                   -> funcHead funcBody ';' #MakeNodeFuncDef
 funcDefList               -> funcDef funcDefList

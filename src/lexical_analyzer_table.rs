@@ -1,5 +1,6 @@
 use crate::finite_accepter::*;
 use crate::language::*;
+use crate::lexical_error::*;
 use crate::nfa_generator::*;
 
 use std::collections::{HashMap, HashSet};

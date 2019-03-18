@@ -1,5 +1,6 @@
 use crate::language::*;
 use crate::lexical_analyzer_table::*;
+use crate::lexical_error::*;
 
 use std::fmt;
 use std::fmt::{Display, Formatter};
@@ -8,15 +9,20 @@ use std::str::Chars;
 use std::str::FromStr;
 
 /// Location ADT
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Location {
     line: usize,
     column: usize,
 }
+
 impl Display for Location {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "[line:{}, column:{}]", self.line, self.column)
     }
+}
+
+pub trait TokenLocation {
+    fn get_location(&self) -> Location;
 }
 
 /// Token ADT
@@ -26,6 +32,7 @@ pub struct Token {
     pub lexeme: Option<String>,
     pub location: Location,
 }
+
 impl Display for Token {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         if let Some(lexeme) = &self.lexeme {
@@ -53,15 +60,23 @@ pub struct TokenError {
     lexeme: String,
     location: Location,
 }
+
 impl Display for TokenError {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(
             f,
-            "[{}: '{}', {}]",
-            self.error_type, self.lexeme, self.location
+            "Lexical error at {}: \"{}\" -> {}.",
+            self.location, self.lexeme, self.error_type,
         )
     }
 }
+
+impl TokenLocation for TokenError {
+    fn get_location(&self) -> Location {
+        self.location
+    }
+}
+
 impl TokenError {
     /// Return a new TokenError
     fn new(error_type: LexicalError, lexeme: &str, location: Location) -> Self {

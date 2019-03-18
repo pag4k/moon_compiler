@@ -1,9 +1,8 @@
 use std::fmt::{Display, Formatter};
-use std::str::FromStr;
 
-const integer: &str = "integer";
-const float: &str = "float";
-const none: &str = "None";
+const INTEGER: &str = "integer";
+const FLOAT: &str = "float";
+const NONE: &str = "None";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SymbolType {
@@ -11,18 +10,6 @@ pub enum SymbolType {
     Float(Vec<usize>),
     Class(String, Vec<usize>),
 }
-
-// impl FromStr for SymbolType {
-//     type Err = String;
-//     fn from_str(s: &str) -> Result<Self, Self::Err> {
-//         use SymbolType::*;
-//         match s {
-//             "Integer" => Ok(Integer(Vec::new())),
-//             "Float" => Ok(Float(Vec::new())),
-//             _ => Ok(Class(s.to_string(), Vec::new())),
-//         }
-//     }
-// }
 
 impl SymbolType {
     pub fn new(symbol_type: &str, indices: Vec<usize>) -> Self {
@@ -33,14 +20,30 @@ impl SymbolType {
             _ => Class(symbol_type.to_string(), indices),
         }
     }
+    pub fn get_dimension_list(&self) -> Vec<usize> {
+        use SymbolType::*;
+        match self {
+            Integer(dimension_list) => dimension_list.clone(),
+            Float(dimension_list) => dimension_list.clone(),
+            Class(_, dimension_list) => dimension_list.clone(),
+        }
+    }
+    pub fn remove_dimensions(&mut self) -> Self {
+        use SymbolType::*;
+        match self {
+            Integer(_) => Integer(Vec::new()),
+            Float(_) => Float(Vec::new()),
+            Class(class_name, _) => Class(class_name.clone(), Vec::new()),
+        }
+    }
 }
 
 impl Display for SymbolType {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         use SymbolType::*;
         let (symbol_type, indices) = match self {
-            Integer(indices) => (integer.to_string(), indices),
-            Float(indices) => (float.to_string(), indices),
+            Integer(indices) => (INTEGER.to_string(), indices),
+            Float(indices) => (FLOAT.to_string(), indices),
             Class(name, indices) => (name.clone(), indices),
         };
         let mut indices_str = String::new();
@@ -64,7 +67,7 @@ impl Display for SymbolKind {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         use SymbolKind::*;
         let output = match self {
-            Class => format!("Class"),
+            Class => "Class".to_string(),
             Function(return_type, types) => {
                 let mut parameters = String::new();
                 for symbol_type in types.iter() {
@@ -76,7 +79,7 @@ impl Display for SymbolKind {
                     "Function: Return Type: {}, Parameters: {}",
                     match return_type {
                         Some(return_type) => format!("{}", return_type),
-                        None => none.to_string(),
+                        None => NONE.to_string(),
                     },
                     parameters
                 )
@@ -141,32 +144,32 @@ impl SymbolTableArena {
     pub fn get_mut_symbol_table_entry(&mut self, index: usize) -> &mut SymbolTableEntry {
         &mut self.symbol_table_entries[index]
     }
-    pub fn search(&self, name: &str) -> Option<(usize, usize)> {
-        let root = self.root?;
-        self.search_in_symbol_table(root, name)
-    }
-    pub fn search_in_symbol_table(&self, table_index: usize, name: &str) -> Option<(usize, usize)> {
-        let symbol_table_entries = self.get_symbol_table_entries(table_index);
-        for &entry_index in symbol_table_entries {
-            let entry = self.get_symbol_table_entry(entry_index);
-            if entry.link.is_some() {
-                let result = self.search_in_symbol_table(entry.link.unwrap(), name);
-                if result.is_some() {
-                    return result;
-                }
-            }
-        }
-        symbol_table_entries
-            .iter()
-            .find(|&&entry_index| self.get_symbol_table_entry(entry_index).name == name)
-            .map(|&entry_index| (table_index, entry_index))
+    // pub fn search(&self, name: &str) -> Option<(usize, usize)> {
+    //     let root = self.root?;
+    //     self.search_in_symbol_table(root, name)
+    // }
+    // pub fn search_in_symbol_table(&self, table_index: usize, name: &str) -> Option<(usize, usize)> {
+    //     let symbol_table_entries = self.get_symbol_table_entries(table_index);
+    //     for &entry_index in symbol_table_entries {
+    //         let entry = self.get_symbol_table_entry(entry_index);
+    //         if entry.link.is_some() {
+    //             let result = self.search_in_symbol_table(entry.link.unwrap(), name);
+    //             if result.is_some() {
+    //                 return result;
+    //             }
+    //         }
+    //     }
+    //     symbol_table_entries
+    //         .iter()
+    //         .find(|&&entry_index| self.get_symbol_table_entry(entry_index).name == name)
+    //         .map(|&entry_index| (table_index, entry_index))
+    // }
+
+    pub fn print(&self) -> String {
+        self.print_symbol_table(self.root.unwrap())
     }
 
-    pub fn print(&self) {
-        self.print_symbol_table(self.root.unwrap());
-    }
-
-    fn print_symbol_table(&self, index: usize) {
+    fn print_symbol_table(&self, index: usize) -> String {
         let mut output = String::new();
         let symbol_table = self.get_symbol_table(index);
         output.push_str(&format!(
@@ -180,7 +183,6 @@ impl SymbolTableArena {
                 self.get_symbol_table_entry(*entry)
             ));
         }
-        print!("{}", output);
         for entry in symbol_table.entries.iter() {
             if let Some(link_index) = self.get_symbol_table_entry(*entry).link {
                 if let SymbolKind::Class = self.get_symbol_table_entry(*entry).kind {
@@ -188,9 +190,10 @@ impl SymbolTableArena {
                         continue;
                     }
                 }
-                self.print_symbol_table(link_index);
+                output.push_str(&self.print_symbol_table(link_index));
             }
         }
+        output
     }
 }
 

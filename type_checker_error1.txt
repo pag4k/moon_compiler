@@ -5,8 +5,13 @@ class Utility : InheritedUtility {
   integer var1[4][5][7][8][9][1][0];
   float var2;
   //integer member1;
+  integer test(integer i1, integer i2);
   integer findMax(integer aray[100]);
-  integer findMin(integer array[100]);};
+  integer findMin(integer array[10]);};
+
+
+integer Utility::test(integer i1, integer i2){
+  return (0);};
 
 integer Utility::findMax(integer array[100]){
   integer maxValue;
@@ -19,16 +24,16 @@ integer Utility::findMax(integer array[100]){
   };
   return (maxValue);};
 
-integer Utility::findMin(integer array[100]){
+integer Utility::findMin(integer array[10]){
   integer minValue;
   integer idx;
-  minValue = array[99];
+  minValue = array[99.0];
     for( integer idx = 1; idx <= 99; idx = ( idx ) + 1) {
       if(8) then {
         minValue = array[idx];}
       else{};
   };
-  return (1);};
+  return (1.0);};
 
 integer randomize(){
   integer value;
@@ -40,18 +45,24 @@ integer randomize(){
 main {
   integer sample[100];
   integer idx;
+  idx = 5.0;
   integer maxValue;
   integer minValue;
   Utility utility;
+  idx = 5 + utility;
+  idx = 5 * utility;
+  if(5 == utility) then {} else {};
   Utility arrayUtility[2][3][6][7];
   for(integer t = 0; t<=100 ; t = t + 1) {
     read(sample[t]);
-    sample[t] = (sample[t] * randomize());
+    sample[t] = (sample[t] * randomize(idx));
   };
-  maxValue = utility.findMax(sample);
+  maxValue = utility.findMax(idx);
   minValue = utility.findMin(sample);
   utility.var1[4][1][0][0][0][0][0] = 10;
-  arrayUtility[utility.var1[1][2][3][4][5][6][idx+maxValue]][1][1][1].var2 = 2.5;
+  arrayUtility[utility.var1[1.0][2.0][3][4][5][6][idx+maxValue]][1][1].var2 = 2.5;
   write(maxValue);
-  write(minValue);};
+  write(minValue);
+  idx = utility.test(1.0, utility);
+  return (9);};
 

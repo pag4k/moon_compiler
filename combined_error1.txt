@@ -2,7 +2,7 @@ class InheritedUtility {
   integer member1;};
 
 class Utility : InheritedUtility {
-  integer var1[4][5][7][8][9][1][0];
+  integer var1[4][5][7][8][9][1][0]
   float var2;
   //integer member1;
   integer findMax(integer aray[100]);
@@ -21,20 +21,20 @@ integer Utility::findMax(integer array[100]){
 
 integer Utility::findMin(integer array[100]){
   integer minValue;
-  integer idx;
+  integer @idx;
   minValue = array[99];
     for( integer idx = 1; idx <= 99; idx = ( idx ) + 1) {
       if(8) then {
         minValue = array[idx];}
       else{};
-  };
+  };;
   return (1);};
 
 integer randomize(){
   integer value;
   Utility utility;
   value = 100 * (2 + 3);
-  value = 1 + ((2.04 * 2.47)  - 3.0) + 7.0006 > 1 && ! - 1;
+  value = 1 + ((2.04 * 2.47)  - 3.0) + 7.0006 > 1 & ! - 1;
   return (9);};
 
 main {
@@ -48,10 +48,11 @@ main {
     read(sample[t]);
     sample[t] = (sample[t] * randomize());
   };
-  maxValue = utility.findMax(sample);
+  maxValue = utility.finddMax(idx);
   minValue = utility.findMin(sample);
   utility.var1[4][1][0][0][0][0][0] = 10;
   arrayUtility[utility.var1[1][2][3][4][5][6][idx+maxValue]][1][1][1].var2 = 2.5;
   write(maxValue);
   write(minValue);};
 
+;

@@ -1,0 +1,8 @@
+Syntactic error at [line:6, column:2] with DimList: not expecting Float. Recovered at [line:6, column:12].
+Lexical error at [line:24, column:10]: "@" -> Lexical Error: Invalid Character.
+Syntactic error at [line:30, column:4] with StatOrAssignOrVarDeclList: not expecting SemiColon. Recovered at [line:31, column:2].
+Lexical error at [line:37, column:50]: "&" -> Lexical Error: Incomplete And (did you mean '&&'?).
+Syntactic error at [line:37, column:52] with TermPrime: not expecting Not. Recovered at [line:37, column:54].
+Semantic error at [line:51, column:21]: Function "finddMax" is not a member of class Utility.
+Semantic error at [line:54, column:2]: Variable "var2" is not a member of class Utility[2][3][6][7].
+Syntactic error at [line:58, column:0]: Token ";" after main function.
