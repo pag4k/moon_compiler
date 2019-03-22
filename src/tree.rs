@@ -1,4 +1,19 @@
-pub struct Tree<E, T> {
+use std::collections::HashMap;
+
+pub struct Element<E> {
+    element: HashMap<usize, E>,
+}
+
+impl<E> Element<E> {
+    fn get(&self, node_index: usize) -> Option<&E> {
+        self.element.get(&node_index)
+    }
+    fn set(&mut self, node_index: usize, element: E) {
+        self.element.insert(node_index, element);
+    }
+}
+
+pub struct Tree<E: Sized, T: Sized> {
     pub root: Option<usize>,
     pub nodes: Vec<Node<E>>,
     pub symbol_table_arena: T,
@@ -58,9 +73,40 @@ where
     pub fn get_mut_element(&mut self, node_id: usize) -> &mut E {
         &mut self.nodes[node_id].element
     }
-
-    pub fn get_children(&self, node_id: usize) -> &[usize] {
-        &self.nodes[node_id].children
+    pub fn get_parent(&self, node_id: usize) -> Option<usize> {
+        self.nodes[node_id].parent
+    }
+    pub fn get_child(&self, node_id: usize, child_index: usize) -> usize {
+        self.nodes[node_id].children[child_index]
+    }
+    pub fn get_left_sibling(&self, node_id: usize) -> Option<usize> {
+        let parent_index = self.nodes[node_id].parent?;
+        let children = self.get_children(parent_index);
+        let node_position = children
+            .iter()
+            .position(|&sibling_index| sibling_index == node_id)
+            .unwrap();
+        if node_position > 0 {
+            Some(children[node_position - 1])
+        } else {
+            None
+        }
+    }
+    pub fn get_right_sibling(&self, node_id: usize) -> Option<usize> {
+        let parent_index = self.nodes[node_id].parent?;
+        let children = self.get_children(parent_index);
+        let node_position = children
+            .iter()
+            .position(|&sibling_index| sibling_index == node_id)
+            .unwrap();
+        if node_position < children.len() - 1 {
+            Some(children[node_position + 1])
+        } else {
+            None
+        }
+    }
+    pub fn get_children(&self, node_id: usize) -> Vec<usize> {
+        self.nodes[node_id].children.to_vec()
     }
 
     pub fn get_children_of_child(&self, node_index: usize, child_index: usize) -> Vec<usize> {

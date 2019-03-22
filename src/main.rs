@@ -1,6 +1,9 @@
 mod ast_node;
+mod ast_visitor;
+mod class_checker_visitor;
 mod dot_generator;
 mod finite_accepter;
+mod function_checker_visitor;
 mod grammar;
 mod language;
 mod lexical_analyzer;
@@ -8,18 +11,21 @@ mod lexical_analyzer_table;
 mod lexical_error;
 mod nfa_generator;
 mod semantic_analysis_common;
-mod semantic_class_checker;
+//mod semantic_class_checker;
 mod semantic_error;
-mod semantic_function_checker;
+mod type_checker_visitor;
+//mod semantic_function_checker;
 mod symbol_table;
-mod symbol_table_generator;
+//mod symbol_table_generator;
 mod syntactic_analyzer;
 mod syntactic_analyzer_table;
 mod syntactic_error;
+mod table_generator_visitor;
 mod tree;
 mod tree_dot_printer;
-mod type_checker;
 
+use class_checker_visitor::*;
+use function_checker_visitor::*;
 use grammar::*;
 use language::*;
 use lexical_analyzer::*;
@@ -31,6 +37,8 @@ use std::io::prelude::*;
 use std::path::Path;
 use syntactic_analyzer::*;
 use syntactic_error::*;
+use table_generator_visitor::*;
+use type_checker_visitor::*;
 
 use std::fmt::{Display, Formatter};
 
@@ -56,6 +64,86 @@ fn main() {
         }
     };
 
+    compile(&source);
+}
+
+enum Error {
+    Lexical(TokenError),
+    Syntactic(SyntacticError),
+    Semantic(SemanticError),
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        use Error::*;
+        match self {
+            Lexical(token_error) => write!(f, "{}", token_error),
+            Syntactic(syntactic_error) => write!(f, "{}", syntactic_error),
+            Semantic(semantic_error) => write!(f, "{}", semantic_error),
+        }
+    }
+}
+
+impl TokenLocation for Error {
+    fn get_location(&self) -> Location {
+        use Error::*;
+        match self {
+            Lexical(token_error) => token_error.get_location(),
+            Syntactic(syntactic_error) => syntactic_error.get_location(),
+            Semantic(semantic_error) => semantic_error.get_location(),
+        }
+    }
+}
+
+fn print_errors(
+    lexical_errors: Vec<TokenError>,
+    syntactic_errors: Vec<SyntacticError>,
+    semantic_errors: Vec<SemanticError>,
+    error_file: &mut File,
+) {
+    use Error::*;
+    let mut errors = Vec::new();
+    errors.append(
+        lexical_errors
+            .into_iter()
+            .map(Lexical)
+            .collect::<Vec<Error>>()
+            .as_mut(),
+    );
+    errors.append(
+        syntactic_errors
+            .into_iter()
+            .map(Syntactic)
+            .collect::<Vec<Error>>()
+            .as_mut(),
+    );
+    errors.append(
+        semantic_errors
+            .into_iter()
+            .map(Semantic)
+            .collect::<Vec<Error>>()
+            .as_mut(),
+    );
+    errors.sort_by_key(TokenLocation::get_location);
+    println!("Found {} errors:", errors.len());
+    for error in errors {
+        println!("{}", error);
+        error_file
+            .write_fmt(format_args!("{}\n", error))
+            .expect("Could not write to error file.");
+    }
+}
+
+fn print_symbol_table(
+    ast: &tree::Tree<ast_node::NodeElement, symbol_table::SymbolTableArena>,
+    symbol_table_filename: &mut File,
+) {
+    symbol_table_filename
+        .write_fmt(format_args!("{} ", ast.symbol_table_arena.print()))
+        .expect("Could not write to symbol table file.");
+}
+
+fn compile(source: &String) {
     let atocc_filename = "atocc.txt";
     let path = Path::new(atocc_filename);
     let mut atocc_file = match File::create(&path) {
@@ -130,7 +218,7 @@ fn main() {
         Err(_) => {
             println!(
                 "ERROR: Something went wrong reading grammar file: {}. Exiting...",
-                source_filename
+                grammar_filename
             );
             return;
         }
@@ -233,7 +321,8 @@ fn main() {
         Err(error) => println!("{}", error),
     };
 
-    let semantic_errors = ast.generate_symbol_table();
+    //let semantic_errors = ast.generate_symbol_table();
+    let semantic_errors = table_generator_visitor(&mut ast);
 
     println!("Symbol table generation completed.");
 
@@ -248,9 +337,12 @@ fn main() {
         return;
     }
 
-    let semantic_warning_and_errors = ast.semantic_class_checker();
-    let mut semantic_warnings = semantic_warning_and_errors.0;
-    let semantic_errors = semantic_warning_and_errors.1;
+    //let semantic_warning_and_errors = ast.semantic_class_checker();
+    let semantic_warning_and_errors = class_checker_visitor(&mut ast);
+    let (mut semantic_warnings, semantic_errors): (Vec<SemanticError>, Vec<SemanticError>) =
+        semantic_warning_and_errors
+            .into_iter()
+            .partition(SemanticError::is_warning);
     if !semantic_warnings.is_empty() {
         semantic_warnings.sort_by_key(TokenLocation::get_location);
         println!("Found {} warnings:", semantic_warnings.len());
@@ -272,7 +364,8 @@ fn main() {
         return;
     }
 
-    let semantic_errors = ast.semantic_function_checker();
+    //let semantic_errors = ast.semantic_function_checker();
+    let semantic_errors = function_checker_visitor(&mut ast);
 
     println!("Semantic function checking completed.");
 
@@ -287,9 +380,10 @@ fn main() {
         return;
     }
 
-    let semantic_errors = ast.type_checker();
+    //let semantic_errors = ast.type_checker();
 
     println!("Type checking completed.");
+    let semantic_errors = type_checker_visitor(&mut ast);
 
     if !semantic_errors.is_empty() {
         print_errors(
@@ -315,78 +409,73 @@ fn main() {
     }
 }
 
-enum Error {
-    Lexical(TokenError),
-    Syntactic(SyntacticError),
-    Semantic(SemanticError),
-}
+#[cfg(test)]
+mod tests {
+    use std::fs;
 
-impl Display for Error {
-    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        use Error::*;
-        match self {
-            Lexical(token_error) => write!(f, "{}", token_error),
-            Syntactic(syntactic_error) => write!(f, "{}", syntactic_error),
-            Semantic(semantic_error) => write!(f, "{}", semantic_error),
+    #[test]
+    fn lexical_analyzer() {
+        let source_filenames = ["lexical_error1.txt"];
+
+        for source_filename in source_filenames.iter() {
+            let source = match fs::read_to_string(source_filename) {
+                Ok(file) => file,
+                Err(_) => {
+                    println!(
+                        "ERROR: Something went wrong reading source file: {}. Exiting...",
+                        source_filename
+                    );
+                    return;
+                }
+            };
+            crate::compile(&source);
         }
     }
-}
 
-impl TokenLocation for Error {
-    fn get_location(&self) -> Location {
-        use Error::*;
-        match self {
-            Lexical(token_error) => token_error.get_location(),
-            Syntactic(syntactic_error) => syntactic_error.get_location(),
-            Semantic(semantic_error) => semantic_error.get_location(),
+    #[test]
+    fn syntactic_analyzer() {
+        let source_filenames = ["syntactic_error1.txt", "syntactic_error2.txt"];
+
+        for source_filename in source_filenames.iter() {
+            let source = match fs::read_to_string(source_filename) {
+                Ok(file) => file,
+                Err(_) => {
+                    println!(
+                        "ERROR: Something went wrong reading source file: {}. Exiting...",
+                        source_filename
+                    );
+                    return;
+                }
+            };
+            crate::compile(&source);
         }
     }
-}
 
-fn print_errors(
-    lexical_errors: Vec<TokenError>,
-    syntactic_errors: Vec<SyntacticError>,
-    semantic_errors: Vec<SemanticError>,
-    error_file: &mut File,
-) {
-    use Error::*;
-    let mut errors = Vec::new();
-    errors.append(
-        lexical_errors
-            .into_iter()
-            .map(Lexical)
-            .collect::<Vec<Error>>()
-            .as_mut(),
-    );
-    errors.append(
-        syntactic_errors
-            .into_iter()
-            .map(Syntactic)
-            .collect::<Vec<Error>>()
-            .as_mut(),
-    );
-    errors.append(
-        semantic_errors
-            .into_iter()
-            .map(Semantic)
-            .collect::<Vec<Error>>()
-            .as_mut(),
-    );
-    errors.sort_by_key(TokenLocation::get_location);
-    println!("Found {} errors:", errors.len());
-    for error in errors {
-        println!("{}", error);
-        error_file
-            .write_fmt(format_args!("{}\n", error))
-            .expect("Could not write to error file.");
+    #[test]
+    fn semantic_analyzer() {
+        let source_filenames = [
+            "table_generation_error1.txt",
+            "table_generation_error2.txt",
+            "table_generation_error3.txt",
+            "table_generation_error3.txt",
+            "class_checker_error1.txt",
+            "class_checker_error2.txt",
+            "function_checker_error1.txt",
+            "type_checker_error1.txt",
+        ];
+
+        for source_filename in source_filenames.iter() {
+            let source = match fs::read_to_string(source_filename) {
+                Ok(file) => file,
+                Err(_) => {
+                    println!(
+                        "ERROR: Something went wrong reading source file: {}. Exiting...",
+                        source_filename
+                    );
+                    return;
+                }
+            };
+            crate::compile(&source);
+        }
     }
-}
-
-fn print_symbol_table(
-    ast: &tree::Tree<ast_node::NodeElement, symbol_table::SymbolTableArena>,
-    symbol_table_filename: &mut File,
-) {
-    symbol_table_filename
-        .write_fmt(format_args!("{} ", ast.symbol_table_arena.print()))
-        .expect("Could not write to symbol table file.");
 }

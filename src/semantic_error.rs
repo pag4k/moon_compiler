@@ -18,7 +18,7 @@ pub enum SemanticError {
     UndefinedLocalVariable(Token, String),
     UndefinedFunction(Token),
     UndefinedFreeFunction(Token),
-    UndefinedMemberVariable(Token, SymbolType, String),
+    UndefinedMemberVariable(Token, SymbolType),
     UndefinedMemberFunction(Token, SymbolType),
     UndefinedClass(Token),
     MismatchedNumberOfDimension(Token, usize, usize),
@@ -33,6 +33,9 @@ pub enum SemanticError {
     MismatchedTypeDimensions(Token, SymbolType, SymbolType),
     WrongNumberOfArguments(Token, usize, usize),
     InvalidArgument(Token, (usize, SymbolType, SymbolType)),
+    // Warnings
+    ShadowInheritedMemberVariable(Token, String, String, String),
+    ShadowInheritedMemberFunction(Token, String, String, String),
 }
 
 impl Display for SemanticError {
@@ -113,11 +116,11 @@ impl Display for SemanticError {
                 token.location,
                 token.lexeme.clone().unwrap(),
             ),
-            UndefinedMemberVariable(token, class_type, variable_name) => write!(
+            UndefinedMemberVariable(token, class_type) => write!(
                 f,
                 "Semantic error at {}: Variable \"{}\" is not a member of class {}.",
                 token.location,
-                variable_name,
+                token.lexeme.clone().unwrap(),
                 class_type,
             ),
             UndefinedMemberFunction(token, class_type) => write!(
@@ -215,6 +218,23 @@ impl Display for SemanticError {
                 invalid_argument.1,
                 invalid_argument.2,
             ),
+             ShadowInheritedMemberVariable(token, base_class_name, member_name, class_name) => write!(
+                f,
+                "Semantic warning at {}: Member variable \"{}\" in class \"{}\" shadows the one in class \"{}\".",
+                token.location,
+                member_name,
+                class_name,
+                base_class_name,
+            ),
+            ShadowInheritedMemberFunction(token, base_class_name, member_name, class_name) =>write!(
+                f,
+                "Semantic warning at {}: Member function \"{}\" in class \"{}\" shadows the one in class \"{}\".",
+                token.location,
+                member_name,
+                class_name,
+                base_class_name,
+            ),
+
         }
     }
 }
@@ -233,7 +253,7 @@ impl TokenLocation for SemanticError {
             UndefinedLocalVariable(token, _) => token.location,
             UndefinedFunction(token) => token.location,
             UndefinedFreeFunction(token) => token.location,
-            UndefinedMemberVariable(token, _, _) => token.location,
+            UndefinedMemberVariable(token, _) => token.location,
             UndefinedMemberFunction(token, _) => token.location,
             UndefinedClass(token) => token.location,
             MismatchedNumberOfDimension(token, _, _) => token.location,
@@ -247,46 +267,19 @@ impl TokenLocation for SemanticError {
             MismatchedTypeDimensions(token, _, _) => token.location,
             WrongNumberOfArguments(token, _, _) => token.location,
             InvalidArgument(token, _) => token.location,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum SemanticWarning {
-    ShadowInheritedMemberVariable(Token, String, String, String),
-    ShadowInheritedMemberFunction(Token, String, String, String),
-}
-
-impl Display for SemanticWarning {
-    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        use SemanticWarning::*;
-        match self {
-             ShadowInheritedMemberVariable(token, base_class_name, member_name, class_name) => write!(
-                f,
-                "Semantic warning at {}: Member variable \"{}\" in class \"{}\" shadows the one in class \"{}\".",
-                token.location,
-                member_name,
-                class_name,
-                base_class_name,
-            ),
-            ShadowInheritedMemberFunction(token, base_class_name, member_name, class_name) =>write!(
-                f,
-                "Semantic warning at {}: Member function \"{}\" in class \"{}\" shadows the one in class \"{}\".",
-                token.location,
-                member_name,
-                class_name,
-                base_class_name,
-            ),
-        }
-    }
-}
-
-impl TokenLocation for SemanticWarning {
-    fn get_location(&self) -> Location {
-      use SemanticWarning::*;
-        match self {
             ShadowInheritedMemberVariable(token, _,_,_) => token.location,
             ShadowInheritedMemberFunction(token, _,_,_) => token.location,
+        }
+    }
+}
+
+impl SemanticError {
+    pub fn is_warning(&self) -> bool {
+      use SemanticError::*;
+        match self {
+            ShadowInheritedMemberVariable(token, _,_,_) => true,
+            ShadowInheritedMemberFunction(token, _,_,_) => true,
+            _ => false,
         }
     }
 }

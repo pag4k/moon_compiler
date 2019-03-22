@@ -1,4 +1,4 @@
-prog                      -> classDeclList #MakeNodeClassDeclList funcDefList #MakeNodeFuncDefList 'main' funcBody ';' #MakeNodeProg #EndProgram
+prog                      -> classDeclList #MakeNodeClassDeclList funcDefList #MakeNodeFuncDefList 'main' funcBody #MakeNodeMainFuncBody ';' #MakeNodeProg #EndProgram
 classDecl                 -> 'class' 'id' #GetData #MakeNodeId inherListOp #MakeNodeInheritList '{' memberList '}' #MakeNodeMemberList ';' #MakeNodeClassDecl
 classDeclList             -> classDecl classDeclList
 classDeclList             -> EPSILON
@@ -6,10 +6,10 @@ funcDecl                  -> type 'id' #GetData #MakeNodeId '(' fParamList #Make
 funcHead                  -> type 'id' scopeOp '(' fParamList #MakeNodeFParamList ')'
 scopeOp                   -> #GetData #MakeNodeType  'sr' 'id' #GetData #MakeNodeId
 scopeOp                   -> #MakeNodeEpsilon #GetData #MakeNodeId
-funcDef                   -> funcHead funcBody ';' #MakeNodeFuncDef
+funcDef                   -> funcHead funcBody #MakeNodeFuncBody ';' #MakeNodeFuncDef
 funcDefList               -> funcDef funcDefList
 funcDefList               -> EPSILON
-funcBody                  -> '{' statOrAssignOrVarDeclList '}' #MakeNodeStatBlock
+funcBody                  -> '{' statOrAssignOrVarDeclList '}'
 memberDecl                -> type 'id' #GetData #MakeNodeId memberDecl'
 memberDecl'               -> '(' fParamList #MakeNodeFParamList ')' ';' #MakeNodeFuncDecl
 memberDecl'               -> dimList #MakeNodeDimList ';' #MakeNodeVarDecl

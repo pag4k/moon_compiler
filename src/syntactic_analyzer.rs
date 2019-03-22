@@ -14,14 +14,7 @@ pub struct SyntacticAnalyzer {
 type Symbol = GrammarSymbol<VariableType, TokenType, NodeType>;
 type OptionalProduction = Option<Production<VariableType, TokenType, NodeType>>;
 type DerivationTable = Vec<(Vec<Symbol>, OptionalProduction)>;
-type ParserOutput = Result<
-    (
-        Tree<NodeElement, SymbolTableArena>,
-        DerivationTable,
-        Vec<SyntacticError>,
-    ),
-    ASTError,
->;
+type ParserOutput = Result<(AST, DerivationTable, Vec<SyntacticError>), ASTError>;
 
 impl SyntacticAnalyzer {
     pub fn from_grammar(
@@ -90,7 +83,7 @@ impl SyntacticAnalyzer {
                     } else {
                         // If not, there is an error.
                         let (start_token, error_terminal) = (token.clone(), *terminal);
-                        // Skip tokens until one the one on the stack is found.
+                        // Skip tokens until the one on the stack is found.
                         while Terminal(*terminal) != token_type {
                             token_type = *token_type_iter.next().unwrap();
                             if token_type == DollarSign {

@@ -5,6 +5,8 @@ use crate::tree::Tree;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
+pub type AST = Tree<NodeElement, SymbolTableArena>;
+
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum NodeType {
     Data,
@@ -17,10 +19,12 @@ pub enum NodeType {
     ClassDeclList,
     FuncDefList,
     Prog,
+    MainFuncBody,
     MemberList,
     ClassDecl,
     FuncDecl,
     FuncDef,
+    FuncBody,
     StatBlock,
     DimList,
     VarDecl,
@@ -129,7 +133,11 @@ impl NodeType {
             Type => Leaf,
             ClassDeclList => Single(Many(ClassDecl)),
             FuncDefList => Single(Many(FuncDef)),
-            Prog => List(vec![One(ClassDeclList), One(FuncDefList), One(StatBlock)]),
+            Prog => List(vec![
+                One(ClassDeclList),
+                One(FuncDefList),
+                One(MainFuncBody),
+            ]),
             MemberList => Single(ManyOf(vec![VarDecl, FuncDecl])),
             ClassDecl => List(vec![One(Id), One(InheritList), One(MemberList)]),
             FuncDecl => List(vec![One(Type), One(Id), One(FParamList)]),
@@ -138,10 +146,28 @@ impl NodeType {
                 OneOf(vec![Type, Epsilon]),
                 One(Id),
                 One(FParamList),
-                One(StatBlock),
+                One(FuncBody),
             ]),
-            StatBlock => Single(ManyOf(vec![
+            MainFuncBody => Single(ManyOf(vec![
                 VarDecl,
+                AssignStati,
+                IfStat,
+                ForStat,
+                ReadStat,
+                WriteStat,
+                ReturnStat,
+            ])),
+            FuncBody => Single(ManyOf(vec![
+                VarDecl,
+                AssignStati,
+                IfStat,
+                ForStat,
+                ReadStat,
+                WriteStat,
+                ReturnStat,
+            ])),
+            StatBlock => Single(ManyOf(vec![
+                //VarDecl,
                 AssignStati,
                 IfStat,
                 ForStat,
@@ -210,6 +236,8 @@ impl FromStr for NodeType {
             "#MakeNodeClassDecl" => Ok(ClassDecl),
             "#MakeNodeFuncDecl" => Ok(FuncDecl),
             "#MakeNodeFuncDef" => Ok(FuncDef),
+            "#MakeNodeMainFuncBody" => Ok(MainFuncBody),
+            "#MakeNodeFuncBody" => Ok(FuncBody),
             "#MakeNodeStatBlock" => Ok(StatBlock),
             "#MakeNodeDimList" => Ok(DimList),
             "#MakeNodeVarDecl" => Ok(VarDecl),
@@ -260,7 +288,7 @@ impl Display for NodeElement {
     }
 }
 
-impl Tree<NodeElement, SymbolTableArena> {
+impl AST {
     pub fn get_token(&self, node_index: usize) -> Token {
         self.get_element(node_index).token.clone().unwrap()
     }
@@ -431,6 +459,25 @@ impl Tree<NodeElement, SymbolTableArena> {
             true
         } else {
             false
+        }
+    }
+
+    pub fn get_parent_node_of_type(
+        &self,
+        node_index: usize,
+        node_types: &[NodeType],
+    ) -> Option<(usize, NodeType)> {
+        let parent_index = self.get_parent(node_index);
+        match parent_index {
+            Some(parent_index) => {
+                let node_type = self.get_note_type(parent_index);
+                if node_types.contains(&node_type) {
+                    Some((parent_index, node_type))
+                } else {
+                    self.get_parent_node_of_type(parent_index, node_types)
+                }
+            }
+            None => None,
         }
     }
 }

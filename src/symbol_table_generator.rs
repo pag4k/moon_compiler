@@ -3,7 +3,7 @@ use crate::semantic_error::*;
 use crate::symbol_table::*;
 use crate::tree::*;
 
-impl Tree<NodeElement, SymbolTableArena> {
+impl AST {
     pub fn generate_symbol_table(&mut self) -> Vec<SemanticError> {
         let mut semantic_errors: Vec<SemanticError> = Vec::new();
         self.create_symbol_table(&mut semantic_errors, self.root.unwrap());

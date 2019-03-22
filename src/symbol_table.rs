@@ -135,6 +135,9 @@ impl SymbolTableArena {
     pub fn get_symbol_table(&self, index: usize) -> &SymbolTable {
         &self.symbol_tables[index]
     }
+    pub fn get_mut_symbol_table(&mut self, index: usize) -> &mut SymbolTable {
+        &mut self.symbol_tables[index]
+    }
     pub fn get_symbol_table_entries(&self, index: usize) -> &[usize] {
         &self.symbol_tables[index].entries
     }

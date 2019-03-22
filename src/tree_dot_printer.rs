@@ -39,14 +39,14 @@ where
                     return Err(format!(
                         "ERROR: Something went wrong writing DOT file: {}.",
                         filename
-                    ))
+                    ));
                 }
             },
             Err(_) => {
                 return Err(format!(
                     "Something went wrong creating DOT file: {}.",
                     filename
-                ))
+                ));
             }
         }
 
@@ -55,19 +55,20 @@ where
 
     fn print_node_to(&self, string: &mut String, node_index: usize) {
         string.push_str(&format!(
-            "\tnode [label=\"{}\"] {};\n",
+            "\tnode [label=\"{}, {}\"] {};\n",
+            node_index,
             self.get_element(node_index),
             node_index
         ));
         for child_index in self.get_children(node_index) {
-            self.print_node_to(string, *child_index);
+            self.print_node_to(string, child_index);
         }
     }
 
     fn print_edge_to(&self, string: &mut String, node_index: usize) {
         for child_index in self.get_children(node_index) {
             string.push_str(&format!("\t{} -> {};\n", node_index, child_index));
-            self.print_edge_to(string, *child_index);
+            self.print_edge_to(string, child_index);
         }
     }
 }

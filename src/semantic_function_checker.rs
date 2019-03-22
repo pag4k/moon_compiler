@@ -5,7 +5,7 @@ use crate::tree::*;
 
 use std::collections::HashMap;
 
-impl Tree<NodeElement, SymbolTableArena> {
+impl AST {
     pub fn semantic_function_checker(&mut self) -> Vec<SemanticError> {
         let mut semantic_errors: Vec<SemanticError> = Vec::new();
 
@@ -279,7 +279,6 @@ impl Tree<NodeElement, SymbolTableArena> {
                                             SemanticError::UndefinedMemberVariable(
                                                 self.get_leftmost_token(first_child_index),
                                                 previous_type,
-                                                variable_name,
                                             ),
                                         );
                                         return;

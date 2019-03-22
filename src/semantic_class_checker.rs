@@ -3,7 +3,7 @@ use crate::semantic_error::*;
 use crate::symbol_table::*;
 use crate::tree::*;
 
-impl Tree<NodeElement, SymbolTableArena> {
+impl AST {
     pub fn semantic_class_checker(&mut self) -> (Vec<SemanticWarning>, Vec<SemanticError>) {
         let mut semantic_warnings: Vec<SemanticWarning> = Vec::new();
         let mut semantic_errors: Vec<SemanticError> = Vec::new();

@@ -3,7 +3,7 @@ use crate::semantic_error::*;
 use crate::symbol_table::*;
 use crate::tree::*;
 
-impl Tree<NodeElement, SymbolTableArena> {
+impl AST {
     pub fn check_duplicate(
         &self,
         table_index: usize,
@@ -62,23 +62,6 @@ impl Tree<NodeElement, SymbolTableArena> {
         class_table_indices
     }
 
-    pub fn find_variable_in_table(&self, table_index: usize, name: &str) -> Option<usize> {
-        for entry_index in self
-            .symbol_table_arena
-            .get_symbol_table_entries(table_index)
-        {
-            let symbol_entry = self.symbol_table_arena.get_symbol_table_entry(*entry_index);
-            //dbg!(&symbol_entry.name);
-            if symbol_entry.name == name {
-                if let SymbolKind::Variable(_) | SymbolKind::Parameter(_) = symbol_entry.kind {
-                    return Some(*entry_index);
-                }
-            }
-        }
-
-        None
-    }
-
     pub fn find_free_function(&self, name: &str) -> Option<usize> {
         for entry_index in self
             .symbol_table_arena
@@ -111,12 +94,12 @@ impl Tree<NodeElement, SymbolTableArena> {
         None
     }
 
-    pub fn is_member_variable(&self, table_index: usize, name: &str) -> Option<usize> {
-        let result = self.find_variable_in_table(table_index, name);
+    pub fn is_member_variable(&self, class_table_index: usize, name: &str) -> Option<usize> {
+        let result = self.get_variable_entry_in_class_table(class_table_index, name);
         if result.is_some() {
             return result;
         }
-        for inherited_class_index in self.get_class_tables_in_table(table_index) {
+        for inherited_class_index in self.get_class_tables_in_table(class_table_index) {
             let result = self.is_member_variable(inherited_class_index, name);
             if result.is_some() {
                 return result;
@@ -125,12 +108,12 @@ impl Tree<NodeElement, SymbolTableArena> {
         None
     }
 
-    pub fn is_member_function(&self, table_index: usize, name: &str) -> Option<usize> {
-        let result = self.find_function_in_table(table_index, name);
+    pub fn is_member_function(&self, class_table_index: usize, name: &str) -> Option<usize> {
+        let result = self.find_function_in_table(class_table_index, name);
         if result.is_some() {
             return result;
         }
-        for inherited_class_index in self.get_class_tables_in_table(table_index) {
+        for inherited_class_index in self.get_class_tables_in_table(class_table_index) {
             let result = self.is_member_function(inherited_class_index, name);
             if result.is_some() {
                 return result;
@@ -155,114 +138,6 @@ impl Tree<NodeElement, SymbolTableArena> {
         None
     }
 
-    pub fn get_valid_class_table_from_type(
-        &self,
-        symbol_type: &SymbolType,
-    ) -> Result<(SymbolType, Option<usize>), String> {
-        match symbol_type {
-            SymbolType::Class(type_name, _) => match self.find_class_symbol_table(type_name) {
-                Some(type_entry_index) => Ok((symbol_type.clone(), Some(type_entry_index))),
-                None => Err(type_name.clone()),
-            },
-            _ => Ok((symbol_type.clone(), None)),
-        }
-    }
-
-    // pub fn get_valid_class_table_from_name(
-    //     &self,
-    //     type_name: &String,
-    // ) -> Result<Option<usize>, String> {
-    //     if KeywordType::from_str(&type_name).is_err() {
-    //         match self.find_class_symbol_table(type_name) {
-    //             Some(entry_index) => Ok(Some(entry_index)),
-    //             None => Err(type_name.clone()),
-    //         }
-    //     } else {
-    //         Ok(None)
-    //     }
-    // }
-
-    pub fn get_valid_class_table_from_entry(
-        &self,
-        entry_index: usize,
-    ) -> Result<(SymbolType, Option<usize>), String> {
-        use SymbolKind::*;
-        match self
-            .symbol_table_arena
-            .get_symbol_table_entry(entry_index)
-            .kind
-            .clone()
-        {
-            Variable(symbol_type) | Parameter(symbol_type) => {
-                self.get_valid_class_table_from_type(&symbol_type)
-            }
-            Function(symbol_type, _) => match symbol_type {
-                Some(symbol_type) => self.get_valid_class_table_from_type(&symbol_type),
-                None => unreachable!(), // This should only happen for the main function.
-            },
-            Class => unreachable!(),
-        }
-    }
-
-    pub fn is_array_type(
-        &self,
-        symbol_entry_index: usize,
-        data_member_node: usize,
-    ) -> Result<bool, SemanticError> {
-        use SymbolKind::*;
-
-        let symbol_entry = self
-            .symbol_table_arena
-            .get_symbol_table_entry(symbol_entry_index);
-        let dimension_list_len = match symbol_entry.clone().kind {
-            Variable(symbol_type) | Parameter(symbol_type) => {
-                symbol_type.get_dimension_list().len()
-            }
-            _ => unreachable!(),
-        };
-
-        let index_list_len = self.get_children_of_child(data_member_node, 1).len();
-        match (dimension_list_len == 0, index_list_len == 0) {
-            (true, true) => Ok(false),
-            (false, true) => Ok(true),
-            (true, false) => Err(SemanticError::MismatchedNumberOfDimension(
-                self.get_leftmost_token(data_member_node),
-                dimension_list_len,
-                index_list_len,
-            )),
-            (false, false) => Ok(false),
-        }
-    }
-
-    pub fn check_number_of_dimensions(
-        &self,
-        symbol_entry_index: usize,
-        data_member_node: usize,
-    ) -> Result<(), SemanticError> {
-        use SymbolKind::*;
-
-        let symbol_entry = self
-            .symbol_table_arena
-            .get_symbol_table_entry(symbol_entry_index);
-        let dimension_list_len = match symbol_entry.clone().kind {
-            Variable(symbol_type) | Parameter(symbol_type) => {
-                symbol_type.get_dimension_list().len()
-            }
-            _ => unreachable!(),
-        };
-
-        let index_list_len = self.get_children_of_child(data_member_node, 1).len();
-        if dimension_list_len != index_list_len {
-            return Err(SemanticError::MismatchedNumberOfDimension(
-                self.get_leftmost_token(data_member_node),
-                dimension_list_len,
-                index_list_len,
-            ));
-        }
-
-        Ok(())
-    }
-
     pub fn get_node_index_with_entry_index(
         &self,
         node_index: usize,
@@ -274,11 +149,37 @@ impl Tree<NodeElement, SymbolTableArena> {
             }
         }
         for node_child_index in self.get_children(node_index) {
-            let node_index = self.get_node_index_with_entry_index(*node_child_index, entry_index);
+            let node_index = self.get_node_index_with_entry_index(node_child_index, entry_index);
             if node_index.is_some() {
                 return node_index;
             }
         }
+        None
+    }
+
+    pub fn get_node_symbol_type(&self, node_index: usize) -> Option<SymbolType> {
+        self.get_element(node_index).data_type.clone()
+    }
+
+    pub fn get_variable_entry_in_class_table(
+        &self,
+        table_index: usize,
+        name: &str,
+    ) -> Option<usize> {
+        for entry_index in self
+            .symbol_table_arena
+            .get_symbol_table_entries(table_index)
+        {
+            let symbol_entry = self.symbol_table_arena.get_symbol_table_entry(*entry_index);
+            if symbol_entry.name == name {
+                if let SymbolKind::Variable(_) = symbol_entry.kind {
+                    return Some(*entry_index);
+                } else if let SymbolKind::Parameter(_) = symbol_entry.kind {
+                    unreachable!();
+                }
+            }
+        }
+
         None
     }
 }
