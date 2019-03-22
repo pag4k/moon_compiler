@@ -2,7 +2,6 @@ use crate::ast_node::*;
 use crate::grammar::*;
 use crate::language::*;
 use crate::lexical_analyzer::*;
-use crate::symbol_table::*;
 use crate::syntactic_analyzer_table::*;
 use crate::syntactic_error::*;
 use crate::tree::*;

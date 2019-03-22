@@ -17,7 +17,7 @@ pub enum SemanticError {
     VariableUsedBeforeBeingDeclared(Token, String),
     UndefinedLocalVariable(Token, String),
     UndefinedFunction(Token),
-    UndefinedFreeFunction(Token),
+    //UndefinedFreeFunction(Token),
     UndefinedMemberVariable(Token, SymbolType),
     UndefinedMemberFunction(Token, SymbolType),
     UndefinedClass(Token),
@@ -110,12 +110,12 @@ impl Display for SemanticError {
                 token.location,
                 token.lexeme.clone().unwrap(),
             ),
-            UndefinedFreeFunction(token) => write!(
-                f,
-                "Semantic error at {}: Free function \"{}\" is not defined.",
-                token.location,
-                token.lexeme.clone().unwrap(),
-            ),
+            // UndefinedFreeFunction(token) => write!(
+            //     f,
+            //     "Semantic error at {}: Free function \"{}\" is not defined.",
+            //     token.location,
+            //     token.lexeme.clone().unwrap(),
+            // ),
             UndefinedMemberVariable(token, class_type) => write!(
                 f,
                 "Semantic error at {}: Variable \"{}\" is not a member of class {}.",
@@ -252,7 +252,7 @@ impl TokenLocation for SemanticError {
             VariableUsedBeforeBeingDeclared(token, _) => token.location,
             UndefinedLocalVariable(token, _) => token.location,
             UndefinedFunction(token) => token.location,
-            UndefinedFreeFunction(token) => token.location,
+            // UndefinedFreeFunction(token) => token.location,
             UndefinedMemberVariable(token, _) => token.location,
             UndefinedMemberFunction(token, _) => token.location,
             UndefinedClass(token) => token.location,
@@ -277,8 +277,8 @@ impl SemanticError {
     pub fn is_warning(&self) -> bool {
       use SemanticError::*;
         match self {
-            ShadowInheritedMemberVariable(token, _,_,_) => true,
-            ShadowInheritedMemberFunction(token, _,_,_) => true,
+            ShadowInheritedMemberVariable(_, _,_,_) => true,
+            ShadowInheritedMemberFunction(_, _,_,_) => true,
             _ => false,
         }
     }

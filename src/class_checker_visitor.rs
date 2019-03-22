@@ -33,7 +33,8 @@ fn prog(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, _node_index: us
                 if function_symbol_entry.link.is_none() {
                     semantic_errors.push(SemanticError::MemberFunctionDeclHasNoDef(
                         ast.get_leftmost_token(
-                            ast.get_node_index_with_entry_index(
+                            get_node_index_with_entry_index(
+                                ast,
                                 ast.root.unwrap(),
                                 *member_entry_index,
                             )
@@ -79,7 +80,8 @@ fn prog(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, _node_index: us
                                 .clone();
                             semantic_errors.push(SemanticError::ShadowInheritedMemberFunction(
                                 ast.get_leftmost_token(
-                                    ast.get_node_index_with_entry_index(
+                                    get_node_index_with_entry_index(
+                                        ast,
                                         ast.root.unwrap(),
                                         *entry_index,
                                     )
@@ -102,7 +104,8 @@ fn prog(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, _node_index: us
                                 .clone();
                             semantic_errors.push(SemanticError::ShadowInheritedMemberVariable(
                                 ast.get_leftmost_token(
-                                    ast.get_node_index_with_entry_index(
+                                    get_node_index_with_entry_index(
+                                        ast,
                                         ast.root.unwrap(),
                                         *entry_index,
                                     )
@@ -175,8 +178,7 @@ fn check_circular_dependency_in_class(
             .collect();
         return Err(SemanticError::CircularClassDependency(
             ast.get_leftmost_token(
-                ast.get_node_index_with_entry_index(ast.root.unwrap(), class_table_index)
-                    .unwrap(),
+                get_node_index_with_entry_index(ast, ast.root.unwrap(), class_table_index).unwrap(),
             ),
             dependency_list,
         ));
@@ -192,4 +194,23 @@ fn check_circular_dependency_in_class(
         )?;
     }
     Ok(())
+}
+
+fn get_node_index_with_entry_index(
+    ast: &AST,
+    node_index: usize,
+    entry_index: usize,
+) -> Option<usize> {
+    if let Some(current_entry_index) = ast.get_element(node_index).symbol_table_entry {
+        if current_entry_index == entry_index {
+            return Some(node_index);
+        }
+    }
+    for node_child_index in ast.get_children(node_index) {
+        let node_index = get_node_index_with_entry_index(ast, node_child_index, entry_index);
+        if node_index.is_some() {
+            return node_index;
+        }
+    }
+    None
 }

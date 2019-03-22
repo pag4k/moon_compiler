@@ -11,8 +11,6 @@ pub fn function_checker_visitor(ast: &mut AST) -> Vec<SemanticError> {
     use NodeType::*;
     let mut semantic_errors: Vec<SemanticError> = Vec::new();
     let mut semantic_actions: SemanticActionMap<SemanticError> = HashMap::new();
-    semantic_actions.insert(Prog, prog);
-    semantic_actions.insert(FuncDef, func_def);
     semantic_actions.insert(DataMember, data_member);
     semantic_actions.insert(FunctionCall, function_call);
     semantic_actions.insert(VarElementList, var_element_list);
@@ -20,8 +18,6 @@ pub fn function_checker_visitor(ast: &mut AST) -> Vec<SemanticError> {
     semantic_errors
 }
 
-fn prog(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {}
-fn func_def(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {}
 fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     use NodeType::*;
 
@@ -260,7 +256,7 @@ fn function_call(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_i
                 // It is a member function, return function table entry index.
                 Some(function_table_entry_index) => function_table_entry_index,
                 // It is not a member function, check if it a free function.
-                None => match ast.find_free_function(&function_name) {
+                None => match find_free_function(ast, &function_name) {
                     Some(function_table_entry_index) => function_table_entry_index,
                     None => {
                         semantic_errors.push(SemanticError::UndefinedFunction(
@@ -292,7 +288,7 @@ fn function_call(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_i
     // FIXME: NOT SURE I WANT TO DO THAT
     ast.get_mut_element(node_index).symbol_table_entry = Some(function_table_entry_index);
 }
-fn var_element_list(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
+fn var_element_list(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     // Get last element symbol type..
     let last_child_index = *ast.get_children(node_index).iter().last().unwrap();
     let last_element_type = ast.get_mut_element(last_child_index).data_type.clone();
@@ -301,32 +297,6 @@ fn var_element_list(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, nod
     if last_element_type.is_some() {
         ast.get_mut_element(node_index).data_type = last_element_type;
     }
-}
-
-fn get_variable_names_in_table(ast: &AST, table_index: usize) -> Vec<String> {
-    use SymbolKind::*;
-
-    let mut variable_names: Vec<String> = Vec::new();
-    for entry_index in ast.symbol_table_arena.get_symbol_table_entries(table_index) {
-        let symbol_entry = ast.symbol_table_arena.get_symbol_table_entry(*entry_index);
-        if let Variable(_) = symbol_entry.kind {
-            variable_names.push(symbol_entry.name.clone());
-        }
-    }
-    variable_names
-}
-
-fn get_parameter_names_in_table(ast: &AST, table_index: usize) -> Vec<String> {
-    use SymbolKind::*;
-
-    let mut variable_names: Vec<String> = Vec::new();
-    for entry_index in ast.symbol_table_arena.get_symbol_table_entries(table_index) {
-        let symbol_entry = ast.symbol_table_arena.get_symbol_table_entry(*entry_index);
-        if let Parameter(_) = symbol_entry.kind {
-            variable_names.push(symbol_entry.name.clone());
-        }
-    }
-    variable_names
 }
 
 fn is_for_variable(ast: &AST, node_index: usize) -> bool {
@@ -401,7 +371,7 @@ fn get_symbol_type_and_class_table_from_node(
     ast: &AST,
     node_index: usize, //symbol_type: &SymbolType
 ) -> Result<Option<(SymbolType, usize)>, SemanticError> {
-    let symbol_type = &ast.get_node_symbol_type(node_index);
+    let symbol_type = &get_node_symbol_type(ast, node_index);
 
     match symbol_type {
         // If the symbol type is found, verify if it is a class.
@@ -516,6 +486,26 @@ pub fn get_parameter_entry_in_function_table(
         let symbol_entry = ast.symbol_table_arena.get_symbol_table_entry(*entry_index);
         if symbol_entry.name == name {
             if let SymbolKind::Parameter(_) = symbol_entry.kind {
+                return Some(*entry_index);
+            }
+        }
+    }
+
+    None
+}
+
+fn get_node_symbol_type(ast: &AST, node_index: usize) -> Option<SymbolType> {
+    ast.get_element(node_index).data_type.clone()
+}
+
+fn find_free_function(ast: &AST, name: &str) -> Option<usize> {
+    for entry_index in ast
+        .symbol_table_arena
+        .get_symbol_table_entries(ast.symbol_table_arena.root.unwrap())
+    {
+        let symbol_entry = ast.symbol_table_arena.get_symbol_table_entry(*entry_index);
+        if symbol_entry.name == name {
+            if let SymbolKind::Function(_, _) = symbol_entry.kind {
                 return Some(*entry_index);
             }
         }

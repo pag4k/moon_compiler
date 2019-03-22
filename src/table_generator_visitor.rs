@@ -34,7 +34,7 @@ fn prog(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usi
 
     // Add classes.
     for node_index in ast.get_children_of_child(node_index, 0) {
-        if let Err(error) = ast.add_entry_to_table(table_index, node_index) {
+        if let Err(error) = add_entry_to_table(ast, table_index, node_index) {
             semantic_errors.push(error);
         }
     }
@@ -63,7 +63,7 @@ fn prog(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usi
     );
     ast.get_mut_element(stat_block_node_index)
         .symbol_table_entry = Some(entry_index);
-    if let Err(error) = ast.add_entry_to_table(table_index, stat_block_node_index) {
+    if let Err(error) = add_entry_to_table(ast, table_index, stat_block_node_index) {
         semantic_errors.push(error);
     }
 }
@@ -84,7 +84,7 @@ fn class_decl(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_inde
     // Get members
     for member_index in ast.get_children_of_child(node_index, 2) {
         if ast.get_element(member_index).symbol_table_entry.is_some() {
-            if let Err(error) = ast.add_entry_to_table(table_index, member_index) {
+            if let Err(error) = add_entry_to_table(ast, table_index, member_index) {
                 semantic_errors.push(error);
             }
         }
@@ -120,7 +120,7 @@ fn func_def(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index:
         };
 
         parameters.push(parameter_type.clone());
-        if let Err(error) = ast.add_entry_to_table(table_index, parameter_index) {
+        if let Err(error) = add_entry_to_table(ast, table_index, parameter_index) {
             semantic_errors.push(error);
         }
     }
@@ -132,7 +132,7 @@ fn func_def(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index:
     );
     ast.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
 }
-fn func_decl(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
+fn func_decl(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     // Function Declaration just has an entry.
     let name = ast.get_child_lexeme(node_index, 1);
     let return_type = make_type_from_child(ast, node_index, 0, Vec::new());
@@ -164,7 +164,7 @@ fn func_decl(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index
     );
     ast.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
 }
-fn var_decl(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
+fn var_decl(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     let name = ast.get_child_lexeme(node_index, 1);
     let indices = ast
         .get_children_of_child(node_index, 2)
@@ -179,7 +179,7 @@ fn var_decl(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index:
     );
     ast.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
 }
-fn f_param(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
+fn f_param(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     let name = ast.get_child_lexeme(node_index, 1);
     let indices = ast
         .get_children_of_child(node_index, 2)
@@ -206,7 +206,7 @@ fn for_stat(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index:
     let first_child_index = ast.get_children(node_index)[0];
 
     ast.get_mut_element(first_child_index).symbol_table_entry = Some(entry_index);
-    if let Err(error) = ast.add_entry_to_table(table_index, first_child_index) {
+    if let Err(error) = add_entry_to_table(ast, table_index, first_child_index) {
         semantic_errors.push(error);
     }
     ast.get_mut_element(node_index).symbol_table = Some(table_index);
@@ -223,7 +223,7 @@ fn stat_block(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_inde
             .symbol_table_entry
             .is_some()
         {
-            if let Err(error) = ast.add_entry_to_table(table_index, variable_index) {
+            if let Err(error) = add_entry_to_table(ast, table_index, variable_index) {
                 semantic_errors.push(error);
             }
         }
@@ -332,7 +332,7 @@ fn add_function(
         }
         // If free function, add to global.
         None => {
-            ast.add_entry_to_table(table_index, function_node_index)?;
+            add_entry_to_table(ast, table_index, function_node_index)?;
         }
     }
     Ok(())
@@ -347,4 +347,38 @@ fn transfer_symbol_table(
     ast.get_mut_element(origin_node_index).symbol_table = None;
     ast.get_mut_element(destination_node_index).symbol_table = Some(table_index);
     table_index
+}
+
+fn add_entry_to_table(
+    ast: &mut AST,
+    table_index: usize,
+    node_index: usize,
+) -> Result<(), SemanticError> {
+    check_duplicate(ast, table_index, node_index)?;
+    let entry_index = ast.get_element(node_index).symbol_table_entry.unwrap();
+    ast.symbol_table_arena.add_entry(table_index, entry_index);
+
+    Ok(())
+}
+
+fn check_duplicate(ast: &AST, table_index: usize, node_index: usize) -> Result<(), SemanticError> {
+    let entry_index = ast.get_element(node_index).symbol_table_entry.unwrap();
+    let name = &ast
+        .symbol_table_arena
+        .get_symbol_table_entry(entry_index)
+        .name;
+    for entry in ast.symbol_table_arena.get_symbol_table_entries(table_index) {
+        if ast.symbol_table_arena.get_symbol_table_entry(*entry).name == *name {
+            return Err(SemanticError::DuplicateIdentifier(
+                ast.get_leftmost_token(node_index),
+                ast.symbol_table_arena
+                    .get_symbol_table(table_index)
+                    .name
+                    .clone(),
+                name.clone(),
+            ));
+        }
+    }
+
+    Ok(())
 }

@@ -67,6 +67,7 @@ fn main() {
     compile(&source);
 }
 
+#[allow(clippy::large_enum_variant)]
 enum Error {
     Lexical(TokenError),
     Syntactic(SyntacticError),
@@ -143,7 +144,7 @@ fn print_symbol_table(
         .expect("Could not write to symbol table file.");
 }
 
-fn compile(source: &String) {
+fn compile(source: &str) {
     let atocc_filename = "atocc.txt";
     let path = Path::new(atocc_filename);
     let mut atocc_file = match File::create(&path) {
@@ -250,7 +251,7 @@ fn compile(source: &String) {
     };
 
     let (mut ast, syntactic_errors) = match syntactic_analyzer.parse(tokens) {
-        Ok((ast, mut derivation_table, syntactic_errors)) => {
+        Ok((ast, mut _derivation_table, syntactic_errors)) => {
             // if tokens
             //     .iter()
             //     .map(|token| GrammarSymbol::Terminal(token.token_type))

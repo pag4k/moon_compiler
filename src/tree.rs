@@ -1,17 +1,17 @@
-use std::collections::HashMap;
+// use std::collections::HashMap;
 
-pub struct Element<E> {
-    element: HashMap<usize, E>,
-}
+// pub struct Element<E> {
+//     element: HashMap<usize, E>,
+// }
 
-impl<E> Element<E> {
-    fn get(&self, node_index: usize) -> Option<&E> {
-        self.element.get(&node_index)
-    }
-    fn set(&mut self, node_index: usize, element: E) {
-        self.element.insert(node_index, element);
-    }
-}
+// impl<E> Element<E> {
+//     fn get(&self, node_index: usize) -> Option<&E> {
+//         self.element.get(&node_index)
+//     }
+//     fn set(&mut self, node_index: usize, element: E) {
+//         self.element.insert(node_index, element);
+//     }
+// }
 
 pub struct Tree<E: Sized, T: Sized> {
     pub root: Option<usize>,

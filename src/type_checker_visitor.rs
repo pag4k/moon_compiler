@@ -10,11 +10,8 @@ pub fn type_checker_visitor(ast: &mut AST) -> Vec<SemanticError> {
     use NodeType::*;
     let mut semantic_errors: Vec<SemanticError> = Vec::new();
     let mut semantic_actions: SemanticActionMap<SemanticError> = HashMap::new();
-    semantic_actions.insert(Prog, prog);
-    semantic_actions.insert(FuncDef, func_def);
     semantic_actions.insert(AssignStat, assign_stat);
     semantic_actions.insert(AssignStati, assign_stat);
-    semantic_actions.insert(VarElementList, var_element_list);
     semantic_actions.insert(RelExpr, rel_expr);
     semantic_actions.insert(AddOp, add_op);
     semantic_actions.insert(MultOp, mult_op);
@@ -28,9 +25,6 @@ pub fn type_checker_visitor(ast: &mut AST) -> Vec<SemanticError> {
     ast_traversal(ast, &mut semantic_errors, &semantic_actions);
     semantic_errors
 }
-
-fn prog(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {}
-fn func_def(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {}
 
 fn assign_stat(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     use SymbolType::*;
@@ -65,96 +59,6 @@ fn assign_stat(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
         ));
     }
 }
-fn var_element_list(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
-    // //Check first variable in list
-    // let first_child_index = ast.get_children(node_index)[0];
-    // let first_child_element = ast.get_element(first_child_index);
-    // let id_index = ast.get_children(first_child_index)[0];
-    // let symbol_name = ast.get_lexeme(id_index);
-
-    // let mut previous_table_index = match first_child_element.node_type {
-    //     NodeType::DataMember => {
-    //         let variable_name = symbol_name;
-
-    //         if ast.is_for_variable(for_variable_entry, &variable_name) {
-    //             // We have the for variable.
-    //             ast.check_for_variable(node_index, for_variable_entry.unwrap())
-    //         } else {
-    //             let entry_index =
-    //                 ast.get_variable_entry(scope_index, Some(function_table_index), &variable_name);
-
-    //             match ast.check_data_member(node_index, first_child_index, entry_index, 0) {
-    //                 Ok(previous_table_index) => previous_table_index,
-    //                 Err(error) => {
-    //                     semantic_errors.push(error);
-    //                     ast.get_mut_element(node_index).data_type =
-    //                         Some(SymbolType::Integer(Vec::new()));
-    //                     return;
-    //                 }
-    //             }
-    //         }
-    //     }
-    //     NodeType::FunctionCall => {
-    //         let function_name = symbol_name;
-    //         let entry_index = match scope_index {
-    //             Some(table_index) => match ast.is_member_function(table_index, &function_name) {
-    //                 Some(entry_index) => entry_index,
-    //                 None => ast.find_free_function(&function_name).unwrap(),
-    //             },
-    //             None => ast.find_free_function(&function_name).unwrap(),
-    //         };
-    //         ast.check_function_call(node_index, entry_index, 0)
-    //     }
-    //     _ => unreachable!(),
-    // };
-
-    // for (element_position, child_node) in ast
-    //     .get_children(node_index)
-    //     .to_vec()
-    //     .iter()
-    //     .enumerate()
-    //     .skip(1)
-    // {
-    //     let current_symbol_name = ast.get_child_lexeme(*child_node, 0);
-
-    //     previous_table_index = {
-    //         match ast.get_note_type(*child_node) {
-    //             NodeType::DataMember => {
-    //                 let variable_name = current_symbol_name;
-    //                 let entry_index =
-    //                     ast.get_variable_entry(previous_table_index, None, &variable_name);
-
-    //                 match ast.check_data_member(
-    //                     node_index,
-    //                     *child_node,
-    //                     entry_index,
-    //                     element_position,
-    //                 ) {
-    //                     Ok(previous_table_index) => previous_table_index,
-    //                     Err(error) => {
-    //                         semantic_errors.push(error);
-    //                         ast.get_mut_element(node_index).data_type =
-    //                             Some(SymbolType::Integer(Vec::new()));
-    //                         return;
-    //                     }
-    //                 }
-    //             }
-    //             NodeType::FunctionCall => {
-    //                 let function_name = current_symbol_name;
-    //                 let entry_index = ast
-    //                     .is_member_function(previous_table_index.unwrap(), &function_name)
-    //                     .unwrap();
-    //                 ast.check_function_call(node_index, entry_index, element_position)
-    //             }
-    //             _ => unreachable!(),
-    //         }
-    //     };
-    // }
-    // if ast.get_mut_element(node_index).data_type.is_none() {
-    //     dbg!(&ast.get_leftmost_token(node_index));
-    // }
-}
-
 fn rel_expr(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     use SymbolType::*;
 
@@ -223,11 +127,11 @@ fn mult_op(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: 
     ast.get_mut_element(node_index).data_type = Some(symbol_type);
 }
 
-fn not_sign(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
+fn not_sign(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     let child_type = ast.get_child_data_type(node_index, 0);
     ast.get_mut_element(node_index).data_type = Some(child_type);
 }
-fn num(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
+fn num(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     let symbol_type = match get_token_type(ast, node_index) {
         TokenType::IntNum => SymbolType::Integer(Vec::new()),
         TokenType::FloatNum => SymbolType::Float(Vec::new()),
