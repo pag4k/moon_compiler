@@ -2,29 +2,24 @@ use crate::ast_node::*;
 use crate::symbol_table::*;
 
 impl AST {
-    pub fn get_class_tables_in_table(&self, table_index: usize) -> Vec<usize> {
-        let mut class_table_indices = Vec::new();
-
-        for entry_index in self
-            .symbol_table_arena
-            .get_symbol_table_entries(table_index)
-        {
-            let symbol_entry = self.symbol_table_arena.get_symbol_table_entry(*entry_index);
-            if let SymbolKind::Class = symbol_entry.kind {
-                if let Some(class_table_index) = symbol_entry.link {
-                    class_table_indices.push(class_table_index);
+    pub fn get_class_tables_in_table(&self, class_table_index: usize) -> Vec<usize> {
+        self.symbol_table_arena
+            .get_table_entries(class_table_index)
+            .iter()
+            .map(|entry_index| self.symbol_table_arena.get_table_entry(*entry_index))
+            .filter_map(|symbol_entry| {
+                if let SymbolKind::Class = symbol_entry.kind {
+                    symbol_entry.link
+                } else {
+                    None
                 }
-            }
-        }
-        class_table_indices
+            })
+            .collect()
     }
 
     pub fn find_function_in_table(&self, table_index: usize, name: &str) -> Option<usize> {
-        for entry_index in self
-            .symbol_table_arena
-            .get_symbol_table_entries(table_index)
-        {
-            let symbol_entry = self.symbol_table_arena.get_symbol_table_entry(*entry_index);
+        for entry_index in self.symbol_table_arena.get_table_entries(table_index) {
+            let symbol_entry = self.symbol_table_arena.get_table_entry(*entry_index);
             if symbol_entry.name == name {
                 if let SymbolKind::Function(_, _) = symbol_entry.kind {
                     return Some(*entry_index);
@@ -69,7 +64,7 @@ impl AST {
         {
             let class_name = self
                 .symbol_table_arena
-                .get_symbol_table(class_table_index)
+                .get_table(class_table_index)
                 .name
                 .clone();
             if name == class_name {
@@ -84,11 +79,8 @@ impl AST {
         table_index: usize,
         name: &str,
     ) -> Option<usize> {
-        for entry_index in self
-            .symbol_table_arena
-            .get_symbol_table_entries(table_index)
-        {
-            let symbol_entry = self.symbol_table_arena.get_symbol_table_entry(*entry_index);
+        for entry_index in self.symbol_table_arena.get_table_entries(table_index) {
+            let symbol_entry = self.symbol_table_arena.get_table_entry(*entry_index);
             if symbol_entry.name == name {
                 if let SymbolKind::Variable(_) = symbol_entry.kind {
                     return Some(*entry_index);

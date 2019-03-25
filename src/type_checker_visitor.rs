@@ -171,7 +171,7 @@ fn function_call(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_i
     let entry_index = ast.get_element(node_index).symbol_table_entry.unwrap();
     let function_parameter_list = match ast
         .symbol_table_arena
-        .get_symbol_table_entry(entry_index)
+        .get_table_entry(entry_index)
         .kind
         .clone()
     {
@@ -228,7 +228,7 @@ fn return_stat(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
                 .unwrap();
             let function_return_type = match ast
                 .symbol_table_arena
-                .get_symbol_table_entry(function_def_entry_index)
+                .get_table_entry(function_def_entry_index)
                 .kind
                 .clone()
             {

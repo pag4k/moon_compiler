@@ -16,3 +16,4 @@ Cargo.lock
 **/*.png
 
 *.xml
+.vscode/launch.json

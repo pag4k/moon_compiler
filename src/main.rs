@@ -13,10 +13,13 @@ mod nfa_generator;
 mod semantic_analysis_common;
 //mod semantic_class_checker;
 mod semantic_error;
+mod table;
 mod type_checker_visitor;
 //mod semantic_function_checker;
 mod symbol_table;
+mod memory_table;
 //mod symbol_table_generator;
+mod memory_table_generator_visitor;
 mod syntactic_analyzer;
 mod syntactic_analyzer_table;
 mod syntactic_error;
@@ -461,6 +464,7 @@ mod tests {
             "table_generation_error3.txt",
             "class_checker_error1.txt",
             "class_checker_error2.txt",
+            "class_checker_error3.txt",
             "function_checker_error1.txt",
             "type_checker_error1.txt",
         ];
@@ -476,6 +480,8 @@ mod tests {
                     return;
                 }
             };
+            println!();
+            println!("Compiling file: {}", source_filename);
             crate::compile(&source);
         }
     }

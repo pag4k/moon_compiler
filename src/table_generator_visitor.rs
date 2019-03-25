@@ -52,7 +52,7 @@ fn prog(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usi
     let stat_block_node_index = ast.get_children(node_index)[2];
     let program_table_index = ast.get_element(stat_block_node_index).symbol_table.unwrap();
     ast.symbol_table_arena
-        .get_mut_symbol_table(program_table_index)
+        .get_mut_table(program_table_index)
         .name = name.clone();
 
     // Create main function entry and add it to the global scope.
@@ -96,9 +96,7 @@ fn func_def(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index:
 
     // Take table from StatBlock
     let table_index = transfer_symbol_table(ast, ast.get_child(node_index, 4), node_index);
-    ast.symbol_table_arena
-        .get_mut_symbol_table(table_index)
-        .name = name.clone();
+    ast.symbol_table_arena.get_mut_table(table_index).name = name.clone();
 
     let return_type = make_type_from_child(ast, node_index, 0, Vec::new());
 
@@ -111,7 +109,7 @@ fn func_def(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index:
             .unwrap();
         let parameter_type = match ast
             .symbol_table_arena
-            .get_symbol_table_entry(entry_index)
+            .get_table_entry(entry_index)
             .kind
             .clone()
         {
@@ -146,7 +144,7 @@ fn func_decl(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, node_inde
             .unwrap();
         let parameter_type = match ast
             .symbol_table_arena
-            .get_symbol_table_entry(entry_index)
+            .get_table_entry(entry_index)
             .kind
             .clone()
         {
@@ -274,7 +272,7 @@ fn add_function(
         .unwrap();
     let function_name = ast
         .symbol_table_arena
-        .get_symbol_table(function_definition_table_index)
+        .get_table(function_definition_table_index)
         .name
         .clone();
 
@@ -299,18 +297,18 @@ fn add_function(
                     // Get a clone of the definition entry and remore link.
                     let mut function_definition_entry = (*ast
                         .symbol_table_arena
-                        .get_symbol_table_entry(function_definition_table_entry_index))
+                        .get_table_entry(function_definition_table_entry_index))
                     .clone();
                     function_definition_entry.link = None;
                     // Get a clone of the definition entry.
                     let function_declaration_entry = (*ast
                         .symbol_table_arena
-                        .get_symbol_table_entry(function_declaration_entry_index))
+                        .get_table_entry(function_declaration_entry_index))
                     .clone();
                     // Compare declaration and definition, assumin neither has a link.
                     if function_declaration_entry == function_definition_entry {
                         ast.symbol_table_arena
-                            .get_mut_symbol_table_entry(function_declaration_entry_index)
+                            .get_mut_table_entry(function_declaration_entry_index)
                             .link = Some(function_definition_table_index);
                         return Ok(());
                     } else {
@@ -363,18 +361,12 @@ fn add_entry_to_table(
 
 fn check_duplicate(ast: &AST, table_index: usize, node_index: usize) -> Result<(), SemanticError> {
     let entry_index = ast.get_element(node_index).symbol_table_entry.unwrap();
-    let name = &ast
-        .symbol_table_arena
-        .get_symbol_table_entry(entry_index)
-        .name;
-    for entry in ast.symbol_table_arena.get_symbol_table_entries(table_index) {
-        if ast.symbol_table_arena.get_symbol_table_entry(*entry).name == *name {
+    let name = &ast.symbol_table_arena.get_table_entry(entry_index).name;
+    for entry in ast.symbol_table_arena.get_table_entries(table_index) {
+        if ast.symbol_table_arena.get_table_entry(*entry).name == *name {
             return Err(SemanticError::DuplicateIdentifier(
                 ast.get_leftmost_token(node_index),
-                ast.symbol_table_arena
-                    .get_symbol_table(table_index)
-                    .name
-                    .clone(),
+                ast.symbol_table_arena.get_table(table_index).name.clone(),
                 name.clone(),
             ));
         }

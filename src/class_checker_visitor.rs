@@ -21,13 +21,8 @@ fn prog(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, _node_index: us
     use SymbolKind::*;
     // Check if all member function are linked.
     for class_table_index in ast.get_class_tables_in_table(ast.symbol_table_arena.root.unwrap()) {
-        for member_entry_index in ast
-            .symbol_table_arena
-            .get_symbol_table_entries(class_table_index)
-        {
-            let function_symbol_entry = ast
-                .symbol_table_arena
-                .get_symbol_table_entry(*member_entry_index);
+        for member_entry_index in ast.symbol_table_arena.get_table_entries(class_table_index) {
+            let function_symbol_entry = ast.symbol_table_arena.get_table_entry(*member_entry_index);
             let function_name = function_symbol_entry.name.clone();
             if let Function(_, _) = function_symbol_entry.kind {
                 if function_symbol_entry.link.is_none() {
@@ -58,26 +53,20 @@ fn prog(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, _node_index: us
     for class_table_index in ast.get_class_tables_in_table(ast.symbol_table_arena.root.unwrap()) {
         let base_class_name = ast
             .symbol_table_arena
-            .get_symbol_table(class_table_index)
+            .get_table(class_table_index)
             .name
             .clone();
         for inherited_class_index in ast.get_class_tables_in_table(class_table_index) {
-            for entry_index in ast
-                .symbol_table_arena
-                .get_symbol_table_entries(class_table_index)
-            {
-                let symbol_entry = ast.symbol_table_arena.get_symbol_table_entry(*entry_index);
+            for entry_index in ast.symbol_table_arena.get_table_entries(class_table_index) {
+                let symbol_entry = ast.symbol_table_arena.get_table_entry(*entry_index);
                 let member_name = &symbol_entry.name;
                 match symbol_entry.kind {
                     Function(_, _) => {
                         if let Some(table_index) =
                             ast.is_member_function(inherited_class_index, member_name)
                         {
-                            let class_name = ast
-                                .symbol_table_arena
-                                .get_symbol_table(table_index)
-                                .name
-                                .clone();
+                            let class_name =
+                                ast.symbol_table_arena.get_table(table_index).name.clone();
                             semantic_errors.push(SemanticError::ShadowInheritedMemberFunction(
                                 ast.get_leftmost_token(
                                     get_node_index_with_entry_index(
@@ -97,11 +86,8 @@ fn prog(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, _node_index: us
                         if let Some(table_index) =
                             ast.is_member_variable(inherited_class_index, member_name)
                         {
-                            let class_name = ast
-                                .symbol_table_arena
-                                .get_symbol_table(table_index)
-                                .name
-                                .clone();
+                            let class_name =
+                                ast.symbol_table_arena.get_table(table_index).name.clone();
                             semantic_errors.push(SemanticError::ShadowInheritedMemberVariable(
                                 ast.get_leftmost_token(
                                     get_node_index_with_entry_index(
@@ -174,7 +160,7 @@ fn check_circular_dependency_in_class(
         class_table_index_stack.push(class_table_index);
         let dependency_list: Vec<String> = class_table_index_stack
             .iter()
-            .map(|&index| ast.symbol_table_arena.get_symbol_table(index).name.clone())
+            .map(|&index| ast.symbol_table_arena.get_table(index).name.clone())
             .collect();
         return Err(SemanticError::CircularClassDependency(
             ast.get_leftmost_token(
@@ -187,6 +173,13 @@ fn check_circular_dependency_in_class(
     class_table_index_stack.push(class_table_index);
 
     for sub_class_table_index in ast.get_class_tables_in_table(class_table_index) {
+        check_circular_dependency_in_class(
+            ast,
+            sub_class_table_index,
+            &mut class_table_index_stack.clone(),
+        )?;
+    }
+    for sub_class_table_index in get_member_variable_in_table(ast, class_table_index) {
         check_circular_dependency_in_class(
             ast,
             sub_class_table_index,
@@ -213,4 +206,26 @@ fn get_node_index_with_entry_index(
         }
     }
     None
+}
+
+fn get_member_variable_in_table(ast: &AST, class_table_index: usize) -> Vec<usize> {
+    ast.symbol_table_arena
+        .get_table_entries(class_table_index)
+        .iter()
+        .map(|entry_index| ast.symbol_table_arena.get_table_entry(*entry_index))
+        .filter_map(|symbol_entry| {
+            if let SymbolKind::Variable(symbol_type) = &symbol_entry.kind {
+                Some(symbol_type)
+            } else {
+                None
+            }
+        })
+        .filter_map(|symbol_type| {
+            if let SymbolType::Class(class_name, _) = symbol_type {
+                ast.find_class_symbol_table(&class_name)
+            } else {
+                None
+            }
+        })
+        .collect()
 }

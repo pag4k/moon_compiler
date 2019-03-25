@@ -111,7 +111,7 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
                         // It is a local variable, check if it was declared before.
                         match ast
                             .symbol_table_arena
-                            .get_symbol_table_entry(variable_table_entry_index)
+                            .get_table_entry(variable_table_entry_index)
                             .kind
                         {
                             // Do not check if it is a parameter since it is obviously already declared.
@@ -121,7 +121,7 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
                                         SemanticError::VariableUsedBeforeBeingDeclared(
                                             ast.get_leftmost_token(node_index),
                                             ast.symbol_table_arena
-                                                .get_symbol_table(function_table_index)
+                                                .get_table(function_table_index)
                                                 .name
                                                 .clone(),
                                         ),
@@ -139,7 +139,7 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
                         semantic_errors.push(SemanticError::UndefinedLocalVariable(
                             ast.get_leftmost_token(node_index),
                             ast.symbol_table_arena
-                                .get_symbol_table(function_table_index)
+                                .get_table(function_table_index)
                                 .name
                                 .clone(),
                         ));
@@ -153,7 +153,7 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
     // At this point, the variable table entry index has been successfully found.
     let variable_symbol_type = match &ast
         .symbol_table_arena
-        .get_symbol_table_entry(variable_table_entry_index)
+        .get_table_entry(variable_table_entry_index)
         .kind
     {
         SymbolKind::Variable(symbol_type) | SymbolKind::Parameter(symbol_type) => {
@@ -272,7 +272,7 @@ fn function_call(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_i
     // At this point, the function table entry index has been successfully found.
     let function_return_symbol_type = match &ast
         .symbol_table_arena
-        .get_symbol_table_entry(function_table_entry_index)
+        .get_table_entry(function_table_entry_index)
         .kind
     {
         SymbolKind::Function(symbol_type, _) => match symbol_type {
@@ -396,11 +396,7 @@ fn get_class_table_from_name(ast: &AST, class_name: &str) -> usize {
     ast.get_class_tables_in_table(ast.symbol_table_arena.root.unwrap())
         .into_iter()
         .find(|&class_table_index| {
-            class_name
-                == ast
-                    .symbol_table_arena
-                    .get_symbol_table(class_table_index)
-                    .name
+            class_name == ast.symbol_table_arena.get_table(class_table_index).name
         })
         .unwrap()
 }
@@ -412,9 +408,7 @@ fn is_array_type(
 ) -> Result<bool, SemanticError> {
     use SymbolKind::*;
 
-    let symbol_entry = ast
-        .symbol_table_arena
-        .get_symbol_table_entry(symbol_entry_index);
+    let symbol_entry = ast.symbol_table_arena.get_table_entry(symbol_entry_index);
     let dimension_list_len = match symbol_entry.clone().kind {
         Variable(symbol_type) | Parameter(symbol_type) => symbol_type.get_dimension_list().len(),
         _ => unreachable!(),
@@ -440,9 +434,7 @@ fn check_number_of_dimensions(
 ) -> Result<(), SemanticError> {
     use SymbolKind::*;
 
-    let symbol_entry = ast
-        .symbol_table_arena
-        .get_symbol_table_entry(symbol_entry_index);
+    let symbol_entry = ast.symbol_table_arena.get_table_entry(symbol_entry_index);
     let dimension_list_len = match symbol_entry.clone().kind {
         Variable(symbol_type) | Parameter(symbol_type) => symbol_type.get_dimension_list().len(),
         _ => unreachable!(),
@@ -465,8 +457,8 @@ pub fn get_variable_entry_in_function_table(
     table_index: usize,
     name: &str,
 ) -> Option<usize> {
-    for entry_index in ast.symbol_table_arena.get_symbol_table_entries(table_index) {
-        let symbol_entry = ast.symbol_table_arena.get_symbol_table_entry(*entry_index);
+    for entry_index in ast.symbol_table_arena.get_table_entries(table_index) {
+        let symbol_entry = ast.symbol_table_arena.get_table_entry(*entry_index);
         if symbol_entry.name == name {
             if let SymbolKind::Variable(_) = symbol_entry.kind {
                 return Some(*entry_index);
@@ -482,8 +474,8 @@ pub fn get_parameter_entry_in_function_table(
     table_index: usize,
     name: &str,
 ) -> Option<usize> {
-    for entry_index in ast.symbol_table_arena.get_symbol_table_entries(table_index) {
-        let symbol_entry = ast.symbol_table_arena.get_symbol_table_entry(*entry_index);
+    for entry_index in ast.symbol_table_arena.get_table_entries(table_index) {
+        let symbol_entry = ast.symbol_table_arena.get_table_entry(*entry_index);
         if symbol_entry.name == name {
             if let SymbolKind::Parameter(_) = symbol_entry.kind {
                 return Some(*entry_index);
@@ -501,9 +493,9 @@ fn get_node_symbol_type(ast: &AST, node_index: usize) -> Option<SymbolType> {
 fn find_free_function(ast: &AST, name: &str) -> Option<usize> {
     for entry_index in ast
         .symbol_table_arena
-        .get_symbol_table_entries(ast.symbol_table_arena.root.unwrap())
+        .get_table_entries(ast.symbol_table_arena.root.unwrap())
     {
-        let symbol_entry = ast.symbol_table_arena.get_symbol_table_entry(*entry_index);
+        let symbol_entry = ast.symbol_table_arena.get_table_entry(*entry_index);
         if symbol_entry.name == name {
             if let SymbolKind::Function(_, _) = symbol_entry.kind {
                 return Some(*entry_index);
