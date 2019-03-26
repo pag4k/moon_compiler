@@ -2,7 +2,7 @@ class InheritedUtility {
   integer member1;};
 
 class Utility : InheritedUtility, bad_class {
-  integer var1[4][5][7][8][9][1][0];
+  integer var1[0][5][7][8][9][1][0];
   float var2;
   //integer member1;
   integer findMax(integer aray[100]);

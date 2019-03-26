@@ -162,8 +162,22 @@ fn func_decl(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, node_inde
     );
     ast.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
 }
-fn var_decl(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
+fn var_decl(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     let name = ast.get_child_lexeme(node_index, 1);
+    for (index, dimension) in ast
+        .get_children_of_child(node_index, 2)
+        .iter()
+        .map(|&child_index| get_dimension(ast, child_index))
+        .enumerate()
+    {
+        if dimension < 1 {
+            semantic_errors.push(SemanticError::DimensionMustBeGreaterThanZero(
+                ast.get_leftmost_token(node_index),
+                index,
+                dimension,
+            ));
+        }
+    }
     let indices = ast
         .get_children_of_child(node_index, 2)
         .iter()
@@ -177,8 +191,22 @@ fn var_decl(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, node_index
     );
     ast.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
 }
-fn f_param(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
+fn f_param(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     let name = ast.get_child_lexeme(node_index, 1);
+    for (index, dimension) in ast
+        .get_children_of_child(node_index, 2)
+        .iter()
+        .map(|&child_index| get_dimension(ast, child_index))
+        .enumerate()
+    {
+        if dimension < 1 {
+            semantic_errors.push(SemanticError::DimensionMustBeGreaterThanZero(
+                ast.get_leftmost_token(node_index),
+                index,
+                dimension,
+            ));
+        }
+    }
     let indices = ast
         .get_children_of_child(node_index, 2)
         .iter()

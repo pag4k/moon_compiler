@@ -30,6 +30,7 @@ pub enum SemanticError {
     ShouldNotReturnFromMain(Token),
     ReturnTypeDoesNotMatchFuctionDeclaration(Token, SymbolType, SymbolType),
     ArrayIndiceMustBeInteger(Token, (usize, SymbolType)),
+    DimensionMustBeGreaterThanZero(Token, usize, usize),
     MismatchedTypeDimensions(Token, SymbolType, SymbolType),
     WrongNumberOfArguments(Token, usize, usize),
     InvalidArgument(Token, (usize, SymbolType, SymbolType)),
@@ -193,6 +194,14 @@ impl Display for SemanticError {
                 invalid_index.0,
                 invalid_index.1,
             ),
+            DimensionMustBeGreaterThanZero(token, index, dimension) => write!(
+                f,
+                "Semantic error at {}: Variable \"{}\" index at position {} must be greater than zero, but found {}.",
+                token.location,
+                token.lexeme.clone().unwrap(),
+                index,
+                dimension,
+            ),
             MismatchedTypeDimensions(token, expected_type, actual_type) => write!(
                 f,
                 "Semantic error at {}: Cannot assign to variable \"{}\", dimensions do not match: expected type {}, but found {}.",
@@ -223,16 +232,18 @@ impl Display for SemanticError {
                 "Semantic warning at {}: Member variable \"{}\" in class \"{}\" shadows the one in class \"{}\".",
                 token.location,
                 member_name,
-                class_name,
                 base_class_name,
+                class_name,
+                
             ),
             ShadowInheritedMemberFunction(token, base_class_name, member_name, class_name) =>write!(
                 f,
                 "Semantic warning at {}: Member function \"{}\" in class \"{}\" shadows the one in class \"{}\".",
                 token.location,
                 member_name,
-                class_name,
                 base_class_name,
+                class_name,
+                
             ),
 
         }
@@ -264,6 +275,7 @@ impl TokenLocation for SemanticError {
             ShouldNotReturnFromMain(token) => token.location,
             ReturnTypeDoesNotMatchFuctionDeclaration(token, _, _) => token.location,
             ArrayIndiceMustBeInteger(token, _) =>token.location,
+            DimensionMustBeGreaterThanZero(token, _, _) => token.location,
             MismatchedTypeDimensions(token, _, _) => token.location,
             WrongNumberOfArguments(token, _, _) => token.location,
             InvalidArgument(token, _) => token.location,

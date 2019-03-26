@@ -20,20 +20,22 @@ impl AST {
     pub fn find_function_in_table(&self, table_index: usize, name: &str) -> Option<usize> {
         for entry_index in self.symbol_table_arena.get_table_entries(table_index) {
             let symbol_entry = self.symbol_table_arena.get_table_entry(*entry_index);
-            if symbol_entry.name == name {
-                if let SymbolKind::Function(_, _) = symbol_entry.kind {
-                    return Some(*entry_index);
-                }
+            if symbol_entry.kind.is_function() && symbol_entry.name == name {
+                return Some(*entry_index);
             }
         }
 
         None
     }
 
-    pub fn is_member_variable(&self, class_table_index: usize, name: &str) -> Option<usize> {
-        let result = self.get_variable_entry_in_class_table(class_table_index, name);
-        if result.is_some() {
-            return result;
+    pub fn is_member_variable(
+        &self,
+        class_table_index: usize,
+        name: &str,
+    ) -> Option<(usize, usize)> {
+        let member_entry_index = self.get_variable_entry_in_class_table(class_table_index, name);
+        if let Some(member_entry_index) = member_entry_index {
+            return Some((class_table_index, member_entry_index));
         }
         for inherited_class_index in self.get_class_tables_in_table(class_table_index) {
             let result = self.is_member_variable(inherited_class_index, name);
@@ -44,10 +46,14 @@ impl AST {
         None
     }
 
-    pub fn is_member_function(&self, class_table_index: usize, name: &str) -> Option<usize> {
-        let result = self.find_function_in_table(class_table_index, name);
-        if result.is_some() {
-            return result;
+    pub fn is_member_function(
+        &self,
+        class_table_index: usize,
+        name: &str,
+    ) -> Option<(usize, usize)> {
+        let member_entry_index = self.find_function_in_table(class_table_index, name);
+        if let Some(member_entry_index) = member_entry_index {
+            return Some((class_table_index, member_entry_index));
         }
         for inherited_class_index in self.get_class_tables_in_table(class_table_index) {
             let result = self.is_member_function(inherited_class_index, name);
@@ -82,9 +88,9 @@ impl AST {
         for entry_index in self.symbol_table_arena.get_table_entries(table_index) {
             let symbol_entry = self.symbol_table_arena.get_table_entry(*entry_index);
             if symbol_entry.name == name {
-                if let SymbolKind::Variable(_) = symbol_entry.kind {
+                if symbol_entry.kind.is_variable() {
                     return Some(*entry_index);
-                } else if let SymbolKind::Parameter(_) = symbol_entry.kind {
+                } else if symbol_entry.kind.is_parameter() {
                     unreachable!();
                 }
             }

@@ -2,7 +2,7 @@ class InheritedUtility {
   integer member1;};
 
 class Utility : InheritedUtility {
-  integer var1[4][5][7][8][9][1][0];
+  integer var1[4][5][7][8][9][1][1];
   Utility var2;
   integer findMax(integer aray[100]);
   integer findMin(integer array[100]);};

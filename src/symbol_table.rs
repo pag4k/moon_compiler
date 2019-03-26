@@ -95,6 +95,30 @@ impl Display for SymbolKind {
     }
 }
 
+impl SymbolKind {
+    pub fn is_variable(&self) -> bool {
+        use SymbolKind::*;
+        match self {
+            Variable(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_parameter(&self) -> bool {
+        use SymbolKind::*;
+        match self {
+            Parameter(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_function(&self) -> bool {
+        use SymbolKind::*;
+        match self {
+            Function(_, _) => true,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct SymbolTable {
     index: usize,

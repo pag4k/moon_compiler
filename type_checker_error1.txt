@@ -2,7 +2,7 @@ class InheritedUtility {
   integer member1;};
 
 class Utility : InheritedUtility {
-  integer var1[4][5][7][8][9][1][0];
+  integer var1[4][5][7][8][9][1][1];
   float var2;
   //integer member1;
   integer test(integer i1, integer i2);

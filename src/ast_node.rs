@@ -1,11 +1,12 @@
 use crate::lexical_analyzer::*;
+use crate::memory_table::*;
 use crate::symbol_table::*;
 use crate::tree::Tree;
 
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
-pub type AST = Tree<NodeElement, SymbolTableArena>;
+pub type AST = Tree<NodeElement, SymbolTableArena, MemoryTableArena>;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum NodeType {
@@ -273,6 +274,8 @@ pub struct NodeElement {
     pub token: Option<Token>,
     pub symbol_table: Option<usize>,
     pub symbol_table_entry: Option<usize>,
+    pub memory_table: Option<usize>,
+    pub memory_table_entry: Option<usize>,
     pub data_type: Option<SymbolType>,
 }
 
@@ -353,6 +356,8 @@ impl AST {
             },
             symbol_table: None,
             symbol_table_entry: None,
+            memory_table: None,
+            memory_table_entry: None,
             data_type: None,
         });
 

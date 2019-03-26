@@ -1,6 +1,8 @@
 mod ast_node;
 mod ast_visitor;
 mod class_checker_visitor;
+mod code_generation_common;
+mod code_generation_error;
 mod dot_generator;
 mod finite_accepter;
 mod function_checker_visitor;
@@ -16,10 +18,12 @@ mod semantic_error;
 mod table;
 mod type_checker_visitor;
 //mod semantic_function_checker;
-mod symbol_table;
 mod memory_table;
+mod symbol_table;
 //mod symbol_table_generator;
+mod code_generator_visitor;
 mod memory_table_generator_visitor;
+mod register_pool;
 mod syntactic_analyzer;
 mod syntactic_analyzer_table;
 mod syntactic_error;
@@ -27,11 +31,14 @@ mod table_generator_visitor;
 mod tree;
 mod tree_dot_printer;
 
+use ast_node::*;
 use class_checker_visitor::*;
+use code_generator_visitor::*;
 use function_checker_visitor::*;
 use grammar::*;
 use language::*;
 use lexical_analyzer::*;
+use memory_table_generator_visitor::*;
 use semantic_error::*;
 use std::env;
 use std::fs;
@@ -99,12 +106,11 @@ impl TokenLocation for Error {
     }
 }
 
-fn print_errors(
+fn combine_errors(
     lexical_errors: Vec<TokenError>,
     syntactic_errors: Vec<SyntacticError>,
     semantic_errors: Vec<SemanticError>,
-    error_file: &mut File,
-) {
+) -> Vec<Error> {
     use Error::*;
     let mut errors = Vec::new();
     errors.append(
@@ -129,6 +135,10 @@ fn print_errors(
             .as_mut(),
     );
     errors.sort_by_key(TokenLocation::get_location);
+    errors
+}
+
+fn print_errors(errors: &Vec<Error>, error_file: &mut File) {
     println!("Found {} errors:", errors.len());
     for error in errors {
         println!("{}", error);
@@ -138,16 +148,27 @@ fn print_errors(
     }
 }
 
-fn print_symbol_table(
-    ast: &tree::Tree<ast_node::NodeElement, symbol_table::SymbolTableArena>,
-    symbol_table_filename: &mut File,
-) {
-    symbol_table_filename
+fn print_symbol_table(ast: &AST, symbol_table_file: &mut File) {
+    symbol_table_file
         .write_fmt(format_args!("{} ", ast.symbol_table_arena.print()))
         .expect("Could not write to symbol table file.");
 }
 
-fn compile(source: &str) {
+fn print_memory_table(ast: &AST, memory_table_file: &mut File) {
+    memory_table_file
+        .write_fmt(format_args!("{} ", ast.memory_table_arena.print()))
+        .expect("Could not write to symbol table file.");
+}
+
+fn print_moon_code(code: &Vec<String>, moon_code_file: &mut File) {
+    for line in code {
+        moon_code_file
+            .write_fmt(format_args!("{}", line))
+            .expect("Could not write to moon code file.");
+    }
+}
+
+fn compile(source: &str) -> Option<Vec<Error>> {
     let atocc_filename = "atocc.txt";
     let path = Path::new(atocc_filename);
     let mut atocc_file = match File::create(&path) {
@@ -157,7 +178,7 @@ fn compile(source: &str) {
                 "ERROR: Something went wrong creating AtoCC file: {}. Exiting...",
                 atocc_filename
             );
-            return;
+            return None;
         }
     };
 
@@ -170,7 +191,7 @@ fn compile(source: &str) {
                 "ERROR: Something went wrong creating error file: {}. Exiting...",
                 error_filename
             );
-            return;
+            return None;
         }
     };
 
@@ -183,7 +204,33 @@ fn compile(source: &str) {
                 "ERROR: Something went wrong creating symbol table file: {}. Exiting...",
                 symbol_table_filename
             );
-            return;
+            return None;
+        }
+    };
+
+    let memory_table_filename = "memory_table.txt";
+    let path = Path::new(memory_table_filename);
+    let mut memory_table_file = match File::create(&path) {
+        Ok(file) => file,
+        Err(_) => {
+            println!(
+                "ERROR: Something went wrong creating memory table file: {}. Exiting...",
+                memory_table_filename
+            );
+            return None;
+        }
+    };
+
+    let moon_code_filename = "moon_code.txt";
+    let path = Path::new(moon_code_filename);
+    let mut moon_code_file = match File::create(&path) {
+        Ok(file) => file,
+        Err(_) => {
+            println!(
+                "ERROR: Something went wrong creating moon code file: {}. Exiting...",
+                moon_code_filename
+            );
+            return None;
         }
     };
 
@@ -211,7 +258,7 @@ fn compile(source: &str) {
 
     if tokens.is_empty() {
         println!("Error: Empty program. Exiting...");
-        return;
+        return None;
     } else {
         println!("Lexical analysis completed.");
     }
@@ -224,7 +271,7 @@ fn compile(source: &str) {
                 "ERROR: Something went wrong reading grammar file: {}. Exiting...",
                 grammar_filename
             );
-            return;
+            return None;
         }
     };
 
@@ -238,7 +285,7 @@ fn compile(source: &str) {
         }
         Err(error) => {
             println!("{}", error);
-            return;
+            return None;
         }
     };
 
@@ -249,7 +296,7 @@ fn compile(source: &str) {
         }
         Err(error) => {
             println!("{}", error);
-            return;
+            return None;
         }
     };
 
@@ -300,7 +347,7 @@ fn compile(source: &str) {
                 "ERROR: Abstract syntaxt tree error: {}. Exiting...",
                 ast_error
             );
-            return;
+            return None;
         }
     };
 
@@ -310,13 +357,9 @@ fn compile(source: &str) {
         .iter()
         .any(|syntactic_error| syntactic_error.failed_to_recover())
     {
-        print_errors(
-            lexical_errors,
-            syntactic_errors,
-            Vec::new(),
-            &mut error_file,
-        );
-        return;
+        let errors = combine_errors(lexical_errors, syntactic_errors, Vec::new());
+        print_errors(&errors, &mut error_file);
+        return Some(errors);
     }
 
     let ast_filename = "ast.gv";
@@ -331,14 +374,10 @@ fn compile(source: &str) {
     println!("Symbol table generation completed.");
 
     if !semantic_errors.is_empty() {
-        print_errors(
-            lexical_errors,
-            syntactic_errors,
-            semantic_errors,
-            &mut error_file,
-        );
+        let errors = combine_errors(lexical_errors, syntactic_errors, semantic_errors);
+        print_errors(&errors, &mut error_file);
         print_symbol_table(&ast, &mut symbol_table_file);
-        return;
+        return Some(errors);
     }
 
     //let semantic_warning_and_errors = ast.semantic_class_checker();
@@ -358,14 +397,10 @@ fn compile(source: &str) {
     println!("Semantic class checking completed.");
 
     if !semantic_errors.is_empty() {
-        print_errors(
-            lexical_errors,
-            syntactic_errors,
-            semantic_errors,
-            &mut error_file,
-        );
+        let errors = combine_errors(lexical_errors, syntactic_errors, semantic_errors);
+        print_errors(&errors, &mut error_file);
         print_symbol_table(&ast, &mut symbol_table_file);
-        return;
+        return Some(errors);
     }
 
     //let semantic_errors = ast.semantic_function_checker();
@@ -374,14 +409,10 @@ fn compile(source: &str) {
     println!("Semantic function checking completed.");
 
     if !semantic_errors.is_empty() {
-        print_errors(
-            lexical_errors,
-            syntactic_errors,
-            semantic_errors,
-            &mut error_file,
-        );
+        let errors = combine_errors(lexical_errors, syntactic_errors, semantic_errors);
+        print_errors(&errors, &mut error_file);
         print_symbol_table(&ast, &mut symbol_table_file);
-        return;
+        return Some(errors);
     }
 
     //let semantic_errors = ast.type_checker();
@@ -390,27 +421,33 @@ fn compile(source: &str) {
     let semantic_errors = type_checker_visitor(&mut ast);
 
     if !semantic_errors.is_empty() {
-        print_errors(
-            lexical_errors,
-            syntactic_errors,
-            semantic_errors,
-            &mut error_file,
-        );
+        let errors = combine_errors(lexical_errors, syntactic_errors, semantic_errors);
+        print_errors(&errors, &mut error_file);
         print_symbol_table(&ast, &mut symbol_table_file);
-        return;
+        return Some(errors);
     }
 
     if !lexical_errors.is_empty() || !syntactic_errors.is_empty() {
-        print_errors(
-            lexical_errors,
-            syntactic_errors,
-            semantic_errors,
-            &mut error_file,
-        );
-    } else {
-        println!("Compilation completed without errors!");
+        let errors = combine_errors(lexical_errors, syntactic_errors, semantic_errors);
+        print_errors(&errors, &mut error_file);
         print_symbol_table(&ast, &mut symbol_table_file);
+        return Some(errors);
     }
+
+    println!("Compilation completed without errors!");
+    print_symbol_table(&ast, &mut symbol_table_file);
+
+    while !memory_table_generator_visitor(&mut ast).is_empty() {
+        println!("Memory pass");
+    }
+
+    print_memory_table(&ast, &mut memory_table_file);
+
+    let moon_code = code_generator_visitor(&mut ast);
+
+    print_moon_code(&moon_code, &mut moon_code_file);
+
+    None
 }
 
 #[cfg(test)]
@@ -419,57 +456,9 @@ mod tests {
 
     #[test]
     fn lexical_analyzer() {
-        let source_filenames = ["lexical_error1.txt"];
+        let source_files: Vec<(&str, usize)> = vec![("lexical_error1.txt", 26)];
 
-        for source_filename in source_filenames.iter() {
-            let source = match fs::read_to_string(source_filename) {
-                Ok(file) => file,
-                Err(_) => {
-                    println!(
-                        "ERROR: Something went wrong reading source file: {}. Exiting...",
-                        source_filename
-                    );
-                    return;
-                }
-            };
-            crate::compile(&source);
-        }
-    }
-
-    #[test]
-    fn syntactic_analyzer() {
-        let source_filenames = ["syntactic_error1.txt", "syntactic_error2.txt"];
-
-        for source_filename in source_filenames.iter() {
-            let source = match fs::read_to_string(source_filename) {
-                Ok(file) => file,
-                Err(_) => {
-                    println!(
-                        "ERROR: Something went wrong reading source file: {}. Exiting...",
-                        source_filename
-                    );
-                    return;
-                }
-            };
-            crate::compile(&source);
-        }
-    }
-
-    #[test]
-    fn semantic_analyzer() {
-        let source_filenames = [
-            "table_generation_error1.txt",
-            "table_generation_error2.txt",
-            "table_generation_error3.txt",
-            "table_generation_error3.txt",
-            "class_checker_error1.txt",
-            "class_checker_error2.txt",
-            "class_checker_error3.txt",
-            "function_checker_error1.txt",
-            "type_checker_error1.txt",
-        ];
-
-        for source_filename in source_filenames.iter() {
+        for (source_filename, error_count) in source_files.iter() {
             let source = match fs::read_to_string(source_filename) {
                 Ok(file) => file,
                 Err(_) => {
@@ -482,7 +471,68 @@ mod tests {
             };
             println!();
             println!("Compiling file: {}", source_filename);
-            crate::compile(&source);
+            match crate::compile(&source) {
+                Some(errors) => assert!(*error_count == errors.len()),
+                None => assert!(*error_count == 0),
+            }
+        }
+    }
+
+    #[test]
+    fn syntactic_analyzer() {
+        let source_files: Vec<(&str, usize)> =
+            vec![("syntactic_error1.txt", 5), ("syntactic_error2.txt", 9)];
+
+        for (source_filename, error_count) in source_files.iter() {
+            let source = match fs::read_to_string(source_filename) {
+                Ok(file) => file,
+                Err(_) => {
+                    println!(
+                        "ERROR: Something went wrong reading source file: {}. Exiting...",
+                        source_filename
+                    );
+                    return;
+                }
+            };
+            println!();
+            println!("Compiling file: {}", source_filename);
+            match crate::compile(&source) {
+                Some(errors) => assert!(*error_count == errors.len()),
+                None => assert!(*error_count == 0),
+            }
+        }
+    }
+
+    #[test]
+    fn semantic_analyzer() {
+        let source_files: Vec<(&str, usize)> = vec![
+            ("table_generation_error1.txt", 4),
+            ("table_generation_error2.txt", 1),
+            ("table_generation_error3.txt", 2),
+            ("class_checker_error1.txt", 3),
+            ("class_checker_error2.txt", 1),
+            ("class_checker_error3.txt", 1),
+            ("function_checker_error1.txt", 7),
+            ("type_checker_error1.txt", 12),
+        ];
+
+        for (source_filename, error_count) in source_files.iter() {
+            let source = match fs::read_to_string(source_filename) {
+                Ok(file) => file,
+                Err(_) => {
+                    println!(
+                        "ERROR: Something went wrong reading source file: {}. Exiting...",
+                        source_filename
+                    );
+                    return;
+                }
+            };
+            println!();
+            println!("Compiling file: {}", source_filename);
+            match crate::compile(&source) {
+                Some(errors) => assert!(*error_count == errors.len()),
+                None => assert!(*error_count == 0),
+            }
         }
     }
 }

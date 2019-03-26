@@ -1,0 +1,11 @@
+entry
+addi r14,r0,topaddr
+% processing: t0 := 5
+addi r1,r0,5
+sw 4(r14),r1
+% processing: a := t0
+lw 1,4(r14)
+sw 0(r14),1
+% buffer space used for console output
+buf       res 20
+hlt

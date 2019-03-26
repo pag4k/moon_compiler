@@ -5,7 +5,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 
-impl<E, T> Tree<E, T>
+impl<E, T, M> Tree<E, T, M>
 where
     E: Display + Clone,
 {

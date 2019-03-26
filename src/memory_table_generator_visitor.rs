@@ -1,231 +1,264 @@
-// use crate::ast_node::*;
-// use crate::ast_visitor::*;
-// use crate::semantic_error::*;
-// use crate::symbol_table::*;
+use crate::ast_node::*;
+use crate::ast_visitor::*;
+use crate::code_generation_common::*;
+use crate::code_generation_error::*;
+use crate::memory_table::*;
+use crate::symbol_table::*;
 
-// use std::collections::HashMap;
+use std::collections::HashMap;
 
-// pub fn memory_table_generator_visitor(ast: &mut AST) -> Vec<SemanticError> {
-//     use NodeType::*;
-//     let mut semantic_errors: Vec<SemanticError> = Vec::new();
-//     let mut semantic_actions: SemanticActionMap<SemanticError> = HashMap::new();
-//     semantic_actions.insert(Prog, prog);
-//     semantic_actions.insert(ClassDecl, class_decl);
-//     semantic_actions.insert(FuncDef, func_def);
-//     semantic_actions.insert(FuncDecl, func_decl);
-//     semantic_actions.insert(VarDecl, var_decl);
-//     semantic_actions.insert(FParam, f_param);
-//     semantic_actions.insert(ForStat, for_stat);
-//     semantic_actions.insert(MainFuncBody, stat_block);
-//     semantic_actions.insert(FuncBody, stat_block);
+pub fn memory_table_generator_visitor(ast: &mut AST) -> Vec<CodeGenError> {
+    use NodeType::*;
+    let mut code_generation_errors: Vec<CodeGenError> = Vec::new();
+    let mut semantic_actions: SemanticActionMap<CodeGenError> = HashMap::new();
+    semantic_actions.insert(ClassDecl, class_decl);
+    semantic_actions.insert(MainFuncBody, main_func_body);
+    semantic_actions.insert(FuncDef, func_def);
+    semantic_actions.insert(VarDecl, var_decl);
+    semantic_actions.insert(VarElementList, var_element_list);
+    semantic_actions.insert(RelExpr, temp_var);
+    semantic_actions.insert(AddOp, temp_var);
+    semantic_actions.insert(MultOp, temp_var);
+    semantic_actions.insert(Not, temp_var);
+    semantic_actions.insert(Sign, temp_var);
+    semantic_actions.insert(Num, lit_var);
 
-//     ast_traversal(ast, &mut semantic_errors, &semantic_actions);
-//     semantic_errors
-// }
+    ast_traversal(ast, &mut code_generation_errors, &semantic_actions);
+    code_generation_errors
+}
 
-// fn prog(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
-//     let table_index = ast
-//         .symbol_table_arena
-//         .new_symbol_table("Global".to_string());
-//     ast.get_mut_element(node_index).symbol_table = Some(table_index);
+fn class_decl(ast: &mut AST, code_generation_errors: &mut Vec<CodeGenError>, node_index: usize) {
+    // Check if inherited classes have been sized.
+    if ast
+        .get_children_of_child(node_index, 1)
+        .iter()
+        .any(|&child_index| {
+            get_class_size(
+                ast,
+                &ast.symbol_table_arena
+                    .get_table_entry(ast.get_element(child_index).symbol_table_entry.unwrap())
+                    .name,
+            )
+            .is_none()
+        })
+    {
+        code_generation_errors.push(CodeGenError::ClassNotSizedYet);
+        return;
+    }
 
-//     // Set root.
-//     ast.symbol_table_arena.root = Some(table_index);
+    // Check if member variables have been sized.
+    if ast
+        .get_children_of_child(node_index, 2)
+        .iter()
+        .filter(|&&child_index| {
+            ast.symbol_table_arena
+                .get_table_entry(ast.get_element(child_index).symbol_table_entry.unwrap())
+                .kind
+                .is_variable()
+        })
+        .any(|&child_index| ast.get_element(child_index).memory_table_entry.is_none())
+    {
+        code_generation_errors.push(CodeGenError::ClassNotSizedYet);
+        return;
+    }
 
-//     // Add classes.
-//     for node_index in ast.get_children_of_child(node_index, 0) {
-//         if let Err(error) = add_entry_to_table(ast, table_index, node_index) {
-//             semantic_errors.push(error);
-//         }
-//     }
+    if ast.get_element(node_index).memory_table.is_none() {
+        let class_name = &ast
+            .symbol_table_arena
+            .get_table(ast.get_element(node_index).symbol_table.unwrap())
+            .name;
+        let table_entry = ast.memory_table_arena.new_memory_table(class_name.clone());
+        ast.get_mut_element(node_index).memory_table = Some(table_entry);
+        // Add inherited classes.
+        for child_index in ast.get_children_of_child(node_index, 1).into_iter() {
+            let inherited_class_name = &ast
+                .symbol_table_arena
+                .get_table_entry(ast.get_element(child_index).symbol_table_entry.unwrap())
+                .name;
+            let variable_type = VariableType::Class(inherited_class_name.clone());
+            let size = get_class_size(ast, inherited_class_name).unwrap();
+            let entry_index = ast.memory_table_arena.new_memory_table_entry(
+                VariableKind::Inherited,
+                variable_type,
+                size,
+            );
+            ast.memory_table_arena.add_entry(table_entry, entry_index);
+        }
+        // Add member variables.
+        for child_index in ast.get_children_of_child(node_index, 2).into_iter() {
+            if ast.get_element(child_index).memory_table_entry.is_some() {
+                let entry_index = ast.get_element(child_index).memory_table_entry.unwrap();
+                ast.memory_table_arena.add_entry(table_entry, entry_index);
+            }
+        }
+    }
+}
 
-//     // Add functions.
-//     // Here we assume that the list of classes is complete to validate types.
-//     for function_node_index in ast.get_children_of_child(node_index, 1) {
-//         if let Err(error) = add_function(ast, function_node_index, table_index) {
-//             semantic_errors.push(error);
-//         }
-//     }
+fn main_func_body(
+    ast: &mut AST,
+    code_generation_errors: &mut Vec<CodeGenError>,
+    node_index: usize,
+) {
+    if !code_generation_errors.is_empty() {
+        return;
+    }
 
-//     // Rename table from StatBlock
-//     let name = "main".to_string();
-//     let stat_block_node_index = ast.get_children(node_index)[2];
-//     let program_table_index = ast.get_element(stat_block_node_index).symbol_table.unwrap();
-//     ast.symbol_table_arena
-//         .get_mut_symbol_table(program_table_index)
-//         .name = name.clone();
+    let table_entry = ast
+        .memory_table_arena
+        .new_memory_table("program".to_string());
+    ast.get_mut_element(node_index).memory_table = Some(table_entry);
 
-//     // Create main function entry and add it to the global scope.
-//     let entry_index = ast.symbol_table_arena.new_symbol_table_entry(
-//         name,
-//         SymbolKind::Function(None, Vec::new()),
-//         Some(program_table_index),
-//     );
-//     ast.get_mut_element(stat_block_node_index)
-//         .symbol_table_entry = Some(entry_index);
-//     if let Err(error) = add_entry_to_table(ast, table_index, stat_block_node_index) {
-//         semantic_errors.push(error);
-//     }
-// }
+    // Add var, temp_var and lit_var.
+    for child_index in ast.get_children(node_index).into_iter() {
+        let mut var_entries = Vec::new();
+        get_var(ast, child_index, &mut var_entries);
+        for entry_index in var_entries {
+            ast.memory_table_arena.add_entry(table_entry, entry_index);
+        }
+    }
+}
 
-// fn class_decl(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
-//     let name = ast.get_child_lexeme(node_index, 0);
+fn func_def(ast: &mut AST, code_generation_errors: &mut Vec<CodeGenError>, node_index: usize) {
+    if !code_generation_errors.is_empty() {
+        return;
+    }
 
-//     let table_index = ast.symbol_table_arena.new_symbol_table(name.clone());
-//     ast.get_mut_element(node_index).symbol_table = Some(table_index);
+    let class_name = &ast
+        .symbol_table_arena
+        .get_table(ast.get_element(node_index).symbol_table.unwrap())
+        .name;
+    let table_entry = ast.memory_table_arena.new_memory_table(class_name.clone());
+    ast.get_mut_element(node_index).memory_table = Some(table_entry);
 
-//     let entry_index = ast.symbol_table_arena.new_symbol_table_entry(
-//         name.clone(),
-//         SymbolKind::Class,
-//         Some(table_index),
-//     );
-//     ast.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
+    let entry_index = ast.get_element(node_index).symbol_table_entry.unwrap();
 
-//     // Get members
-//     for member_index in ast.get_children_of_child(node_index, 2) {
-//         if ast.get_element(member_index).symbol_table_entry.is_some() {
-//             if let Err(error) = add_entry_to_table(ast, table_index, member_index) {
-//                 semantic_errors.push(error);
-//             }
-//         }
-//     }
-// }
-// fn func_def(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
-//     // Function Definition has an entry and a table.
-//     let name = ast.get_child_lexeme(node_index, 2);
+    // Add return variable.
+    let return_symbol_type = match &ast.symbol_table_arena.get_table_entry(entry_index).kind {
+        SymbolKind::Function(return_symbol_type, _) => return_symbol_type.as_ref().unwrap(),
+        _ => unreachable!(),
+    };
+    let variable_type = symbol_to_variabl_type(&return_symbol_type);
+    let entry_index = ast.memory_table_arena.new_memory_table_entry(
+        VariableKind::Return,
+        variable_type,
+        get_size(ast, return_symbol_type).unwrap(),
+    );
+    ast.memory_table_arena.add_entry(table_entry, entry_index);
 
-//     // Take table from StatBlock
-//     let table_index = transfer_symbol_table(ast, ast.get_child(node_index, 4), node_index);
-//     ast.symbol_table_arena
-//         .get_mut_symbol_table(table_index)
-//         .name = name.clone();
+    // Add parameters (need to check the nodes since the symbol table does not have their names).
+    for child_index in ast.get_children_of_child(node_index, 3).into_iter() {
+        let symbol_entry = ast
+            .symbol_table_arena
+            .get_table_entry(ast.get_element(child_index).symbol_table_entry.unwrap());
+        let variable_name = &symbol_entry.name;
+        let symbol_type = match &symbol_entry.kind {
+            SymbolKind::Parameter(symbol_type) => symbol_type,
+            _ => unreachable!(),
+        };
+        let variable_type = symbol_to_variabl_type(&symbol_type);
+        let entry_index = ast.memory_table_arena.new_memory_table_entry(
+            VariableKind::Param(variable_name.clone()),
+            variable_type,
+            get_size(ast, &symbol_type).unwrap(),
+        );
+        ast.memory_table_arena.add_entry(table_entry, entry_index);
+    }
 
-//     let return_type = make_type_from_child(ast, node_index, 0, Vec::new());
+    // Add var, temp_var and lit_var.
+    for child_index in ast.get_children_of_child(node_index, 4).into_iter() {
+        let mut var_entries = Vec::new();
+        get_var(ast, child_index, &mut var_entries);
+        for entry_index in var_entries {
+            ast.memory_table_arena.add_entry(table_entry, entry_index);
+        }
+    }
+}
 
-//     // Get parameters
-//     let mut parameters = Vec::new();
-//     for parameter_index in ast.get_children_of_child(node_index, 3) {
-//         let entry_index = ast
-//             .get_mut_element(parameter_index)
-//             .symbol_table_entry
-//             .unwrap();
-//         let parameter_type = match ast
-//             .symbol_table_arena
-//             .get_symbol_table_entry(entry_index)
-//             .kind
-//             .clone()
-//         {
-//             SymbolKind::Parameter(parameter_type) => parameter_type,
-//             _ => unreachable!(),
-//         };
+fn var_decl(ast: &mut AST, _code_generation_errors: &mut Vec<CodeGenError>, node_index: usize) {
+    if ast.get_mut_element(node_index).memory_table_entry.is_none() {
+        let symbol_entry = ast
+            .symbol_table_arena
+            .get_table_entry(ast.get_element(node_index).symbol_table_entry.unwrap());
+        let variable_name = &symbol_entry.name;
+        let symbol_type = match &symbol_entry.kind {
+            SymbolKind::Variable(symbol_type) => symbol_type,
+            _ => unreachable!(),
+        };
+        let variable_type = symbol_to_variabl_type(&symbol_type);
 
-//         parameters.push(parameter_type.clone());
-//         if let Err(error) = add_entry_to_table(ast, table_index, parameter_index) {
-//             semantic_errors.push(error);
-//         }
-//     }
+        if let Some(size) = get_size(ast, &symbol_type) {
+            let entry_index = ast.memory_table_arena.new_memory_table_entry(
+                VariableKind::Var(variable_name.clone()),
+                variable_type,
+                size,
+            );
+            ast.get_mut_element(node_index).memory_table_entry = Some(entry_index);
+        }
+    }
+}
 
-//     let entry_index = ast.symbol_table_arena.new_symbol_table_entry(
-//         name,
-//         SymbolKind::Function(Some(return_type), parameters),
-//         Some(table_index),
-//     );
-//     ast.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
-// }
-// fn func_decl(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
-//     // Function Declaration just has an entry.
-//     let name = ast.get_child_lexeme(node_index, 1);
-//     let return_type = make_type_from_child(ast, node_index, 0, Vec::new());
+fn var_element_list(
+    ast: &mut AST,
+    _code_generation_errors: &mut Vec<CodeGenError>,
+    node_index: usize,
+) {
 
-//     // Get parameters
-//     let mut parameters = Vec::new();
-//     for parameter_index in ast.get_children_of_child(node_index, 2) {
-//         let entry_index = ast
-//             .get_mut_element(parameter_index)
-//             .symbol_table_entry
-//             .unwrap();
-//         let parameter_type = match ast
-//             .symbol_table_arena
-//             .get_symbol_table_entry(entry_index)
-//             .kind
-//             .clone()
-//         {
-//             SymbolKind::Parameter(parameter_type) => parameter_type,
-//             _ => unreachable!(),
-//         };
+}
 
-//         parameters.push(parameter_type.clone());
-//     }
+fn temp_var(ast: &mut AST, _code_generation_errors: &mut Vec<CodeGenError>, node_index: usize) {
+    if ast.get_mut_element(node_index).memory_table_entry.is_none() {
+        let data_type = ast.get_element(node_index).data_type.as_ref().unwrap();
+        let variable_type = symbol_to_variabl_type(&data_type);
+        if let Some(size) = get_size(ast, &data_type) {
+            let entry_index = ast.memory_table_arena.new_memory_table_entry(
+                VariableKind::TempVar(0),
+                variable_type,
+                size,
+            );
+            ast.get_mut_element(node_index).memory_table_entry = Some(entry_index);
+        }
+    }
+}
 
-//     let entry_index = ast.symbol_table_arena.new_symbol_table_entry(
-//         name,
-//         SymbolKind::Function(Some(return_type), parameters),
-//         None,
-//     );
-//     ast.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
-// }
-// fn var_decl(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
-//     let name = ast.get_child_lexeme(node_index, 1);
-//     let indices = ast
-//         .get_children_of_child(node_index, 2)
-//         .iter()
-//         .map(|&child_index| get_dimension(ast, child_index))
-//         .collect();
-//     let parameter_type = make_type_from_child(ast, node_index, 0, indices);
-//     let entry_index = ast.symbol_table_arena.new_symbol_table_entry(
-//         name,
-//         SymbolKind::Variable(parameter_type),
-//         None,
-//     );
-//     ast.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
-// }
-// fn f_param(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
-//     let name = ast.get_child_lexeme(node_index, 1);
-//     let indices = ast
-//         .get_children_of_child(node_index, 2)
-//         .iter()
-//         .map(|&child_index| get_dimension(ast, child_index))
-//         .collect();
-//     let parameter_type = make_type_from_child(ast, node_index, 0, indices);
-//     let entry_index = ast.symbol_table_arena.new_symbol_table_entry(
-//         name,
-//         SymbolKind::Parameter(parameter_type),
-//         None,
-//     );
-//     ast.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
-// }
-// fn for_stat(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
-//     let symbol_type = make_type_from_child(ast, node_index, 0, Vec::new());
-//     let name = ast.get_child_lexeme(node_index, 1);
-//     let table_index = ast.symbol_table_arena.new_symbol_table(name.clone());
-//     let entry_index = ast.symbol_table_arena.new_symbol_table_entry(
-//         name,
-//         SymbolKind::Variable(symbol_type),
-//         None,
-//     );
-//     let first_child_index = ast.get_children(node_index)[0];
+fn lit_var(ast: &mut AST, _code_generation_errors: &mut Vec<CodeGenError>, node_index: usize) {
+    if ast.get_mut_element(node_index).memory_table_entry.is_none() {
+        let data_type = ast.get_element(node_index).data_type.as_ref().unwrap();
+        let variable_type = symbol_to_variabl_type(&data_type);
+        if let Some(size) = get_size(ast, &data_type) {
+            let entry_index = ast.memory_table_arena.new_memory_table_entry(
+                VariableKind::LitVar(0),
+                variable_type,
+                size,
+            );
+            ast.get_mut_element(node_index).memory_table_entry = Some(entry_index);
+        }
+    }
+}
 
-//     ast.get_mut_element(first_child_index).symbol_table_entry = Some(entry_index);
-//     if let Err(error) = add_entry_to_table(ast, table_index, first_child_index) {
-//         semantic_errors.push(error);
-//     }
-//     ast.get_mut_element(node_index).symbol_table = Some(table_index);
-// }
-// fn stat_block(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
-//     // Create a table without a name.
-//     let table_index = ast.symbol_table_arena.new_symbol_table(String::new());
-//     ast.get_mut_element(node_index).symbol_table = Some(table_index);
+fn get_var(ast: &mut AST, node_index: usize, var_entries: &mut Vec<usize>) {
+    for child_index in ast.get_children(node_index) {
+        get_var(ast, child_index, var_entries);
+    }
 
-//     // Get variables
-//     for variable_index in ast.get_children(node_index).to_vec() {
-//         if ast
-//             .get_mut_element(variable_index)
-//             .symbol_table_entry
-//             .is_some()
-//         {
-//             if let Err(error) = add_entry_to_table(ast, table_index, variable_index) {
-//                 semantic_errors.push(error);
-//             }
-//         }
-//     }
+    if let Some(entry_index) = ast.get_mut_element(node_index).memory_table_entry {
+        let memory_entry = ast.memory_table_arena.get_table_entry(entry_index);
+        //if memory_entry.is_temp_var() || memory_entry.is_lit_var() {
+        var_entries.push(entry_index);
+        //} else {
+        //    unreachable!();
+        //}
+    }
+}
+
+// fn transfer_memory_entry(ast: &mut AST, origin_node_index: usize, destination_node_index: usize) {
+//     let table_entry = ast
+//         .get_element(destination_node_index)
+//         .memory_table
+//         .unwrap();
+//     let entry_index = ast
+//         .get_element(origin_node_index)
+//         .memory_table_entry
+//         .unwrap();
+//     ast.get_mut_element(origin_node_index).memory_table_entry = None;
+//     ast.memory_table_arena.add_entry(table_entry, entry_index);
 // }

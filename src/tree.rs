@@ -13,10 +13,14 @@
 //     }
 // }
 
-pub struct Tree<E: Sized, T: Sized> {
+use crate::register_pool::*;
+
+pub struct Tree<E: Sized, S: Sized, M> {
     pub root: Option<usize>,
     pub nodes: Vec<Node<E>>,
-    pub symbol_table_arena: T,
+    pub symbol_table_arena: S,
+    pub memory_table_arena: M,
+    pub register_pool: RegisterPool,
 }
 
 pub struct Node<E> {
@@ -26,20 +30,23 @@ pub struct Node<E> {
     pub element: E,
 }
 
-impl<E, T> Default for Tree<E, T>
+impl<E, T, M> Default for Tree<E, T, M>
 where
     T: Default,
+    M: Default,
 {
     fn default() -> Self {
         Tree {
             root: None,
             nodes: Vec::new(),
             symbol_table_arena: T::default(),
+            memory_table_arena: M::default(),
+            register_pool: RegisterPool::new(1, 12),
         }
     }
 }
 
-impl<E, T> Tree<E, T>
+impl<E, T, M> Tree<E, T, M>
 where
     E: Clone,
 {

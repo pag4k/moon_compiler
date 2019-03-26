@@ -18,31 +18,29 @@ pub fn class_checker_visitor(ast: &mut AST) -> Vec<SemanticError> {
 }
 
 fn prog(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, _node_index: usize) {
-    use SymbolKind::*;
     // Check if all member function are linked.
     for class_table_index in ast.get_class_tables_in_table(ast.symbol_table_arena.root.unwrap()) {
         for member_entry_index in ast.symbol_table_arena.get_table_entries(class_table_index) {
             let function_symbol_entry = ast.symbol_table_arena.get_table_entry(*member_entry_index);
             let function_name = function_symbol_entry.name.clone();
-            if let Function(_, _) = function_symbol_entry.kind {
-                if function_symbol_entry.link.is_none() {
-                    semantic_errors.push(SemanticError::MemberFunctionDeclHasNoDef(
-                        ast.get_leftmost_token(
-                            get_node_index_with_entry_index(
-                                ast,
-                                ast.root.unwrap(),
-                                *member_entry_index,
-                            )
-                            .unwrap(),
-                        ),
-                        function_name,
-                    ));
-                    return;
-                }
+            if function_symbol_entry.kind.is_function() && function_symbol_entry.link.is_none() {
+                semantic_errors.push(SemanticError::MemberFunctionDeclHasNoDef(
+                    ast.get_leftmost_token(
+                        get_node_index_with_entry_index(
+                            ast,
+                            ast.root.unwrap(),
+                            *member_entry_index,
+                        )
+                        .unwrap(),
+                    ),
+                    function_name,
+                ));
+                return;
             }
         }
     }
 
+    // FIXME: If a base class is analysed first and there is a circular dependency between its parents, the error is located at the base class.
     // At this point, all inherited classes should be properly linked, so circular dependancy can be checked.
     if let Err(error) = check_circular_dependency(ast) {
         semantic_errors.push(error);
@@ -60,50 +58,52 @@ fn prog(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, _node_index: us
             for entry_index in ast.symbol_table_arena.get_table_entries(class_table_index) {
                 let symbol_entry = ast.symbol_table_arena.get_table_entry(*entry_index);
                 let member_name = &symbol_entry.name;
-                match symbol_entry.kind {
-                    Function(_, _) => {
-                        if let Some(table_index) =
-                            ast.is_member_function(inherited_class_index, member_name)
-                        {
-                            let class_name =
-                                ast.symbol_table_arena.get_table(table_index).name.clone();
-                            semantic_errors.push(SemanticError::ShadowInheritedMemberFunction(
-                                ast.get_leftmost_token(
-                                    get_node_index_with_entry_index(
-                                        ast,
-                                        ast.root.unwrap(),
-                                        *entry_index,
-                                    )
-                                    .unwrap(),
-                                ),
-                                base_class_name.clone(),
-                                member_name.clone(),
-                                class_name,
-                            ))
-                        }
+                if symbol_entry.kind.is_function() {
+                    if let Some((class_table_index, member_entry_index)) =
+                        ast.is_member_function(inherited_class_index, member_name)
+                    {
+                        let class_name = ast
+                            .symbol_table_arena
+                            .get_table(class_table_index)
+                            .name
+                            .clone();
+                        semantic_errors.push(SemanticError::ShadowInheritedMemberFunction(
+                            ast.get_leftmost_token(
+                                get_node_index_with_entry_index(
+                                    ast,
+                                    ast.root.unwrap(),
+                                    *entry_index,
+                                )
+                                .unwrap(),
+                            ),
+                            base_class_name.clone(),
+                            member_name.clone(),
+                            class_name,
+                        ))
                     }
-                    Variable(_) => {
-                        if let Some(table_index) =
-                            ast.is_member_variable(inherited_class_index, member_name)
-                        {
-                            let class_name =
-                                ast.symbol_table_arena.get_table(table_index).name.clone();
-                            semantic_errors.push(SemanticError::ShadowInheritedMemberVariable(
-                                ast.get_leftmost_token(
-                                    get_node_index_with_entry_index(
-                                        ast,
-                                        ast.root.unwrap(),
-                                        *entry_index,
-                                    )
-                                    .unwrap(),
-                                ),
-                                base_class_name.clone(),
-                                member_name.clone(),
-                                class_name,
-                            ))
-                        }
+                } else if symbol_entry.kind.is_variable() {
+                    if let Some((class_table_index, member_entry_index)) =
+                        ast.is_member_variable(inherited_class_index, member_name)
+                    {
+                        let class_name = ast
+                            .symbol_table_arena
+                            .get_table(class_table_index)
+                            .name
+                            .clone();
+                        semantic_errors.push(SemanticError::ShadowInheritedMemberVariable(
+                            ast.get_leftmost_token(
+                                get_node_index_with_entry_index(
+                                    ast,
+                                    ast.root.unwrap(),
+                                    *entry_index,
+                                )
+                                .unwrap(),
+                            ),
+                            base_class_name.clone(),
+                            member_name.clone(),
+                            class_name,
+                        ))
                     }
-                    _ => {}
                 }
             }
         }
@@ -113,8 +113,8 @@ fn class_decl(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_inde
     let table_index = ast.get_element(node_index).symbol_table.unwrap();
 
     // Get parents.
-    for class_node_index in ast.get_children_of_child(node_index, 1) {
-        let parent_name = ast.get_lexeme(class_node_index);
+    for child_index in ast.get_children_of_child(node_index, 1) {
+        let parent_name = ast.get_lexeme(child_index);
         match ast.find_class_symbol_table(&parent_name) {
             Some(parent_table_index) => {
                 let entry_index = ast.symbol_table_arena.new_symbol_table_entry(
@@ -122,11 +122,13 @@ fn class_decl(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_inde
                     SymbolKind::Class,
                     Some(parent_table_index),
                 );
+                // This is weird to add an entry on an ID, but it makes the rest easier.
+                ast.get_mut_element(child_index).symbol_table_entry = Some(entry_index);
                 ast.symbol_table_arena.add_entry(table_index, entry_index);
             }
             None => {
                 semantic_errors.push(SemanticError::UndefinedClass(
-                    ast.get_leftmost_token(class_node_index),
+                    ast.get_leftmost_token(child_index),
                 ));
             }
         }

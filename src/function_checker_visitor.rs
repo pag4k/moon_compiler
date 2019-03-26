@@ -36,7 +36,7 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
                 Ok(result) => match result {
                     Some((previous_type, class_table_index)) => {
                         match ast.is_member_variable(class_table_index, &variable_name) {
-                            Some(variable_table_entry_index) => variable_table_entry_index,
+                            Some((_, variable_table_entry_index)) => variable_table_entry_index,
                             None => {
                                 semantic_errors.push(SemanticError::UndefinedMemberVariable(
                                     ast.get_leftmost_token(node_index),
@@ -83,6 +83,7 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
                         .unwrap();
                     // If it is a member variable, return table entry.
                     ast.is_member_variable(class_table_index, &variable_name)
+                        .map(|(_, entry_index)| entry_index)
                 }
                 // It is a free function or the main function.
                 None => None,
@@ -109,27 +110,28 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
                         )
                     {
                         // It is a local variable, check if it was declared before.
-                        match ast
+                        if ast
                             .symbol_table_arena
                             .get_table_entry(variable_table_entry_index)
                             .kind
+                            .is_variable()
                         {
                             // Do not check if it is a parameter since it is obviously already declared.
-                            SymbolKind::Variable(_) => {
-                                if !is_variable_declared(ast, node_index) {
-                                    semantic_errors.push(
-                                        SemanticError::VariableUsedBeforeBeingDeclared(
-                                            ast.get_leftmost_token(node_index),
-                                            ast.symbol_table_arena
-                                                .get_table(function_table_index)
-                                                .name
-                                                .clone(),
-                                        ),
-                                    );
-                                    return;
-                                }
+
+                            if !is_variable_declared(ast, node_index) {
+                                semantic_errors.push(
+                                    SemanticError::VariableUsedBeforeBeingDeclared(
+                                        ast.get_leftmost_token(node_index),
+                                        ast.symbol_table_arena
+                                            .get_table(function_table_index)
+                                            .name
+                                            .clone(),
+                                    ),
+                                );
+                                return;
                             }
-                            _ => unreachable!(),
+                        } else {
+                            unreachable!();
                         }
                         // If so, return the function table entry index.
                         variable_table_entry_index
@@ -186,6 +188,8 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
                     ast.get_mut_element(node_index).data_type =
                         Some(variable_symbol_type.clone().remove_dimensions());
                 }
+                ast.get_mut_element(node_index).symbol_table_entry =
+                    Some(variable_table_entry_index);
             }
             Err(error) => semantic_errors.push(error),
         },
@@ -207,7 +211,7 @@ fn function_call(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_i
                 Ok(result) => match result {
                     Some((previous_type, class_table_index)) => {
                         match ast.is_member_function(class_table_index, &function_name) {
-                            Some(function_table_entry_index) => function_table_entry_index,
+                            Some((_, function_table_entry_index)) => function_table_entry_index,
                             None => {
                                 semantic_errors.push(SemanticError::UndefinedMemberFunction(
                                     ast.get_leftmost_token(node_index),
@@ -247,6 +251,7 @@ fn function_call(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_i
                         .unwrap();
                     // If it is a member variable, return table entry.
                     ast.is_member_function(class_table_index, &function_name)
+                        .map(|(_, entry_index)| entry_index)
                 }
                 // It is a free function or the main function.
                 None => None,
@@ -296,6 +301,11 @@ fn var_element_list(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, no
     // Assign the last symbol type to the list.
     if last_element_type.is_some() {
         ast.get_mut_element(node_index).data_type = last_element_type;
+        let symbol_table_entry = ast
+            .get_mut_element(last_child_index)
+            .symbol_table_entry
+            .unwrap();
+        ast.get_mut_element(node_index).symbol_table_entry = Some(symbol_table_entry);
     }
 }
 
@@ -459,10 +469,8 @@ pub fn get_variable_entry_in_function_table(
 ) -> Option<usize> {
     for entry_index in ast.symbol_table_arena.get_table_entries(table_index) {
         let symbol_entry = ast.symbol_table_arena.get_table_entry(*entry_index);
-        if symbol_entry.name == name {
-            if let SymbolKind::Variable(_) = symbol_entry.kind {
-                return Some(*entry_index);
-            }
+        if symbol_entry.kind.is_variable() && symbol_entry.name == name {
+            return Some(*entry_index);
         }
     }
 
@@ -476,10 +484,8 @@ pub fn get_parameter_entry_in_function_table(
 ) -> Option<usize> {
     for entry_index in ast.symbol_table_arena.get_table_entries(table_index) {
         let symbol_entry = ast.symbol_table_arena.get_table_entry(*entry_index);
-        if symbol_entry.name == name {
-            if let SymbolKind::Parameter(_) = symbol_entry.kind {
-                return Some(*entry_index);
-            }
+        if symbol_entry.kind.is_parameter() && symbol_entry.name == name {
+            return Some(*entry_index);
         }
     }
 
@@ -496,10 +502,8 @@ fn find_free_function(ast: &AST, name: &str) -> Option<usize> {
         .get_table_entries(ast.symbol_table_arena.root.unwrap())
     {
         let symbol_entry = ast.symbol_table_arena.get_table_entry(*entry_index);
-        if symbol_entry.name == name {
-            if let SymbolKind::Function(_, _) = symbol_entry.kind {
-                return Some(*entry_index);
-            }
+        if symbol_entry.kind.is_function() && symbol_entry.name == name {
+            return Some(*entry_index);
         }
     }
 

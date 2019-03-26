@@ -7,51 +7,55 @@ const FLOAT: &str = "float";
 pub type MemoryTableArena = TableArena<MemoryTable, MemoryTableEntry>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SymbolType {
+pub enum VariableType {
     Integer,
     Float,
     Class(String),
 }
 
-impl SymbolType {
-    pub fn new(symbol_type: &str) -> Self {
-        use SymbolType::*;
-        match symbol_type {
+impl VariableType {
+    pub fn new(memory_type: &str) -> Self {
+        use VariableType::*;
+        match memory_type {
             "integer" => Integer,
             "float" => Float,
-            _ => Class(symbol_type.to_string()),
+            _ => Class(memory_type.to_string()),
         }
     }
 }
 
-impl Display for SymbolType {
+impl Display for VariableType {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        use SymbolType::*;
-        let symbol_type = match self {
+        use VariableType::*;
+        let memory_type = match self {
             Integer => INTEGER.to_string(),
             Float => FLOAT.to_string(),
             Class(name) => name.clone(),
         };
-        write!(f, "{}", symbol_type)
+        write!(f, "{}", memory_type)
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SymbolKind {
-    Param,
-    Var,
-    TempVar,
-    LitVar,
+pub enum VariableKind {
+    Inherited,
+    Return,
+    Param(String),
+    Var(String),
+    TempVar(usize),
+    LitVar(usize),
 }
 
-impl Display for SymbolKind {
+impl Display for VariableKind {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        use SymbolKind::*;
+        use VariableKind::*;
         let output = match self {
-            Param => "Param",
-            Var => "Var",
-            TempVar => "TempVar",
-            LitVar => "LitVar",
+            Inherited => format!("Inherited"),
+            Return => format!("Return"),
+            Param(name) => format!("Param: {}", name),
+            Var(name) => format!("Var: {}", name),
+            TempVar(temp_index) => format!("TempVar: t{}", temp_index),
+            LitVar(temp_index) => format!("LitVal: t{}", temp_index),
         };
         write!(f, "{}", output)
     }
@@ -61,7 +65,8 @@ impl Display for SymbolKind {
 pub struct MemoryTable {
     index: usize,
     pub name: String,
-    size: usize,
+    pub size: usize,
+    temp_count: usize,
     entries: Vec<usize>,
 }
 
@@ -72,9 +77,6 @@ impl Display for MemoryTable {
             "MEMORY TABLE: NAME: {} SIZE: {} INDEX: {}\n",
             self.name, self.size, self.index
         ));
-        for (index, entry) in self.entries.iter().enumerate() {
-            output.push_str(&format!("Index: {}, {}\n", index, entry));
-        }
         write!(f, "{}", output)
     }
 }
@@ -87,9 +89,8 @@ impl Table<MemoryTable, MemoryTableEntry> for MemoryTable {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MemoryTableEntry {
-    kind: SymbolKind,
-    name: String,
-    symbol_type: SymbolType,
+    kind: VariableKind,
+    memory_type: VariableType,
     size: usize,
     offset: usize,
 }
@@ -100,44 +101,75 @@ impl Display for MemoryTableEntry {
             f,
             "{}",
             format!(
-                "{}, {}, {}, {}, {}",
-                self.kind, self.name, self.symbol_type, self.size, self.offset
+                "{}, {}, {}, {}",
+                self.kind, self.memory_type, self.size, self.offset
             )
         )
     }
 }
 
+impl MemoryTableEntry {
+    pub fn is_temp_var(&self) -> bool {
+        use VariableKind::*;
+        match self.kind {
+            TempVar(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_lit_var(&self) -> bool {
+        use VariableKind::*;
+        match self.kind {
+            LitVar(_) => true,
+            _ => false,
+        }
+    }
+    // FIXME: I should probably prevent variable names in the form t#.
+    pub fn get_name(&self) -> String {
+        use VariableKind::*;
+        match &self.kind {
+            Param(name) => name.clone(),
+            Var(name) => name.clone(),
+            TempVar(temp_index) => format!("t{}", temp_index),
+            LitVar(temp_index) => format!("t{}", temp_index),
+            _ => unreachable!(),
+        }
+    }
+    pub fn get_offset(&self) -> usize {
+        self.offset
+    }
+}
+
 impl MemoryTableArena {
-    pub fn new_symbol_table(&mut self, name: String) -> usize {
+    pub fn new_memory_table(&mut self, name: String) -> usize {
         let index = self.tables.len();
-        let symbol_table = MemoryTable {
+        let memory_table = MemoryTable {
             name,
             index,
             size: 0,
+            temp_count: 0,
             entries: Vec::new(),
         };
-        self.tables.push(symbol_table);
+        self.tables.push(memory_table);
         index
     }
-    pub fn new_symbol_table_entry(
+    pub fn new_memory_table_entry(
         &mut self,
-        kind: SymbolKind,
-        name: String,
-        symbol_type: SymbolType,
+        kind: VariableKind,
+        memory_type: VariableType,
         size: usize,
     ) -> usize {
         let index = self.table_entries.len();
-        let symbol_table_entry = MemoryTableEntry {
+        let memory_table_entry = MemoryTableEntry {
             kind,
-            name,
-            symbol_type,
+            memory_type,
             size,
             offset: 0,
         };
-        self.table_entries.push(symbol_table_entry);
+        self.table_entries.push(memory_table_entry);
         index
     }
     pub fn add_entry(&mut self, table_index: usize, entry_index: usize) {
+        use VariableKind::*;
         let offset = match self.tables[table_index].entries.last() {
             Some(entry_index) => {
                 self.table_entries[*entry_index].size + self.table_entries[*entry_index].offset
@@ -145,6 +177,18 @@ impl MemoryTableArena {
             None => 0,
         };
         self.table_entries[entry_index].offset = offset;
+        match self.table_entries[entry_index].kind {
+            TempVar(_) => {
+                self.table_entries[entry_index].kind = TempVar(self.tables[table_index].temp_count);
+                self.tables[table_index].temp_count += 1;
+            }
+            LitVar(_) => {
+                self.table_entries[entry_index].kind = LitVar(self.tables[table_index].temp_count);
+                self.tables[table_index].temp_count += 1;
+            }
+            _ => {}
+        }
+
         self.tables[table_index].size = offset + self.table_entries[entry_index].size;
         // FIXME: Maybe remove the entry from where it came from.
         self.tables[table_index].entries.push(entry_index);
@@ -152,10 +196,11 @@ impl MemoryTableArena {
     pub fn print(&self) -> String {
         let mut output = String::new();
         for table in self.tables.iter() {
-            output.push_str(&format!("{}\n", table));
+            output.push_str(&format!("{}", table));
             for &entry_index in table.get_entries() {
                 output.push_str(&format!("{}\n", self.table_entries[entry_index]));
             }
+            output.push_str("\n");
         }
         output
     }
