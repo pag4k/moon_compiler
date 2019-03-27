@@ -1,36 +1,5 @@
-SYMBOL TABLE: NAME: Global INDEX: 10
-0. Name: InheritedUtility, Class, Link: Some(0)
-1. Name: Utility, Class, Link: Some(1)
-2. Name: randomize, Function: Return Type: integer, Parameters: , Link: Some(7)
-3. Name: main, Function: Return Type: None, Parameters: , Link: Some(9)
-SYMBOL TABLE: NAME: InheritedUtility INDEX: 0
-0. Name: member1, Variable: integer, Link: None
-SYMBOL TABLE: NAME: Utility INDEX: 1
-0. Name: var1, Variable: integer[4][5][7][8][9][1][1], Link: None
-1. Name: var2, Variable: float, Link: None
-2. Name: test, Function: Return Type: integer, Parameters: integer, integer, Link: Some(2)
-3. Name: findMax, Function: Return Type: integer, Parameters: integer[100], Link: Some(4)
-4. Name: findMin, Function: Return Type: integer, Parameters: integer[10], Link: Some(6)
-5. Name: InheritedUtility, Class, Link: Some(0)
-SYMBOL TABLE: NAME: test INDEX: 2
-0. Name: i1, Parameter: integer, Link: None
-1. Name: i2, Parameter: integer, Link: None
-SYMBOL TABLE: NAME: findMax INDEX: 4
-0. Name: maxValue, Variable: integer, Link: None
-1. Name: idx, Variable: integer, Link: None
-2. Name: array, Parameter: integer[100], Link: None
-SYMBOL TABLE: NAME: findMin INDEX: 6
-0. Name: minValue, Variable: integer, Link: None
-1. Name: idx, Variable: integer, Link: None
-2. Name: array, Parameter: integer[10], Link: None
-SYMBOL TABLE: NAME: randomize INDEX: 7
-0. Name: value, Variable: integer, Link: None
-1. Name: utility, Variable: Utility, Link: None
-SYMBOL TABLE: NAME: main INDEX: 9
-0. Name: sample, Variable: integer[100], Link: None
-1. Name: idx, Variable: integer, Link: None
-2. Name: maxValue, Variable: integer, Link: None
-3. Name: minValue, Variable: integer, Link: None
-4. Name: utility, Variable: Utility, Link: None
-5. Name: arrayUtility, Variable: Utility[2][3][6][7], Link: None
+SYMBOL TABLE: NAME: Global INDEX: 2
+0. Name: main, Function: Return Type: None, Parameters: , Link: Some(1)
+SYMBOL TABLE: NAME: main INDEX: 1
+0. Name: i, Variable: integer, Link: None
  

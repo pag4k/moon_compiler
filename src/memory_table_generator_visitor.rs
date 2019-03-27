@@ -240,7 +240,7 @@ fn get_var(ast: &mut AST, node_index: usize, var_entries: &mut Vec<usize>) {
         get_var(ast, child_index, var_entries);
     }
 
-    if let Some(entry_index) = ast.get_mut_element(node_index).memory_table_entry {
+    if let Some(entry_index) = ast.get_element(node_index).memory_table_entry {
         let memory_entry = ast.memory_table_arena.get_table_entry(entry_index);
         //if memory_entry.is_temp_var() || memory_entry.is_lit_var() {
         var_entries.push(entry_index);

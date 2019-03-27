@@ -231,11 +231,11 @@ fn for_stat(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index:
     );
     let first_child_index = ast.get_children(node_index)[0];
 
-    ast.get_mut_element(first_child_index).symbol_table_entry = Some(entry_index);
-    if let Err(error) = add_entry_to_table(ast, table_index, first_child_index) {
-        semantic_errors.push(error);
-    }
-    ast.get_mut_element(node_index).symbol_table = Some(table_index);
+    ast.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
+    // if let Err(error) = add_entry_to_table(ast, table_index, first_child_index) {
+    //     semantic_errors.push(error);
+    // }
+    //ast.get_mut_element(node_index).symbol_table = Some(table_index);
 }
 fn stat_block(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     // Create a table without a name.
@@ -252,6 +252,15 @@ fn stat_block(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_inde
             if let Err(error) = add_entry_to_table(ast, table_index, variable_index) {
                 semantic_errors.push(error);
             }
+        }
+    }
+
+    let mut for_node_indices: Vec<usize> = Vec::new();
+    get_for_node_indices(ast, node_index, &mut for_node_indices);
+    println!("{}", for_node_indices.len());
+    for for_node_index in for_node_indices {
+        if let Err(error) = add_entry_to_table(ast, table_index, for_node_index) {
+            semantic_errors.push(error);
         }
     }
 }
@@ -401,4 +410,16 @@ fn check_duplicate(ast: &AST, table_index: usize, node_index: usize) -> Result<(
     }
 
     Ok(())
+}
+
+fn get_for_node_indices(ast: &mut AST, node_index: usize, for_node_indices: &mut Vec<usize>) {
+    for child_index in ast.get_children(node_index) {
+        get_for_node_indices(ast, child_index, for_node_indices);
+    }
+
+    if let NodeType::ForStat = ast.get_element(node_index).node_type {
+        if ast.get_element(node_index).symbol_table_entry.is_some() {
+            for_node_indices.push(node_index);
+        }
+    }
 }

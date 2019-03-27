@@ -1,12 +1,6 @@
 main {
-  if(5<1) then {
-    if(5>1) then {
-      write(1);
-    }else{
-      write(2);
-    };
-  }else{
-    write(3);
+  for( integer i = 0; i < 10; i = i  + 1 ){
+    write(i);
   };
 };
 
