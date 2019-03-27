@@ -1,6 +1,12 @@
 main {
-  integer a;
-  a = ! 0;
-  write(a);
+  if(5<1) then {
+    if(5>1) then {
+      write(1);
+    }else{
+      write(2);
+    };
+  }else{
+    write(3);
+  };
 };
 

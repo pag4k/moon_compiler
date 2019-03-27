@@ -8,24 +8,37 @@ use crate::symbol_table::*;
 
 use std::collections::HashMap;
 
+const IF_MARKER: &str = "% IF MARKER";
+const ELSE_MARKER: &str = "% ELSE MARKER";
+const FOR_INIT_MARKER: &str = "% FOR INIT MARKER";
+const FOR_INCR_MARKER: &str = "% FOR INCR MARKER";
+
 pub fn code_generator_visitor(ast: &mut AST) -> Vec<String> {
     use NodeType::*;
     let mut moon_code: Vec<String> = Vec::new();
     let mut semantic_actions: SemanticActionMap<String> = HashMap::new();
     semantic_actions.insert(Prog, prog);
     semantic_actions.insert(MainFuncBody, main_func_body);
-    semantic_actions.insert(AssignStat, unary_op);
-    semantic_actions.insert(AssignStati, unary_op);
-    semantic_actions.insert(VarDecl, var_decl);
-    semantic_actions.insert(VarElementList, var_element_list);
 
+    // Statements
+    semantic_actions.insert(VarDecl, var_decl);
+    semantic_actions.insert(IfStat, if_stat);
+    semantic_actions.insert(ForStat, for_stat);
+    semantic_actions.insert(WriteStat, write);
+
+    // Binary operation
     semantic_actions.insert(RelExpr, binary_op);
     semantic_actions.insert(AddOp, binary_op);
     semantic_actions.insert(MultOp, binary_op);
+    // Unary operation
+    semantic_actions.insert(AssignStat, unary_op);
+    semantic_actions.insert(AssignStati, unary_op);
     semantic_actions.insert(Not, unary_op);
-    // semantic_actions.insert(Sign, temp_var);
+    semantic_actions.insert(Sign, unary_op);
+
+    // Variables
+    semantic_actions.insert(VarElementList, var_element_list);
     semantic_actions.insert(Num, num);
-    semantic_actions.insert(WriteStat, write);
 
     ast_traversal(ast, &mut moon_code, &semantic_actions);
     moon_code
@@ -51,39 +64,6 @@ fn main_func_body(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize)
 }
 
 fn var_decl(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {}
-fn assign_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
-    // FIXME: Next 3 lines assume very simple VarElementList.
-    let lhs_node_index = ast.get_child(node_index, 0);
-    let lhs_memory_entry_index = get_memory_from_symbol(ast, lhs_node_index).unwrap();
-    let lhs_variable_name = get_name(ast, lhs_node_index);
-    let rhs_node_index = ast.get_child(node_index, 1);
-    let rhs_memory_entry_index = ast.get_element(rhs_node_index).memory_table_entry.unwrap();
-    // FIXME: This is only for debugging.
-    let rhs_variable_name = get_name(ast, rhs_node_index);
-
-    // Then, do the processing of this nodes' visitor
-    // allocate local registers
-    let register1 = ast.register_pool.pop();
-    //generate code
-    moon_code.push(format!(
-        "% processing: {} := {}",
-        lhs_variable_name, rhs_variable_name,
-    ));
-    // load the assigned value into a register
-    moon_code.push(format!(
-        "lw r{},{}(r14)",
-        register1,
-        get_offset(ast, rhs_node_index),
-    ));
-    // assign the value to the assigned variable
-    moon_code.push(format!(
-        "sw {}(r14),r{}",
-        get_offset(ast, lhs_node_index),
-        register1
-    ));
-    // deallocate local registers
-    ast.register_pool.push(register1);
-}
 
 fn var_element_list(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     //FIXME: This should not be there. It could be in the table creation if get_var did not get variables.
@@ -285,6 +265,18 @@ fn unary_op(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
                     .unwrap(),
                 ast.get_child(node_index, 0),
             ),
+            NodeType::Sign => (
+                node_index,
+                Subtraction,
+                ast.get_element(node_index)
+                    .token
+                    .as_ref()
+                    .unwrap()
+                    .lexeme
+                    .clone()
+                    .unwrap(),
+                ast.get_child(node_index, 0),
+            ),
             _ => unreachable!(),
         };
 
@@ -317,6 +309,9 @@ fn unary_op(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
 
     match operator {
         Assignment => {}
+        Subtraction => {
+            moon_code.push(format!("sub r{},r0,r{}", register3, register1,));
+        }
         Not => {
             // ! operands
             let not_index = ast.register_pool.get_not();
@@ -345,6 +340,8 @@ fn unary_op(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
 }
 
 fn num(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
+    add_if_marker(ast, moon_code, node_index);
+
     let data = ast
         .get_element(node_index)
         .token
@@ -375,9 +372,125 @@ fn num(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     ast.register_pool.push(register1);
 }
 
+fn if_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
+    let cond_node_index = ast.get_child(node_index, 0);
+    let cond_memory_entry_index = get_memory_entry(ast, cond_node_index);
+    let cond_variable_name = get_name(ast, cond_node_index);
+
+    let register1 = ast.register_pool.pop();
+
+    let if_index = ast.register_pool.get_not();
+    let elseif = format!("elseif{}", if_index);
+    let endif = format!("endif{}", if_index);
+
+    // ADD THIS BEFORE IF BLOCK
+    let mut if_moon_code: Vec<String> = Vec::new();
+    if_moon_code.push(format!(
+        "% processing: if({}), index: {}",
+        cond_variable_name, if_index
+    ));
+    if_moon_code.push(format!(
+        "lw r{},{}(r14)",
+        register1,
+        get_offset(ast, cond_node_index),
+    ));
+    if_moon_code.push(format!("bz r{},{}", register1, elseif));
+    ast.register_pool.push(register1);
+    /////
+
+    let if_index = moon_code.len()
+        - 1
+        - moon_code
+            .iter()
+            .rev()
+            .position(|line| *line == IF_MARKER)
+            .unwrap();
+
+    moon_code.splice(if_index..=if_index, if_moon_code.into_iter());
+
+    // ADD THIS BEFORE ELSE BLOCK
+    let mut else_moon_code: Vec<String> = Vec::new();
+    else_moon_code.push(format!("j {}", endif));
+    else_moon_code.push(format!("{:<10}nop", elseif));
+    /////
+
+    let else_index = moon_code.len()
+        - 1
+        - moon_code
+            .iter()
+            .rev()
+            .position(|line| *line == ELSE_MARKER)
+            .unwrap();
+
+    moon_code.splice(else_index..=else_index, else_moon_code.into_iter());
+
+    moon_code.push(format!("{:<10}nop", endif));
+}
+
+fn for_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
+    let cond_node_index = ast.get_child(node_index, 0);
+    let cond_memory_entry_index = get_memory_entry(ast, cond_node_index);
+    let cond_variable_name = get_name(ast, cond_node_index);
+
+    let register1 = ast.register_pool.pop();
+
+    let if_index = ast.register_pool.get_not();
+    let elseif = format!("elseif{}", if_index);
+    let endif = format!("endif{}", if_index);
+
+    // ADD THIS BEFORE IF BLOCK
+    let mut if_moon_code: Vec<String> = Vec::new();
+    if_moon_code.push(format!(
+        "% processing: if({}), index: {}",
+        cond_variable_name, if_index
+    ));
+    if_moon_code.push(format!(
+        "lw r{},{}(r14)",
+        register1,
+        get_offset(ast, cond_node_index),
+    ));
+    if_moon_code.push(format!("bz r{},{}", register1, elseif));
+    ast.register_pool.push(register1);
+    /////
+
+    let if_index = moon_code.len()
+        - 1
+        - moon_code
+            .iter()
+            .rev()
+            .position(|line| *line == IF_MARKER)
+            .unwrap();
+
+    println!("{}", moon_code.len());
+
+    moon_code.splice(if_index..=if_index, if_moon_code.into_iter());
+
+    println!("{}", moon_code.len());
+
+    // ADD THIS BEFORE ELSE BLOCK
+    let mut else_moon_code: Vec<String> = Vec::new();
+    else_moon_code.push(format!("j {}", endif));
+    else_moon_code.push(format!("{:<10}nop", elseif));
+    /////
+
+    let else_index = moon_code.len()
+        - 1
+        - moon_code
+            .iter()
+            .rev()
+            .position(|line| *line == ELSE_MARKER)
+            .unwrap();
+
+    //println!("{}", else_index);
+
+    moon_code.splice(else_index..=else_index, else_moon_code.into_iter());
+
+    moon_code.push(format!("{:<10}nop", endif));
+}
+
 fn write(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     let child_node_index = ast.get_child(node_index, 0);
-    let child_memory_entry_index = get_memory_from_symbol(ast, child_node_index).unwrap();
+    let child_memory_entry_index = get_memory_entry(ast, child_node_index);
     let child_variable_name = get_name(ast, child_node_index);
     let function_stack_frame_size = get_current_function_offset(ast, node_index);
     // Then, do the processing of this nodes' visitor
@@ -469,4 +582,44 @@ fn get_current_function_offset(ast: &AST, node_index: usize) -> isize {
 
 fn get_memory_entry(ast: &AST, node_index: usize) -> usize {
     ast.get_element(node_index).memory_table_entry.unwrap()
+}
+
+fn add_if_marker(ast: &AST, moon_code: &mut Vec<String>, node_index: usize) {
+    use NodeType::*;
+
+    // If the node has children, return.
+    if !ast.get_children(node_index).is_empty() {
+        return;
+    }
+
+    // If the node is not the leftmost, return.
+    if ast.get_left_sibling(node_index).is_some() {
+        return;
+    }
+
+    // If the node does not have StatBlock parent, return.
+    let stat_block_node_index = match ast.get_parent_node_of_type(node_index, &[StatBlock]) {
+        Some((stat_block_node_index, _)) => stat_block_node_index,
+        None => {
+            return;
+        }
+    };
+
+    let grand_parent_node_index = ast.get_parent(stat_block_node_index).unwrap();
+    // If it is not a IfStat, return;
+    match ast.get_element(grand_parent_node_index).node_type {
+        IfStat => {}
+        _ => {
+            return;
+        }
+    }
+
+    //println!("{}", node_index);
+
+    // If it has a right sibling, it is the if block, if it has not, it is the else block.
+    if ast.get_right_sibling(stat_block_node_index).is_some() {
+        moon_code.push(IF_MARKER.to_string());
+    } else {
+        moon_code.push(ELSE_MARKER.to_string());
+    }
 }

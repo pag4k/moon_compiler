@@ -301,11 +301,9 @@ fn var_element_list(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, no
     // Assign the last symbol type to the list.
     if last_element_type.is_some() {
         ast.get_mut_element(node_index).data_type = last_element_type;
-        let symbol_table_entry = ast
-            .get_mut_element(last_child_index)
-            .symbol_table_entry
-            .unwrap();
-        ast.get_mut_element(node_index).symbol_table_entry = Some(symbol_table_entry);
+        if let Some(symbol_table_entry) = ast.get_mut_element(last_child_index).symbol_table_entry {
+            ast.get_mut_element(node_index).symbol_table_entry = Some(symbol_table_entry);
+        }
     }
 }
 
