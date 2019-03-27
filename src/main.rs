@@ -51,6 +51,8 @@ use table_generator_visitor::*;
 use type_checker_visitor::*;
 
 use std::fmt::{Display, Formatter};
+use std::io::{self, Write};
+use std::process::Command;
 
 fn main() {
     // Get the command line arguments.
@@ -163,7 +165,7 @@ fn print_memory_table(ast: &AST, memory_table_file: &mut File) {
 fn print_moon_code(code: &Vec<String>, moon_code_file: &mut File) {
     for line in code {
         moon_code_file
-            .write_fmt(format_args!("{}", line))
+            .write_fmt(format_args!("{}\n", line))
             .expect("Could not write to moon code file.");
     }
 }
@@ -446,6 +448,20 @@ fn compile(source: &str) -> Option<Vec<Error>> {
     let moon_code = code_generator_visitor(&mut ast);
 
     print_moon_code(&moon_code, &mut moon_code_file);
+
+    println!("Executing program:");
+
+    let output = Command::new("./moon")
+        .arg(moon_code_filename)
+        .arg("lib.m")
+        .output()
+        .expect("failed to execute process");
+    println!("----------------------------------------");
+    println!("Status: {}", output.status);
+    println!("----------------------------------------");
+    io::stdout().write_all(&output.stdout).unwrap();
+    io::stderr().write_all(&output.stderr).unwrap();
+    println!("----------------------------------------");
 
     None
 }

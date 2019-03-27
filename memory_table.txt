@@ -1,5 +1,6 @@
-MEMORY TABLE: NAME: program SIZE: 8 INDEX: 0
-Var: a, integer, 4, 0
-LitVal: t0, integer, 4, 4
+MEMORY TABLE: NAME: program OFFSET: -12 INDEX: 0
+Var: a, integer, 4, -4
+LitVal: t0, integer, 4, -8
+TempVar: t1, integer, 4, -12
 
  

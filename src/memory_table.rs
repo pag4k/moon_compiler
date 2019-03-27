@@ -65,7 +65,7 @@ impl Display for VariableKind {
 pub struct MemoryTable {
     index: usize,
     pub name: String,
-    pub size: usize,
+    pub offset: isize,
     temp_count: usize,
     entries: Vec<usize>,
 }
@@ -74,8 +74,8 @@ impl Display for MemoryTable {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         let mut output = String::new();
         output.push_str(&format!(
-            "MEMORY TABLE: NAME: {} SIZE: {} INDEX: {}\n",
-            self.name, self.size, self.index
+            "MEMORY TABLE: NAME: {} OFFSET: {} INDEX: {}\n",
+            self.name, self.offset, self.index
         ));
         write!(f, "{}", output)
     }
@@ -92,7 +92,7 @@ pub struct MemoryTableEntry {
     kind: VariableKind,
     memory_type: VariableType,
     size: usize,
-    offset: usize,
+    offset: isize,
 }
 
 impl Display for MemoryTableEntry {
@@ -134,7 +134,7 @@ impl MemoryTableEntry {
             _ => unreachable!(),
         }
     }
-    pub fn get_offset(&self) -> usize {
+    pub fn get_offset(&self) -> isize {
         self.offset
     }
 }
@@ -145,7 +145,7 @@ impl MemoryTableArena {
         let memory_table = MemoryTable {
             name,
             index,
-            size: 0,
+            offset: 0,
             temp_count: 0,
             entries: Vec::new(),
         };
@@ -171,11 +171,9 @@ impl MemoryTableArena {
     pub fn add_entry(&mut self, table_index: usize, entry_index: usize) {
         use VariableKind::*;
         let offset = match self.tables[table_index].entries.last() {
-            Some(entry_index) => {
-                self.table_entries[*entry_index].size + self.table_entries[*entry_index].offset
-            }
+            Some(last_entry_index) => self.table_entries[*last_entry_index].offset,
             None => 0,
-        };
+        } - self.table_entries[entry_index].size as isize;
         self.table_entries[entry_index].offset = offset;
         match self.table_entries[entry_index].kind {
             TempVar(_) => {
@@ -189,7 +187,7 @@ impl MemoryTableArena {
             _ => {}
         }
 
-        self.tables[table_index].size = offset + self.table_entries[entry_index].size;
+        self.tables[table_index].offset = offset;
         // FIXME: Maybe remove the entry from where it came from.
         self.tables[table_index].entries.push(entry_index);
     }

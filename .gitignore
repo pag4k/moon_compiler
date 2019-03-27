@@ -17,3 +17,5 @@ Cargo.lock
 
 *.xml
 .vscode/launch.json
+moon
+lib.m

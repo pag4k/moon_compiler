@@ -4,6 +4,9 @@ pub struct RegisterPool {
     registers: HashMap<usize, bool>,
     min: usize,
     max: usize,
+    and_count: usize,
+    or_count: usize,
+    not_count: usize,
 }
 
 impl RegisterPool {
@@ -16,6 +19,9 @@ impl RegisterPool {
             registers,
             min,
             max,
+            and_count: 0,
+            or_count: 0,
+            not_count: 0,
         }
     }
     pub fn pop(&mut self) -> usize {
@@ -32,5 +38,20 @@ impl RegisterPool {
         } else {
             unreachable!("Invalid register!")
         }
+    }
+    pub fn get_and(&mut self) -> usize {
+        let temp = self.and_count;
+        self.and_count += 1;
+        temp
+    }
+    pub fn get_or(&mut self) -> usize {
+        let temp = self.or_count;
+        self.or_count += 1;
+        temp
+    }
+    pub fn get_not(&mut self) -> usize {
+        let temp = self.not_count;
+        self.not_count += 1;
+        temp
     }
 }

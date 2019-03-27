@@ -41,7 +41,7 @@ where
             nodes: Vec::new(),
             symbol_table_arena: T::default(),
             memory_table_arena: M::default(),
-            register_pool: RegisterPool::new(1, 12),
+            register_pool: RegisterPool::new(2, 12),
         }
     }
 }

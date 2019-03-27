@@ -1,11 +1,34 @@
 entry
 addi r14,r0,topaddr
-% processing: t0 := 5
-addi r1,r0,5
-sw 4(r14),r1
-% processing: a := t0
-lw 1,4(r14)
-sw 0(r14),1
+% processing: t0 := 0
+addi r2,r0,0
+sw -8(r14),r2
+% processing: t1 := ! t0
+lw r2,-8(r14)
+not r3,r2
+bz r3,zeroor0
+addi r4,r0,1
+j end0r0
+zeroor0   addi r4,r0,0
+end0r0    nop
+sw -12(r14),r4
+% processing: a :=  t1
+lw r2,-12(r14)
+sw -4(r14),r4
+% processing: write(a)
+lw r2,-4(r14)
+% put value on stack
+addi r14,r14,-12
+sw -8(r14),r2
+% put buffer address on the stack
+addi r2,r0,buf
+sw -12(r14),r2
+% convert int to string for output
+jl r15,intstr
+sw -8(r14),r13
+% output to console
+jl r15,putstr
+subi r14,r14,-12
+hlt
 % buffer space used for console output
 buf       res 20
-hlt

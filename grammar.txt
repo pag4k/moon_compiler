@@ -53,7 +53,7 @@ factor                    -> 'id' #GetData #MakeNodeId factor' idnestRep #MakeNo
 factor                    -> 'intNum' #GetData #MakeNodeNum
 factor                    -> 'floatNum' #GetData #MakeNodeNum
 factor                    -> '(' arithExpr ')'
-factor                    -> 'not' factor #MakeNodeNot
+factor                    -> 'not' #GetData factor #MakeNodeNot
 factor                    -> sign #GetData factor #MakeNodeSign
 factor'                   -> indexList #MakeNodeIndexList #MakeNodeDataMember
 factor'                   -> '(' aParamList ')' #MakeNodeAParamList #MakeNodeFunctionCall

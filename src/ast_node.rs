@@ -212,7 +212,7 @@ impl NodeType {
     fn need_data(self) -> bool {
         use NodeType::*;
         match self {
-            Id | Idi | Num | RelOp | Type | AddOp | MultOp | Sign => true,
+            Id | Idi | Num | RelOp | Type | AddOp | MultOp | Not | Sign => true,
             _ => false,
         }
     }
