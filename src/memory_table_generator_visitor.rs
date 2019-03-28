@@ -16,11 +16,15 @@ pub fn memory_table_generator_visitor(ast: &mut AST) -> Vec<CodeGenError> {
     semantic_actions.insert(FuncDef, func_def);
     semantic_actions.insert(VarDecl, var_decl);
     semantic_actions.insert(VarElementList, var_element_list);
+    // ForVar
+    semantic_actions.insert(ForStat, for_var);
+    // TempVar
     semantic_actions.insert(RelExpr, temp_var);
     semantic_actions.insert(AddOp, temp_var);
     semantic_actions.insert(MultOp, temp_var);
     semantic_actions.insert(Not, temp_var);
     semantic_actions.insert(Sign, temp_var);
+    // LitVar
     semantic_actions.insert(Num, lit_var);
 
     ast_traversal(ast, &mut code_generation_errors, &semantic_actions);
@@ -203,6 +207,29 @@ fn var_element_list(
     node_index: usize,
 ) {
 
+}
+
+fn for_var(ast: &mut AST, _code_generation_errors: &mut Vec<CodeGenError>, node_index: usize) {
+    if ast.get_mut_element(node_index).memory_table_entry.is_none() {
+        let symbol_entry = ast
+            .symbol_table_arena
+            .get_table_entry(ast.get_element(node_index).symbol_table_entry.unwrap());
+        let variable_name = &symbol_entry.name;
+        let symbol_type = match &symbol_entry.kind {
+            SymbolKind::For(symbol_type) => symbol_type,
+            _ => unreachable!(),
+        };
+        let variable_type = symbol_to_variabl_type(&symbol_type);
+
+        if let Some(size) = get_size(ast, &symbol_type) {
+            let entry_index = ast.memory_table_arena.new_memory_table_entry(
+                VariableKind::ForVar(variable_name.clone()),
+                variable_type,
+                size,
+            );
+            ast.get_mut_element(node_index).memory_table_entry = Some(entry_index);
+        }
+    }
 }
 
 fn temp_var(ast: &mut AST, _code_generation_errors: &mut Vec<CodeGenError>, node_index: usize) {

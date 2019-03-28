@@ -42,6 +42,7 @@ pub enum VariableKind {
     Return,
     Param(String),
     Var(String),
+    ForVar(String),
     TempVar(usize),
     LitVar(usize),
 }
@@ -54,6 +55,7 @@ impl Display for VariableKind {
             Return => format!("Return"),
             Param(name) => format!("Param: {}", name),
             Var(name) => format!("Var: {}", name),
+            ForVar(name) => format!("ForVar: {}", name),
             TempVar(temp_index) => format!("TempVar: t{}", temp_index),
             LitVar(temp_index) => format!("LitVal: t{}", temp_index),
         };
@@ -129,6 +131,7 @@ impl MemoryTableEntry {
         match &self.kind {
             Param(name) => name.clone(),
             Var(name) => name.clone(),
+            ForVar(name) => name.clone(),
             TempVar(temp_index) => format!("t{}", temp_index),
             LitVar(temp_index) => format!("t{}", temp_index),
             _ => unreachable!(),

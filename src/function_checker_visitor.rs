@@ -59,17 +59,9 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
         }
         // If it has no left node, check if it is a member variable.
         None => {
-            // Check if it is a for variable.
-            // if is_for_variable(ast, node_index) {
-            //     ast.get_mut_element(node_index).data_type = Some(SymbolType::Integer(Vec::new()));
-            //     return;
-            // }
-
-            // In all cases, I will assume that a shadowed variable is completely ignored.
-
-            // First, check if it is a local variable.
+            // First, if any, get local variable entry index.
             let (function_node_index, _) = ast
-                .get_parent_node_of_type(node_index, &[MainFuncBody, FuncBody])
+                .get_parent_node_of_type(node_index, &[MainFuncBody, FuncDef], &[])
                 .unwrap();
             let function_table_index = ast.get_element(function_node_index).symbol_table.unwrap();
             let local_variable_entry_index = if let Some(parameter_table_entry_index) =
@@ -80,23 +72,22 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
                 get_variable_entry_in_function_table(ast, function_table_index, &variable_name)
             {
                 Some(variable_entry_index)
+            } else if let Some(variable_entry_index) =
+                get_for_entry_in_function_table(ast, function_table_index, &variable_name)
+            {
+                Some(variable_entry_index)
             } else {
                 None
             };
-            // If it is a For variable, verify if it is in the loop scope.
 
-            // Second, check if it is a member variable.
-            // Check if it is a member variable based on the type of function.
-            let function_parent_node_index = ast.get_parent(function_node_index).unwrap();
-            let member_variable_entry_index =
-                match ast.get_element(function_parent_node_index).node_type {
-                    // It is the main function.
-                    NodeType::Prog => None,
-                    // It is not the main function.
-                    NodeType::FuncDef => match &ast
-                        .get_element(ast.get_child(function_parent_node_index, 1))
-                        .token
-                    {
+            // Second, if any, get member variable entry index.
+            //let function_parent_node_index = ast.get_parent(function_node_index).unwrap();
+            let member_variable_entry_index = match ast.get_element(function_node_index).node_type {
+                // It is the main function.
+                NodeType::MainFuncBody => None,
+                // It is not the main function.
+                NodeType::FuncDef => {
+                    match &ast.get_element(ast.get_child(function_node_index, 1)).token {
                         // It is a member function, check if it is a member variable.
                         Some(class_token) => {
                             let class_table_index = ast
@@ -108,9 +99,10 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
                         }
                         // It is a free function.
                         None => None,
-                    },
-                    _ => unreachable!(),
-                };
+                    }
+                }
+                _ => unreachable!(),
+            };
 
             // So we have 4 possible cases:
             match (local_variable_entry_index, member_variable_entry_index) {
@@ -161,9 +153,9 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
         .get_table_entry(variable_entry_index)
         .kind
     {
-        SymbolKind::Variable(symbol_type) | SymbolKind::Parameter(symbol_type) => {
-            symbol_type.clone()
-        }
+        SymbolKind::Variable(symbol_type)
+        | SymbolKind::Parameter(symbol_type)
+        | SymbolKind::For(symbol_type) => symbol_type.clone(),
         _ => unreachable!(),
     };
 
@@ -235,7 +227,7 @@ fn function_call(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_i
         None => {
             // Get the parent function node in which this is function is called.
             let (function_node_index, _) = ast
-                .get_parent_node_of_type(node_index, &[MainFuncBody, FuncDef])
+                .get_parent_node_of_type(node_index, &[MainFuncBody, FuncDef], &[])
                 .unwrap();
 
             // Check if it is a parent member function.
@@ -314,7 +306,7 @@ fn is_for_variable_in_scope(ast: &AST, node_index: usize) -> bool {
 
     let mut for_node_index = node_index;
     loop {
-        let for_node = ast.get_parent_node_of_type(for_node_index, &[ForStat]);
+        let for_node = ast.get_parent_node_of_type(for_node_index, &[ForStat], &[]);
         match for_node {
             Some(for_node) => {
                 let new_for_node_index = for_node.0;
@@ -322,7 +314,7 @@ fn is_for_variable_in_scope(ast: &AST, node_index: usize) -> bool {
                 if for_variable_name == variable_name {
                     return true;
                 } else {
-                    for_node_index = new_for_node_index;
+                    for_node_index = ast.get_parent(new_for_node_index).unwrap();
                 }
             }
             None => {
@@ -343,15 +335,9 @@ fn is_variable_declared(ast: &AST, node_index: usize) -> bool {
     loop {
         let (new_statement_node_index, _) = ast
             .get_parent_node_of_type(
-                statement_node_index,
-                &[
-                    AssignStati,
-                    IfStat,
-                    ForStat,
-                    ReadStat,
-                    WriteStat,
-                    ReturnStat,
-                ],
+                ast.get_parent(statement_node_index).unwrap(),
+                &[AssignStat, IfStat, ForStat, ReadStat, WriteStat, ReturnStat],
+                &[],
             )
             .unwrap();
         statement_node_index = new_statement_node_index;
@@ -418,7 +404,9 @@ fn is_array_type(
 
     let symbol_entry = ast.symbol_table_arena.get_table_entry(symbol_entry_index);
     let dimension_list_len = match symbol_entry.clone().kind {
-        Variable(symbol_type) | Parameter(symbol_type) => symbol_type.get_dimension_list().len(),
+        Variable(symbol_type) | Parameter(symbol_type) | For(symbol_type) => {
+            symbol_type.get_dimension_list().len()
+        }
         _ => unreachable!(),
     };
 
@@ -444,7 +432,9 @@ fn check_number_of_dimensions(
 
     let symbol_entry = ast.symbol_table_arena.get_table_entry(symbol_entry_index);
     let dimension_list_len = match symbol_entry.clone().kind {
-        Variable(symbol_type) | Parameter(symbol_type) => symbol_type.get_dimension_list().len(),
+        Variable(symbol_type) | Parameter(symbol_type) | For(symbol_type) => {
+            symbol_type.get_dimension_list().len()
+        }
         _ => unreachable!(),
     };
 
@@ -480,6 +470,17 @@ pub fn get_parameter_entry_in_function_table(
     table_index: usize,
     name: &str,
 ) -> Option<usize> {
+    for entry_index in ast.symbol_table_arena.get_table_entries(table_index) {
+        let symbol_entry = ast.symbol_table_arena.get_table_entry(*entry_index);
+        if symbol_entry.kind.is_for() && symbol_entry.name == name {
+            return Some(*entry_index);
+        }
+    }
+
+    None
+}
+
+pub fn get_for_entry_in_function_table(ast: &AST, table_index: usize, name: &str) -> Option<usize> {
     for entry_index in ast.symbol_table_arena.get_table_entries(table_index) {
         let symbol_entry = ast.symbol_table_arena.get_table_entry(*entry_index);
         if symbol_entry.kind.is_parameter() && symbol_entry.name == name {
@@ -536,9 +537,8 @@ fn check_if_valid_local_variable(
         Parameter(_) => {}
         // If it is a for variable, check if it is in scope.
         For(_) => {
-            // FIXME: ADD ERROR!
             if !is_for_variable_in_scope(ast, node_index) {
-                return Err(SemanticError::VariableUsedBeforeBeingDeclared(
+                return Err(SemanticError::ForVariableUsedOutOfScope(
                     ast.get_leftmost_token(node_index),
                     ast.symbol_table_arena
                         .get_table(function_table_index)

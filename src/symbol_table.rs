@@ -112,6 +112,13 @@ impl SymbolKind {
             _ => false,
         }
     }
+    pub fn is_for(&self) -> bool {
+        use SymbolKind::*;
+        match self {
+            For(_) => true,
+            _ => false,
+        }
+    }
     pub fn is_function(&self) -> bool {
         use SymbolKind::*;
         match self {

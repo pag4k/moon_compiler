@@ -1,1 +1,1 @@
-Main LeftCurlyBracket For LeftParenthesis Integer id Assignment intNum SemiColon id LT intNum SemiColon id Assignment id Addition intNum RightParenthesis LeftCurlyBracket Write LeftParenthesis id RightParenthesis SemiColon RightCurlyBracket SemiColon RightCurlyBracket SemiColon 
+Integer id LeftParenthesis RightParenthesis LeftCurlyBracket Write LeftParenthesis intNum RightParenthesis SemiColon RightCurlyBracket SemiColon Main LeftCurlyBracket Write LeftParenthesis intNum RightParenthesis SemiColon RightCurlyBracket SemiColon 

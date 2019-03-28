@@ -260,7 +260,7 @@ fn stat_block(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_inde
 
     let mut for_node_indices: Vec<usize> = Vec::new();
     get_for_node_indices(ast, node_index, &mut for_node_indices);
-    println!("{}", for_node_indices.len());
+    //println!("{}", for_node_indices.len());
     for for_node_index in for_node_indices {
         if let Err(error) = add_entry_to_table(ast, table_index, for_node_index) {
             semantic_errors.push(error);

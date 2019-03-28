@@ -1,6 +1,9 @@
+integer print() {
+  write(5);
+};
+
 main {
-  for( integer i = 0; i < 10; i = i  + 1 ){
-    write(i);
-  };
+  write(10);
+
 };
 

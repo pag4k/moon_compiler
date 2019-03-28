@@ -1,0 +1,8 @@
+MEMORY TABLE: NAME: print OFFSET: -8 INDEX: 0
+Return, integer, 4, -4
+LitVal: t0, integer, 4, -8
+
+MEMORY TABLE: NAME: program OFFSET: -4 INDEX: 1
+LitVal: t0, integer, 4, -4
+
+ 

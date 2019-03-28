@@ -1,0 +1,6 @@
+SYMBOL TABLE: NAME: Global INDEX: 2
+0. Name: print, Function: Return Type: integer, Parameters: , Link: Some(0)
+1. Name: main, Function: Return Type: None, Parameters: , Link: Some(1)
+SYMBOL TABLE: NAME: print INDEX: 0
+SYMBOL TABLE: NAME: main INDEX: 1
+ 

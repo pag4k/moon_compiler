@@ -10,7 +10,6 @@ class Utility : InheritedUtility {
 
 integer Utility::findMax(integer array[100]){
   integer maxValue;
-  integer idx;
   maxValue = array[99];
   for( integer idx = 99; idx > 0; idx = idx  - 1 ){
     if(array[idx] > maxValue) then {

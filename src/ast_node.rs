@@ -30,7 +30,7 @@ pub enum NodeType {
     DimList,
     VarDecl,
     AssignStat,
-    AssignStati,
+    AssignForStat,
     IfStat,
     ForStat,
     ReadStat,
@@ -150,43 +150,26 @@ impl NodeType {
                 One(FuncBody),
             ]),
             MainFuncBody => Single(ManyOf(vec![
-                VarDecl,
-                AssignStati,
-                IfStat,
-                ForStat,
-                ReadStat,
-                WriteStat,
-                ReturnStat,
+                VarDecl, AssignStat, IfStat, ForStat, ReadStat, WriteStat, ReturnStat,
             ])),
             FuncBody => Single(ManyOf(vec![
-                VarDecl,
-                AssignStati,
-                IfStat,
-                ForStat,
-                ReadStat,
-                WriteStat,
-                ReturnStat,
+                VarDecl, AssignStat, IfStat, ForStat, ReadStat, WriteStat, ReturnStat,
             ])),
             StatBlock => Single(ManyOf(vec![
                 //VarDecl,
-                AssignStati,
-                IfStat,
-                ForStat,
-                ReadStat,
-                WriteStat,
-                ReturnStat,
+                AssignStat, IfStat, ForStat, ReadStat, WriteStat, ReturnStat,
             ])),
             DimList => Single(Many(Num)),
             VarDecl => List(vec![One(Type), One(Id), One(DimList)]),
             AssignStat => List(vec![One(VarElementList), OneOf(expr.clone())]),
-            AssignStati => List(vec![One(VarElementList), OneOf(expr.clone())]),
+            AssignForStat => List(vec![One(VarElementList), OneOf(expr.clone())]),
             IfStat => List(vec![OneOf(expr.clone()), One(StatBlock), One(StatBlock)]),
             ForStat => List(vec![
                 One(Type),
                 One(Id),
                 OneOf(expr.clone()),
                 One(RelExpr),
-                One(AssignStat),
+                One(AssignForStat),
                 One(StatBlock),
             ]),
             ReadStat => Single(One(VarElementList)),
@@ -243,7 +226,7 @@ impl FromStr for NodeType {
             "#MakeNodeDimList" => Ok(DimList),
             "#MakeNodeVarDecl" => Ok(VarDecl),
             "#MakeNodeAssignStat" => Ok(AssignStat),
-            "#MakeNodeAssignStati" => Ok(AssignStati),
+            "#MakeNodeAssignForStat" => Ok(AssignForStat),
             "#MakeNodeIfStat" => Ok(IfStat),
             "#MakeNodeForStat" => Ok(ForStat),
             "#MakeNodeReadStat" => Ok(ReadStat),
@@ -470,19 +453,62 @@ impl AST {
     pub fn get_parent_node_of_type(
         &self,
         node_index: usize,
-        node_types: &[NodeType],
+        target_node_types: &[NodeType],
+        excluded_node_types: &[NodeType],
     ) -> Option<(usize, NodeType)> {
-        let parent_index = self.get_parent(node_index);
-        match parent_index {
-            Some(parent_index) => {
-                let node_type = self.get_note_type(parent_index);
-                if node_types.contains(&node_type) {
-                    Some((parent_index, node_type))
-                } else {
-                    self.get_parent_node_of_type(parent_index, node_types)
-                }
+        if target_node_types
+            .iter()
+            .any(|node_type| excluded_node_types.contains(node_type))
+        {
+            panic!("Intersection between target_node_types and excluded_node_types.")
+        }
+        let node_type = self.get_note_type(node_index);
+        if target_node_types.contains(&node_type) {
+            Some((node_index, node_type))
+        } else if excluded_node_types.contains(&node_type) {
+            None
+        } else {
+            let parent_index = self.get_parent(node_index);
+            match parent_index {
+                Some(parent_index) => self.get_parent_node_of_type(
+                    parent_index,
+                    target_node_types,
+                    excluded_node_types,
+                ),
+                None => None,
             }
-            None => None,
+        }
+    }
+
+    pub fn get_parent_node_of_type_on_left_branch(
+        &self,
+        node_index: usize,
+        target_node_types: &[NodeType],
+        excluded_node_types: &[NodeType],
+    ) -> Option<(usize, NodeType)> {
+        if target_node_types
+            .iter()
+            .any(|node_type| excluded_node_types.contains(node_type))
+        {
+            panic!("Intersection between target_node_types and excluded_node_types.")
+        }
+        let node_type = self.get_note_type(node_index);
+        if target_node_types.contains(&node_type) {
+            Some((node_index, node_type))
+        } else if excluded_node_types.contains(&node_type)
+            || self.get_left_sibling(node_index).is_some()
+        {
+            None
+        } else {
+            let parent_index = self.get_parent(node_index);
+            match parent_index {
+                Some(parent_index) => self.get_parent_node_of_type_on_left_branch(
+                    parent_index,
+                    target_node_types,
+                    excluded_node_types,
+                ),
+                None => None,
+            }
         }
     }
 }

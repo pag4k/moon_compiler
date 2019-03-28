@@ -11,7 +11,7 @@ pub fn type_checker_visitor(ast: &mut AST) -> Vec<SemanticError> {
     let mut semantic_errors: Vec<SemanticError> = Vec::new();
     let mut semantic_actions: SemanticActionMap<SemanticError> = HashMap::new();
     semantic_actions.insert(AssignStat, assign_stat);
-    semantic_actions.insert(AssignStati, assign_stat);
+    semantic_actions.insert(AssignForStat, assign_stat);
     semantic_actions.insert(RelExpr, rel_expr);
     semantic_actions.insert(AddOp, add_op);
     semantic_actions.insert(MultOp, mult_op);
@@ -216,7 +216,7 @@ fn function_call(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_i
 }
 fn return_stat(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     // Get the function node index in which the statement is.
-    let function_node = ast.get_parent_node_of_type(node_index, &[NodeType::FuncDef]);
+    let function_node = ast.get_parent_node_of_type(node_index, &[NodeType::FuncDef], &[]);
 
     match function_node {
         // If there is one, verify its return type.

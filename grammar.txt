@@ -19,11 +19,11 @@ numVarDecl                -> 'integer' #GetData #MakeNodeType 'id' #GetData #Mak
 numVarDecl                -> 'float' #GetData #MakeNodeType 'id' #GetData #MakeNodeId dimList #MakeNodeDimList #MakeNodeVarDecl
 assignStat                -> variable assignOp expr
 statement                 -> 'if'     '(' expr ')' 'then' statBlock 'else' statBlock #MakeNodeIfStat
-statement                 -> 'for'    '(' type 'id' #GetData #MakeNodeId assignOp expr ';' relExpr ';' assignStat #MakeNodeAssignStat ')' statBlock #MakeNodeForStat
+statement                 -> 'for'    '(' type 'id' #GetData #MakeNodeId assignOp expr ';' relExpr ';' assignStat #MakeNodeAssignForStat ')' statBlock #MakeNodeForStat
 statement                 -> 'read'   '(' variable ')' #MakeNodeReadStat
 statement                 -> 'write'  '(' expr ')' #MakeNodeWriteStat
 statement                 -> 'return' '(' expr ')' #MakeNodeReturnStat
-statOrAssign              -> assignStat ';' #MakeNodeAssignStati
+statOrAssign              -> assignStat ';' #MakeNodeAssignStat
 statOrAssign              -> statement  ';'
 statOrAssignList          -> statOrAssign statOrAssignList
 statOrAssignList          -> EPSILON
@@ -31,7 +31,7 @@ statOrAssignOrVarDecl     -> 'id' statOrAssignOrVarDecl'
 statOrAssignOrVarDecl     -> numVarDecl ';'
 statOrAssignOrVarDecl     -> statement ';'
 statOrAssignOrVarDecl'    -> #GetData #MakeNodeType 'id' #GetData #MakeNodeId dimList #MakeNodeDimList #MakeNodeVarDecl ';'
-statOrAssignOrVarDecl'    -> #GetData #MakeNodeId indexList #MakeNodeIndexList #MakeNodeDataMember idnestRep #MakeNodeVarElementList assignOp expr #MakeNodeAssignStati ';'
+statOrAssignOrVarDecl'    -> #GetData #MakeNodeId indexList #MakeNodeIndexList #MakeNodeDataMember idnestRep #MakeNodeVarElementList assignOp expr #MakeNodeAssignStat ';'
 statOrAssignOrVarDeclList -> statOrAssignOrVarDecl statOrAssignOrVarDeclList
 statOrAssignOrVarDeclList -> EPSILON
 statBlock                 -> '{' statOrAssignList '}' #MakeNodeStatBlock
