@@ -64,6 +64,7 @@ pub enum SymbolKind {
     Function(Option<SymbolType>, Vec<SymbolType>),
     Parameter(SymbolType),
     Variable(SymbolType),
+    For(SymbolType),
 }
 
 impl Display for SymbolKind {
@@ -89,6 +90,7 @@ impl Display for SymbolKind {
             }
             Parameter(symbol_type) => format!("Parameter: {}", symbol_type),
             Variable(symbol_type) => format!("Variable: {}", symbol_type),
+            For(symbol_type) => format!("For: {}", symbol_type),
         };
 
         write!(f, "{}", output)

@@ -29,14 +29,14 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
     let left_element_node_index = ast.get_left_sibling(node_index);
 
     // Get the variable table entry index.
-    let variable_table_entry_index = match left_element_node_index {
+    let variable_entry_index = match left_element_node_index {
         // If it has a left, node, get the class table index of the previous type.
         Some(left_element_node_index) => {
             match get_symbol_type_and_class_table_from_node(ast, left_element_node_index) {
                 Ok(result) => match result {
                     Some((previous_type, class_table_index)) => {
                         match ast.is_member_variable(class_table_index, &variable_name) {
-                            Some((_, variable_table_entry_index)) => variable_table_entry_index,
+                            Some((_, variable_entry_index)) => variable_entry_index,
                             None => {
                                 semantic_errors.push(SemanticError::UndefinedMemberVariable(
                                     ast.get_leftmost_token(node_index),
@@ -60,102 +60,105 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
         // If it has no left node, check if it is a member variable.
         None => {
             // Check if it is a for variable.
-            if is_for_variable(ast, node_index) {
-                ast.get_mut_element(node_index).data_type = Some(SymbolType::Integer(Vec::new()));
-                return;
-            }
+            // if is_for_variable(ast, node_index) {
+            //     ast.get_mut_element(node_index).data_type = Some(SymbolType::Integer(Vec::new()));
+            //     return;
+            // }
 
-            // Get the function node in which this is variable is used.
+            // In all cases, I will assume that a shadowed variable is completely ignored.
+
+            // First, check if it is a local variable.
             let (function_node_index, _) = ast
-                .get_parent_node_of_type(node_index, &[MainFuncBody, FuncDef])
+                .get_parent_node_of_type(node_index, &[MainFuncBody, FuncBody])
                 .unwrap();
-
-            // Check if it is a member variable based on the type of function.
-            let variable_table_entry_index = match ast
-                .get_element(ast.get_child(function_node_index, 1))
-                .token
-                .clone()
+            let function_table_index = ast.get_element(function_node_index).symbol_table.unwrap();
+            let local_variable_entry_index = if let Some(parameter_table_entry_index) =
+                get_parameter_entry_in_function_table(ast, function_table_index, &variable_name)
             {
-                // It is a member function, check if it is a member variable.
-                Some(class_token) => {
-                    let class_table_index = ast
-                        .find_class_symbol_table(&class_token.lexeme.unwrap())
-                        .unwrap();
-                    // If it is a member variable, return table entry.
-                    ast.is_member_variable(class_table_index, &variable_name)
-                        .map(|(_, entry_index)| entry_index)
-                }
-                // It is a free function or the main function.
-                None => None,
+                Some(parameter_table_entry_index)
+            } else if let Some(variable_entry_index) =
+                get_variable_entry_in_function_table(ast, function_table_index, &variable_name)
+            {
+                Some(variable_entry_index)
+            } else {
+                None
             };
+            // If it is a For variable, verify if it is in the loop scope.
 
-            match variable_table_entry_index {
-                // It is a member variable, return the class table index
-                Some(variable_table_entry_index) => variable_table_entry_index,
-                // It is not a member variable, check if it is a local variable.
-                None => {
-                    let function_table_index =
-                        ast.get_element(function_node_index).symbol_table.unwrap();
-                    if let Some(parameter_table_entry_index) = get_parameter_entry_in_function_table(
-                        ast,
-                        function_table_index,
-                        &variable_name,
-                    ) {
-                        parameter_table_entry_index
-                    } else if let Some(variable_table_entry_index) =
-                        get_variable_entry_in_function_table(
-                            ast,
-                            function_table_index,
-                            &variable_name,
-                        )
+            // Second, check if it is a member variable.
+            // Check if it is a member variable based on the type of function.
+            let function_parent_node_index = ast.get_parent(function_node_index).unwrap();
+            let member_variable_entry_index =
+                match ast.get_element(function_parent_node_index).node_type {
+                    // It is the main function.
+                    NodeType::Prog => None,
+                    // It is not the main function.
+                    NodeType::FuncDef => match &ast
+                        .get_element(ast.get_child(function_parent_node_index, 1))
+                        .token
                     {
-                        // It is a local variable, check if it was declared before.
-                        if ast
-                            .symbol_table_arena
-                            .get_table_entry(variable_table_entry_index)
-                            .kind
-                            .is_variable()
-                        {
-                            // Do not check if it is a parameter since it is obviously already declared.
-
-                            if !is_variable_declared(ast, node_index) {
-                                semantic_errors.push(
-                                    SemanticError::VariableUsedBeforeBeingDeclared(
-                                        ast.get_leftmost_token(node_index),
-                                        ast.symbol_table_arena
-                                            .get_table(function_table_index)
-                                            .name
-                                            .clone(),
-                                    ),
-                                );
-                                return;
-                            }
-                        } else {
-                            unreachable!();
+                        // It is a member function, check if it is a member variable.
+                        Some(class_token) => {
+                            let class_table_index = ast
+                                .find_class_symbol_table(class_token.lexeme.as_ref().unwrap())
+                                .unwrap();
+                            // If it is a member variable, return table entry.
+                            ast.is_member_variable(class_table_index, &variable_name)
+                                .map(|(_, entry_index)| entry_index)
                         }
-                        // If so, return the function table entry index.
-                        variable_table_entry_index
-                    } else {
-                        // If it is not a local variable, error.
+                        // It is a free function.
+                        None => None,
+                    },
+                    _ => unreachable!(),
+                };
 
-                        semantic_errors.push(SemanticError::UndefinedLocalVariable(
-                            ast.get_leftmost_token(node_index),
-                            ast.symbol_table_arena
-                                .get_table(function_table_index)
-                                .name
-                                .clone(),
-                        ));
-                        return;
+            // So we have 4 possible cases:
+            match (local_variable_entry_index, member_variable_entry_index) {
+                // It is both a local and a member variable. Take the local unless it is not valid.
+                (Some(local_variable_entry_index), Some(member_variable_entry_index)) => {
+                    match check_if_valid_local_variable(
+                        ast,
+                        node_index,
+                        function_table_index,
+                        local_variable_entry_index,
+                    ) {
+                        Ok(()) => local_variable_entry_index,
+                        Err(_) => member_variable_entry_index,
                     }
+                }
+                // It is a local variable. Take it if valid.
+                (Some(local_variable_entry_index), None) => {
+                    if let Err(error) = check_if_valid_local_variable(
+                        ast,
+                        node_index,
+                        function_table_index,
+                        local_variable_entry_index,
+                    ) {
+                        semantic_errors.push(error);
+                    }
+                    local_variable_entry_index
+                }
+                // It is a member variable. Take it.
+                (None, Some(member_variable_entry_index)) => member_variable_entry_index,
+                // It is neither. Return error.
+                (None, None) => {
+                    semantic_errors.push(SemanticError::UndefinedLocalVariable(
+                        ast.get_leftmost_token(node_index),
+                        ast.symbol_table_arena
+                            .get_table(function_table_index)
+                            .name
+                            .clone(),
+                    ));
+                    return;
                 }
             }
         }
     };
 
-    // At this point, the variable table entry index has been successfully found.
+    // At this point, the variable entry index has been successfully found.
     let variable_symbol_type = match &ast
         .symbol_table_arena
-        .get_table_entry(variable_table_entry_index)
+        .get_table_entry(variable_entry_index)
         .kind
     {
         SymbolKind::Variable(symbol_type) | SymbolKind::Parameter(symbol_type) => {
@@ -167,29 +170,26 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
     // Check if it is the last element in VarElementList and set the DataMember symbol type accordingly.
     match ast.get_right_sibling(node_index) {
         Some(_) => {
-            if let Err(error) =
-                check_number_of_dimensions(ast, variable_table_entry_index, node_index)
-            {
+            if let Err(error) = check_number_of_dimensions(ast, variable_entry_index, node_index) {
                 semantic_errors.push(error);
             }
             ast.get_mut_element(node_index).data_type =
                 Some(variable_symbol_type.clone().remove_dimensions());
         }
-        None => match is_array_type(ast, variable_table_entry_index, node_index) {
+        None => match is_array_type(ast, variable_entry_index, node_index) {
             Ok(is_array_type) => {
                 if is_array_type {
                     ast.get_mut_element(node_index).data_type = Some(variable_symbol_type.clone());
                 } else {
                     if let Err(error) =
-                        check_number_of_dimensions(ast, variable_table_entry_index, node_index)
+                        check_number_of_dimensions(ast, variable_entry_index, node_index)
                     {
                         semantic_errors.push(error);
                     }
                     ast.get_mut_element(node_index).data_type =
                         Some(variable_symbol_type.clone().remove_dimensions());
                 }
-                ast.get_mut_element(node_index).symbol_table_entry =
-                    Some(variable_table_entry_index);
+                ast.get_mut_element(node_index).symbol_table_entry = Some(variable_entry_index);
             }
             Err(error) => semantic_errors.push(error),
         },
@@ -307,7 +307,7 @@ fn var_element_list(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, no
     }
 }
 
-fn is_for_variable(ast: &AST, node_index: usize) -> bool {
+fn is_for_variable_in_scope(ast: &AST, node_index: usize) -> bool {
     use NodeType::*;
 
     let variable_name = ast.get_child_lexeme(node_index, 0);
@@ -506,4 +506,50 @@ fn find_free_function(ast: &AST, name: &str) -> Option<usize> {
     }
 
     None
+}
+
+fn check_if_valid_local_variable(
+    ast: &AST,
+    node_index: usize,
+    function_table_index: usize,
+    variable_entry_index: usize,
+) -> Result<(), SemanticError> {
+    use SymbolKind::*;
+
+    let variable_name = ast.get_child_lexeme(node_index, 0);
+    let variable_symbol_entry = ast.symbol_table_arena.get_table_entry(variable_entry_index);
+
+    match variable_symbol_entry.kind {
+        // If it is a variable, check if it is declared before.
+        Variable(_) => {
+            if !is_variable_declared(ast, node_index) {
+                return Err(SemanticError::VariableUsedBeforeBeingDeclared(
+                    ast.get_leftmost_token(node_index),
+                    ast.symbol_table_arena
+                        .get_table(function_table_index)
+                        .name
+                        .clone(),
+                ));
+            }
+        }
+        // If it is a parameter, we know it is find.
+        Parameter(_) => {}
+        // If it is a for variable, check if it is in scope.
+        For(_) => {
+            // FIXME: ADD ERROR!
+            if !is_for_variable_in_scope(ast, node_index) {
+                return Err(SemanticError::VariableUsedBeforeBeingDeclared(
+                    ast.get_leftmost_token(node_index),
+                    ast.symbol_table_arena
+                        .get_table(function_table_index)
+                        .name
+                        .clone(),
+                ));
+            }
+        }
+        _ => unreachable!(),
+    }
+
+    // At this point, it is valid.
+    Ok(())
 }

@@ -221,15 +221,15 @@ fn f_param(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: 
     ast.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
 }
 fn for_stat(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
+    // FIXME: Check if for variable is integer.
     let symbol_type = make_type_from_child(ast, node_index, 0, Vec::new());
+
     let name = ast.get_child_lexeme(node_index, 1);
-    let table_index = ast.symbol_table_arena.new_symbol_table(name.clone());
-    let entry_index = ast.symbol_table_arena.new_symbol_table_entry(
-        name,
-        SymbolKind::Variable(symbol_type),
-        None,
-    );
-    let first_child_index = ast.get_children(node_index)[0];
+    //let table_index = ast.symbol_table_arena.new_symbol_table(name.clone());
+    let entry_index =
+        ast.symbol_table_arena
+            .new_symbol_table_entry(name, SymbolKind::For(symbol_type), None);
+    //let first_child_index = ast.get_children(node_index)[0];
 
     ast.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
     // if let Err(error) = add_entry_to_table(ast, table_index, first_child_index) {
@@ -249,6 +249,9 @@ fn stat_block(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_inde
             .symbol_table_entry
             .is_some()
         {
+            if ast.get_element(variable_index).node_type == NodeType::ForStat {
+                continue;
+            }
             if let Err(error) = add_entry_to_table(ast, table_index, variable_index) {
                 semantic_errors.push(error);
             }

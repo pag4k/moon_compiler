@@ -1,5 +1,0 @@
-SYMBOL TABLE: NAME: Global INDEX: 2
-0. Name: main, Function: Return Type: None, Parameters: , Link: Some(1)
-SYMBOL TABLE: NAME: main INDEX: 1
-0. Name: i, Variable: integer, Link: None
- 
