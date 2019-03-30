@@ -3,6 +3,7 @@ class a : c {
   integer e2;
   b b;
   integer sum();
+  integer ppp(integer b);
 };
 class b {
   integer f1;
@@ -12,8 +13,17 @@ class c {
 };
 
 integer a::sum() {
+  integer t;
+  t = ppp(e1+e2);
+  e1 = 10;
   return(e1+e2);
 };
+
+integer a::ppp(integer b) {
+  write(b);
+  return(b);
+};
+
 /*
 integer fib(integer n) {
   if (n<2) then {
@@ -23,11 +33,12 @@ integer fib(integer n) {
   };
 };
 */
+
 main {
   a a;
   integer b;
   a.e1 = 1;
-  a.e2 = 2;
+  a.e2 = 4;
   b = a.sum();
   write(b);
   /*

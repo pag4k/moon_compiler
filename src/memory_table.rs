@@ -170,6 +170,16 @@ impl MemoryTableEntry {
             _ => false,
         }
     }
+    pub fn is_named_var(&self) -> bool {
+        use VariableKind::*;
+        match self.kind {
+            Var(_) => true,
+            Param(_) => true,
+            ForVar(_) => true,
+            _ => false,
+        }
+    }
+
     // FIXME: I should probably prevent variable names in the form t#.
     pub fn get_name(&self) -> String {
         use VariableKind::*;

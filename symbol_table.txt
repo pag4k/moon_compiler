@@ -1,20 +1,24 @@
-SYMBOL TABLE: NAME: Global INDEX: 5
+SYMBOL TABLE: NAME: Global INDEX: 6
 0. Name: a, Class, Link: Some(0)
 1. Name: b, Class, Link: Some(1)
 2. Name: c, Class, Link: Some(2)
-3. Name: main, Function: Return Type: None, Parameters: , Link: Some(4)
+3. Name: main, Function: Return Type: None, Parameters: , Link: Some(5)
 SYMBOL TABLE: NAME: a INDEX: 0
 0. Name: e1, Variable: integer, Link: None
 1. Name: e2, Variable: integer, Link: None
 2. Name: b, Variable: b, Link: None
 3. Name: sum, Function: Return Type: integer, Parameters: , Link: Some(3)
-4. Name: c, Class, Link: Some(2)
+4. Name: ppp, Function: Return Type: integer, Parameters: integer, Link: Some(4)
+5. Name: c, Class, Link: Some(2)
 SYMBOL TABLE: NAME: sum INDEX: 3
+0. Name: t, Variable: integer, Link: None
+SYMBOL TABLE: NAME: ppp INDEX: 4
+0. Name: b, Parameter: integer, Link: None
 SYMBOL TABLE: NAME: b INDEX: 1
 0. Name: f1, Variable: integer, Link: None
 SYMBOL TABLE: NAME: c INDEX: 2
 0. Name: g1, Variable: integer, Link: None
-SYMBOL TABLE: NAME: main INDEX: 4
+SYMBOL TABLE: NAME: main INDEX: 5
 0. Name: a, Variable: a, Link: None
 1. Name: b, Variable: integer, Link: None
  
