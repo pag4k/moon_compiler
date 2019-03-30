@@ -57,4 +57,5 @@ main {
   f = t();
   test = utility.f();
   integer test;
+  return (9);
   };

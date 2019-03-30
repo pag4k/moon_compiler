@@ -1,9 +1,43 @@
-integer print() {
-  write(5);
+class a : c {
+  integer e1;
+  integer e2;
+  b b;
+  integer sum();
+};
+class b {
+  integer f1;
+};
+class c {
+  integer g1;
 };
 
+integer a::sum() {
+  return(e1+e2);
+};
+/*
+integer fib(integer n) {
+  if (n<2) then {
+    return(n);
+  } else {
+    return(fib(n-1) + fib(n-2));
+  };
+};
+*/
 main {
-  write(10);
+  a a;
+  integer b;
+  a.e1 = 1;
+  a.e2 = 2;
+  b = a.sum();
+  write(b);
+  /*
+  a.b.f1 = 3;
+  a.g1 = 4;
+  write(a.e1);
+  write(a.e2);
+  write(a.b.f1);
+  write(a.g1);
+  */
 
 };
 

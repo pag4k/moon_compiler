@@ -12,6 +12,7 @@ pub enum SemanticError {
     MismatchMemberFunctionDeclAndDef(Token, String, SymbolKind, SymbolKind),
     MemberFunctionDefDoesNotHaveDecl(Token, String),
     MemberFunctionDeclHasNoDef(Token, String),
+    FunctionHasNoReturnStat(Token),
     //Identifier errors
     DuplicateIdentifier(Token, String, String),
     VariableUsedBeforeBeingDeclared(Token, String),
@@ -84,6 +85,12 @@ impl Display for SemanticError {
                 "Semantic error at {}: Member function \"{}\" does not have a definition.",
                 token.location,
                 function_name
+            ),
+            FunctionHasNoReturnStat(token) => write!(
+                f,
+                "Semantic error at {}: Function \"{}\" has not return statement.",
+                token.location,
+                token.lexeme.clone().unwrap(),
             ),
             DuplicateIdentifier(token, scope_name, identifier_name) => write!(
                 f,
@@ -267,6 +274,7 @@ impl TokenLocation for SemanticError {
             MismatchMemberFunctionDeclAndDef(token,_, _, _) => token.location,
             MemberFunctionDefDoesNotHaveDecl(token, _) => token.location,
             MemberFunctionDeclHasNoDef(token, _) => token.location,
+            FunctionHasNoReturnStat(token) => token.location,
             DuplicateIdentifier(token, _, _) => token.location,
             VariableUsedBeforeBeingDeclared(token, _) => token.location,
             ForVariableUsedOutOfScope(token, _) => token.location,

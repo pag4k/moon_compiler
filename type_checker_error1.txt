@@ -62,5 +62,5 @@ main {
   write(maxValue);
   write(minValue);
   idx = utility.test(1.0, utility);
-  return (9);};
+  };
 

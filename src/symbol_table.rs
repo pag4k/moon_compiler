@@ -130,7 +130,7 @@ impl SymbolKind {
 
 #[derive(Debug)]
 pub struct SymbolTable {
-    index: usize,
+    pub index: usize,
     pub name: String,
     entries: Vec<usize>,
 }

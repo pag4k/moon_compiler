@@ -511,4 +511,19 @@ impl AST {
             }
         }
     }
+
+    /// Add node indices of specified typeto Vec.
+    pub fn find_node_type(
+        &self,
+        node_index: usize,
+        found_node_indices: &mut Vec<usize>,
+        node_types: &[NodeType],
+    ) {
+        if node_types.contains(&self.get_element(node_index).node_type) {
+            found_node_indices.push(node_index);
+        }
+        for child_index in self.get_children(node_index) {
+            self.find_node_type(child_index, found_node_indices, node_types);
+        }
+    }
 }

@@ -30,7 +30,8 @@ pub fn code_generator_visitor(ast: &mut AST) -> Vec<String> {
     semantic_actions.insert(VarDecl, var_decl);
     semantic_actions.insert(IfStat, if_stat);
     semantic_actions.insert(ForStat, for_stat);
-    semantic_actions.insert(WriteStat, write);
+    semantic_actions.insert(WriteStat, write_stat);
+    semantic_actions.insert(ReturnStat, return_stat);
 
     // Binary operation
     semantic_actions.insert(RelExpr, binary_op);
@@ -82,85 +83,135 @@ fn main_func_body(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize)
 }
 
 fn func_def(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
-    let func_variable_name = ast
-        .get_element(ast.get_child(node_index, 2))
-        .token
-        .as_ref()
-        .unwrap()
-        .lexeme
-        .as_ref()
-        .unwrap();
+    let symbol_table_index = ast.get_element(node_index).symbol_table.unwrap();
+    let symbol_table = ast.symbol_table_arena.get_table(symbol_table_index);
+    let symbol_entry_index = ast.get_element(node_index).symbol_table_entry.unwrap();
+    let func_name = get_func_name(ast, node_index);
+    let func_tag = format!("func{}", get_funtion_index(ast, node_index));
+    let memory_table_index = ast.get_element(node_index).memory_table.unwrap();
+    let return_addr_offset = get_return_addr_offset(ast, memory_table_index);
 
     let mut function_moon_code: Vec<String> = Vec::new();
     function_moon_code.push(format!(
-        "{}% processing function definition: {}",
-        INDENT, func_variable_name
+        "{}% processing function definition: {} ({})",
+        INDENT, func_name, func_tag
     ));
     //create the tag to jump onto
     // and copy the jumping-back address value in the called function's stack frame
-    function_moon_code.push(format!("{:<10}sw -4(r14),r15", func_variable_name));
+    function_moon_code.push(format!(
+        "{:<10}sw {}(r14),r15",
+        func_tag, return_addr_offset
+    ));
     push_at(moon_code, function_moon_code, FUNCTION_MARKER);
 
     // copy back the jumping-back address into r15
-    moon_code.push(format!("{}lw r15,-4(r14)", INDENT));
+    moon_code.push(format!("{}lw r15,{}(r14)", INDENT, return_addr_offset));
     // jump back to the calling function
     moon_code.push(format!("{}jr r15", INDENT));
     moon_code.push("".to_string());
 }
 
-fn function_call(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {}
+fn function_call(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
+    let func_name = get_func_name(ast, node_index);
+    let return_var_name = get_var_name(ast, node_index);
+    let func_tag = format!("func{}", get_funtion_index(ast, node_index));
+    let current_stack_frame_size = get_current_function_offset(ast, node_index);
 
-		// pass parameters
-		// here we assume that the parameters are the size of a word, 
-		// which is not true for arrays and objects. 
-		// In those cases, a loop copying the values e.g. byte-by-byte is necessary
-		// SymTabEntry tableentryofcalledfunction = p_node.m_symtab.lookupName(p_node.getData());
-		// int indexofparam = 0;
-		// m_moonExecCode += m_mooncodeindent + "% processing: function call to "  + p_node.getChildren().get(0).m_moonVarName + " \n";
-		// for(Node param : p_node.getChildren().get(1).getChildren()){
-		// 	m_moonExecCode += m_mooncodeindent + "lw " + localregister1 + "," + p_node.m_symtab.lookupName(param.m_moonVarName).m_offset + "(r14)\n";
-		// 	int offsetofparam = p_node.m_symtab.m_size + tableentryofcalledfunction.m_subtable.m_symlist.get(indexofparam).m_offset;
-		// 	m_moonExecCode += m_mooncodeindent + "sw " + offsetofparam + "(r14)," + localregister1 + "\n";
-		// 	indexofparam++;
-		// }
-		// // make the stack frame pointer point to the called function's stack frame
-		// m_moonExecCode += m_mooncodeindent + "addi r14,r14," + p_node.m_symtab.m_size + "\n";
-		// // jump to the called function's code
-		// // here the function's name is the label
-		// // a unique label generator is necessary in the general case
-		// m_moonExecCode += m_mooncodeindent + "jl r15," + p_node.getData() + "\n";
-		// // upon jumping back, set the stack frame pointer back to the current function's stack frame  
-		// m_moonExecCode += m_mooncodeindent + "subi r14,r14," + p_node.m_symtab.m_size + "\n";
-		// // copy the return value in memory space to store it on the current stack frame
-		// // to evaluate the expression in which it is 
-		// m_moonExecCode += m_mooncodeindent + "lw " + localregister1 + "," + p_node.m_symtab.m_size + "(r14)\n";
-		// m_moonExecCode += m_mooncodeindent + "sw " + p_node.m_symtab.lookupName(p_node.m_moonVarName).m_offset + "(r14)," + localregister1 + "\n";
-		// this.m_registerPool.push(localregister1);	
+    let function_memory_table_index = get_memory_table_index_from_symbol(ast, node_index).unwrap();
+
+    let return_var_offset = get_return_var_offset(ast, function_memory_table_index);
+
+    // pass parameters
+    let register1 = ast.register_pool.pop();
+    let register2 = ast.register_pool.pop();
+
+    moon_code.push(format!(
+        "{}% processing: function call to {} ({})",
+        INDENT, func_name, func_tag
+    ));
+
+    if let Some(inst_addr_offset) = get_inst_addr_offset(ast, function_memory_table_index) {
+        let inst_offset = get_inst_offset(ast, node_index).unwrap();
+        moon_code.push(format!("{}% processing: instance address", INDENT,));
+        moon_code.push(format!("{}addi r{},r14,{}", INDENT, register1, inst_offset));
+        //moon_code.push(format!("{}lw r{},r{}", INDENT, register2, register1));
+        moon_code.push(format!(
+            "{}sw {}(r14),r{}",
+            INDENT,
+            current_stack_frame_size + inst_addr_offset,
+            register1
+        ));
+    }
+
+    for (&argument_node_index, param_entry_index) in ast
+        .get_children_of_child(node_index, 1)
+        .iter()
+        .rev()
+        .zip(get_params(ast, function_memory_table_index))
+    {
+        let param_entry = ast.memory_table_arena.get_table_entry(param_entry_index);
+        moon_code.push(format!(
+            "{}% processing: {} = {}",
+            INDENT,
+            param_entry.get_name(),
+            get_var_name(ast, argument_node_index)
+        ));
+        moon_code.push(format!(
+            "{}lw r{},{}(r14)",
+            INDENT,
+            register1,
+            get_offset(ast, argument_node_index),
+        ));
+        moon_code.push(format!(
+            "{}sw {}(r14),r{}",
+            INDENT,
+            current_stack_frame_size + param_entry.get_offset(),
+            register1
+        ));
+    }
+
+    // make the stack frame pointer point to the called function's stack frame
+    moon_code.push(format!(
+        "{}addi r14,r14,{}",
+        INDENT, current_stack_frame_size
+    ));
+
+    // jump to the called function's code
+    // here the function's name is the label
+    // a unique label generator is necessary in the general case
+    moon_code.push(format!("{}jl r15,{}", INDENT, func_tag));
+    // upon jumping back, set the stack frame pointer back to the current function's stack frame
+    moon_code.push(format!(
+        "{}subi r14,r14,{}",
+        INDENT, current_stack_frame_size
+    ));
+
+    // copy the return value in memory space to store it on the current stack frame
+    // to evaluate the expression in which it is
+    moon_code.push(format!(
+        "{}% processing: {} = return value",
+        INDENT, return_var_name
+    ));
+
+    moon_code.push(format!(
+        "{}lw r{},{}(r14)",
+        INDENT,
+        register1,
+        current_stack_frame_size + return_var_offset,
+    ));
+    moon_code.push(format!(
+        "{}sw {}(r14),r{}",
+        INDENT,
+        get_offset(ast, node_index),
+        register1
+    ));
+    ast.register_pool.push(register1);
+    ast.register_pool.push(register2);
 }
 
 fn var_decl(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {}
 
-fn var_element_list(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
-    //FIXME: This should not be there. It could be in the table creation if get_var did not get variables.
-    //FIXME: We assume there is only one element and that it is a variable.
-    // let symbol_entry_index = ast.get_element(node_index).symbol_table_entry.unwrap();
-    // let symbol_entry = ast.symbol_table_arena.get_table_entry(symbol_entry_index);
-    // let symbol_type = match &symbol_entry.kind {
-    //     SymbolKind::Variable(symbol_type) => symbol_type,
-    //     _ => unreachable!(),
-    // };
-    let memory_entry_index = get_memory_from_symbol(ast, node_index).unwrap();
-    // dbg!(&symbol_entry.name);
-    // let memory_entry_index =
-    //     find_variable_memory_entry(ast, node_index, &symbol_entry.name).unwrap();
-
-    // let memory_entry_index = ast.memory_table_arena.new_memory_table_entry(
-    //     VariableKind::Var(symbol_entry.name.clone()),
-    //     symbol_to_variabl_type(&symbol_type),
-    //     get_size(ast, symbol_type).unwrap(),
-    // );
-    ast.get_mut_element(node_index).memory_table_entry = Some(memory_entry_index);
-}
+fn var_element_list(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {}
 
 fn binary_op(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     use NodeType::*;
@@ -206,11 +257,11 @@ fn binary_op(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     // FIXME: Next 3 lines assume very simple VarElementList.
     let lhs_node_index = node_index;
     // let lhs_memory_entry_index = get_memory_entry(ast, lhs_node_index);
-    let lhs_variable_name = get_name(ast, lhs_node_index);
+    let lhs_variable_name = get_var_name(ast, lhs_node_index);
     // let rhs_memory_entry_index1 = ast.get_element(rhs_node_index1).memory_table_entry.unwrap();
-    let rhs_variable_name1 = get_name(ast, rhs_node_index1);
+    let rhs_variable_name1 = get_var_name(ast, rhs_node_index1);
     // let rhs_memory_entry_index2 = ast.get_element(rhs_node_index2).memory_table_entry.unwrap();
-    let rhs_variable_name2 = get_name(ast, rhs_node_index2);
+    let rhs_variable_name2 = get_var_name(ast, rhs_node_index2);
 
     // Then, do the processing of this nodes' visitor
     // allocate registers to this subcomputation
@@ -392,9 +443,9 @@ fn unary_op(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     // FIXME: Next 3 lines assume very simple VarElementList.
     //let lhs_node_index = node_index;
     // let lhs_memory_entry_index = get_memory_entry(ast, lhs_node_index);
-    let lhs_variable_name = get_name(ast, lhs_node_index);
+    let lhs_variable_name = get_var_name(ast, lhs_node_index);
     // let rhs_memory_entry_index1 = ast.get_element(rhs_node_index1).memory_table_entry.unwrap();
-    let rhs_variable_name = get_name(ast, rhs_node_index);
+    let rhs_variable_name = get_var_name(ast, rhs_node_index);
 
     // Then, do the processing of this nodes' visitor
     // allocate registers to this subcomputation
@@ -417,9 +468,24 @@ fn unary_op(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     ));
 
     match operator {
-        Assignment => {}
+        Assignment => {
+            // assign the result into a temporary variable (assumed to have been previously created by the symbol table generator)
+            moon_code.push(format!(
+                "{}sw {}(r14),r{}",
+                INDENT,
+                get_offset(ast, lhs_node_index),
+                register1
+            ));
+        }
         Subtraction => {
-            moon_code.push(format!("{}sub r{},r0,r{}", INDENT, register3, register1,));
+            moon_code.push(format!("{}sub r{},r0,r{}", INDENT, register2, register1,));
+            // assign the result into a temporary variable (assumed to have been previously created by the symbol table generator)
+            moon_code.push(format!(
+                "{}sw {}(r14),r{}",
+                INDENT,
+                get_offset(ast, lhs_node_index),
+                register2
+            ));
         }
         Not => {
             // ! operands
@@ -432,17 +498,17 @@ fn unary_op(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
             moon_code.push(format!("{}j {}", INDENT, end));
             moon_code.push(format!("{:<10}addi r{},r0,0", zero, register3));
             moon_code.push(format!("{:<10}nop", end));
+            // assign the result into a temporary variable (assumed to have been previously created by the symbol table generator)
+            moon_code.push(format!(
+                "{}sw {}(r14),r{}",
+                INDENT,
+                get_offset(ast, lhs_node_index),
+                register3
+            ));
         }
         _ => unreachable!(),
     }
 
-    // assign the result into a temporary variable (assumed to have been previously created by the symbol table generator)
-    moon_code.push(format!(
-        "{}sw {}(r14),r{}",
-        INDENT,
-        get_offset(ast, lhs_node_index),
-        register3
-    ));
     // deallocate the registers
     ast.register_pool.push(register1);
     ast.register_pool.push(register2);
@@ -470,7 +536,7 @@ fn num(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     moon_code.push(format!(
         "{}% processing: {} := {}",
         INDENT,
-        get_name(ast, node_index),
+        get_var_name(ast, node_index),
         data
     ));
     // create a value corresponding to the literal value
@@ -488,8 +554,7 @@ fn num(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
 
 fn if_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     let cond_node_index = ast.get_child(node_index, 0);
-    let cond_memory_entry_index = get_memory_entry(ast, cond_node_index);
-    let cond_variable_name = get_name(ast, cond_node_index);
+    let cond_variable_name = get_var_name(ast, cond_node_index);
 
     let register1 = ast.register_pool.pop();
 
@@ -528,9 +593,8 @@ fn if_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
 
 fn for_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     let assign_node_index = node_index;
-    let assign_memory_entry_index = get_memory_entry(ast, assign_node_index);
-    let assign_variable_name = get_name(ast, assign_node_index);
-    let cond_node_index = ast.get_child(node_index, 3);;
+    let assign_variable_name = get_var_name(ast, assign_node_index);
+    let cond_node_index = ast.get_child(node_index, 3);
 
     let register1 = ast.register_pool.pop();
     //let register2 = ast.register_pool.pop();
@@ -552,7 +616,7 @@ fn for_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
 
     // Assignment
     let rhs_node_index = ast.get_child(node_index, 2);
-    let rhs_variable_name = get_name(ast, rhs_node_index);
+    let rhs_variable_name = get_var_name(ast, rhs_node_index);
 
     cond_moon_code.push(format!(
         "{}% processing: {} := {}",
@@ -612,10 +676,9 @@ fn for_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     moon_code.push(format!("{:<10}nop", endfor));
 }
 
-fn write(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
+fn write_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     let child_node_index = ast.get_child(node_index, 0);
-    let child_memory_entry_index = get_memory_entry(ast, child_node_index);
-    let child_variable_name = get_name(ast, child_node_index);
+    let child_variable_name = get_var_name(ast, child_node_index);
     let function_stack_frame_size = get_current_function_offset(ast, node_index);
     // Then, do the processing of this nodes' visitor
     // create a local variable and allocate a register to this subcomputation
@@ -661,6 +724,37 @@ fn write(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     ast.register_pool.push(register1);
 }
 
+fn return_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
+    let (function_node_index, _) = ast
+        .get_parent_node_of_type(node_index, &[NodeType::FuncDef], &[])
+        .unwrap();
+    let function_memory_table_index = ast.get_element(function_node_index).memory_table.unwrap();
+    let return_addr_offset = get_return_addr_offset(ast, function_memory_table_index);
+    let return_var_offset = get_return_var_offset(ast, function_memory_table_index);
+    let register1 = ast.register_pool.pop();
+    let argument_node_index = ast.get_child(node_index, 0);
+
+    moon_code.push(format!(
+        "{}% processing: return value = {}",
+        INDENT,
+        get_var_name(ast, argument_node_index)
+    ));
+    moon_code.push(format!(
+        "{}lw r{},{}(r14)",
+        INDENT,
+        register1,
+        get_offset(ast, argument_node_index),
+    ));
+    moon_code.push(format!(
+        "{}sw {}(r14),r{}",
+        INDENT, return_var_offset, register1
+    ));
+    ast.register_pool.push(register1);
+    moon_code.push(format!("{}lw r15,{}(r14)", INDENT, return_addr_offset));
+    // jump back to the calling function
+    moon_code.push(format!("{}jr r15", INDENT));
+}
+
 fn leaf(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     add_entry_marker(ast, moon_code, node_index);
     add_function_marker(ast, moon_code, node_index);
@@ -668,29 +762,207 @@ fn leaf(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     add_for_marker(ast, moon_code, node_index);
 }
 
-fn get_name(ast: &AST, node_index: usize) -> String {
-    let entry_index = ast.get_element(node_index).memory_table_entry.unwrap();
-    let memory_entry = ast.memory_table_arena.get_table_entry(entry_index);
-    memory_entry.get_name()
+fn get_var_name(ast: &AST, node_index: usize) -> String {
+    let node_type = ast.get_element(node_index).node_type;
+    if let NodeType::VarElementList = node_type {
+        let last_child_index = *ast.get_children(node_index).iter().last().unwrap();
+        ast.symbol_table_arena
+            .get_table_entry(
+                ast.get_element(last_child_index)
+                    .symbol_table_entry
+                    .unwrap(),
+            )
+            .name
+            .clone()
+    } else {
+        // First try to get it from the memory entry and then from the table.
+        if let Some(entry_index) = ast.get_element(node_index).memory_table_entry {
+            let memory_entry = ast.memory_table_arena.get_table_entry(entry_index);
+            memory_entry.get_name()
+        } else if let Some(table_index) = ast.get_element(node_index).memory_table {
+            let memory_table = ast.memory_table_arena.get_table(table_index);
+            memory_table.get_name()
+        } else {
+            unreachable!("Node has neither a memory table nor an memory entry.");
+        }
+    }
+}
+
+fn get_func_name(ast: &AST, node_index: usize) -> String {
+    // First try to get it from the memory entry and then from the table.
+    if let Some(entry_index) = ast.get_element(node_index).symbol_table_entry {
+        let symbol_entry = ast.symbol_table_arena.get_table_entry(entry_index);
+        symbol_entry.name.clone()
+    } else if let Some(table_index) = ast.get_element(node_index).symbol_table {
+        let symbol_table = ast.symbol_table_arena.get_table(table_index);
+        symbol_table.name.clone()
+    } else {
+        unreachable!("Node has neither a memory table nor an memory entry.");
+    }
+}
+
+fn get_funtion_index(ast: &AST, node_index: usize) -> usize {
+    // First try to get it from the memory entry and then from the table.
+    if let Some(entry_index) = ast.get_element(node_index).symbol_table_entry {
+        let symbol_entry = ast.symbol_table_arena.get_table_entry(entry_index);
+        symbol_entry.link.unwrap()
+    } else if let Some(table_index) = ast.get_element(node_index).symbol_table {
+        let symbol_table = ast.symbol_table_arena.get_table(table_index);
+        symbol_table.index
+    } else {
+        unreachable!("Node has neither a symbol table nor an symbol entry with a link.");
+    }
 }
 
 fn get_offset(ast: &AST, node_index: usize) -> isize {
-    let entry_index = ast.get_element(node_index).memory_table_entry.unwrap();
-    let memory_entry = ast.memory_table_arena.get_table_entry(entry_index);
-    memory_entry.get_offset()
+    use NodeType::*;
+    let node_type = ast.get_element(node_index).node_type;
+    if let NodeType::VarElementList = node_type {
+        // FIXME: This code seems to work with single inheritence since the
+        // inherited  is at the start of the memory table.
+        let child_nodes = ast.get_children(node_index);
+        let last_node_position = child_nodes.len() - 1;
+        let mut offset: isize = 0;
+        for (position, child_index) in child_nodes.into_iter().enumerate() {
+            let child_node_type = ast.get_element(child_index).node_type;
+            match child_node_type {
+                DataMember => {
+                    let memory_entry = ast
+                        .memory_table_arena
+                        .get_table_entry(get_memory_from_symbol(ast, child_index).unwrap());
+                    offset += memory_entry.get_offset();
+                    if position != last_node_position {
+                        offset += memory_entry.get_size();
+                    }
+                }
+                FunctionCall => {
+                    let entry_index = ast.get_element(child_index).memory_table_entry.unwrap();
+                    let memory_entry = ast.memory_table_arena.get_table_entry(entry_index);
+                    offset = memory_entry.get_offset();
+                }
+                _ => unreachable!(),
+            }
+
+            // dbg!(memory_entry.get_offset());
+            // dbg!(memory_entry.get_size());
+        }
+        // dbg!(offset);
+        offset
+    } else {
+        let entry_index = ast.get_element(node_index).memory_table_entry.unwrap();
+        let memory_entry = ast.memory_table_arena.get_table_entry(entry_index);
+        memory_entry.get_offset()
+    }
+}
+
+fn get_inst_offset(ast: &AST, node_index: usize) -> Option<isize> {
+    let parent_index = ast.get_parent(node_index).unwrap();
+    let child_nodes = ast.get_children(parent_index);
+    let function_call_position = child_nodes
+        .iter()
+        .position(|&child_index| child_index == node_index)
+        .unwrap();
+    if function_call_position == 0 {
+        return None;
+    }
+    let mut offset: isize = 0;
+    for (position, child_index) in ast.get_children(parent_index).into_iter().enumerate() {
+        if child_index == node_index {
+            break;
+        }
+        let memory_entry = ast
+            .memory_table_arena
+            .get_table_entry(get_memory_from_symbol(ast, child_index).unwrap());
+        offset += memory_entry.get_offset();
+        if position != function_call_position - 1 {
+            offset += memory_entry.get_size();
+        }
+    }
+    Some(offset)
+}
+
+fn get_return_var_offset(ast: &AST, memory_table_index_index: usize) -> isize {
+    for &entry_index in ast
+        .memory_table_arena
+        .get_table_entries(memory_table_index_index)
+    {
+        let memory_entry = &ast.memory_table_arena.get_table_entry(entry_index);
+        if memory_entry.is_return_var() {
+            return memory_entry.get_offset();
+        }
+    }
+    unreachable!("Memory table does not has a return variable.");
+}
+
+fn get_return_addr_offset(ast: &AST, memory_table_index_index: usize) -> isize {
+    for &entry_index in ast
+        .memory_table_arena
+        .get_table_entries(memory_table_index_index)
+    {
+        let memory_entry = &ast.memory_table_arena.get_table_entry(entry_index);
+        if memory_entry.is_return_addr() {
+            return memory_entry.get_offset();
+        }
+    }
+    unreachable!("Memory table does not has a return address.");
+}
+
+fn get_inst_addr_offset(ast: &AST, memory_table_index_index: usize) -> Option<isize> {
+    for &entry_index in ast
+        .memory_table_arena
+        .get_table_entries(memory_table_index_index)
+    {
+        let memory_entry = &ast.memory_table_arena.get_table_entry(entry_index);
+        if memory_entry.is_inst_addr() {
+            return Some(memory_entry.get_offset());
+        }
+    }
+    None
+}
+
+fn get_params(ast: &AST, memory_table_index_index: usize) -> Vec<usize> {
+    ast.memory_table_arena
+        .get_table_entries(memory_table_index_index)
+        .iter()
+        .filter(|&&entry_index| {
+            ast.memory_table_arena
+                .get_table_entry(entry_index)
+                .is_param()
+        })
+        .cloned()
+        .collect()
 }
 
 fn get_memory_from_symbol(ast: &AST, node_index: usize) -> Option<usize> {
     use NodeType::*;
-
+    // dbg!(node_index);
     let symbol_entry_index = ast.get_element(node_index).symbol_table_entry.unwrap();
     let symbol_entry = ast.symbol_table_arena.get_table_entry(symbol_entry_index);
     let symbol_name = &symbol_entry.name;
 
-    let (function_node_index, _) = ast
-        .get_parent_node_of_type(node_index, &[MainFuncBody, FuncDef], &[])
-        .unwrap();
-    find_variable_memory_entry(ast, function_node_index, symbol_name)
+    // First check if it is a local variable.
+    if let Some((function_node_index, _)) =
+        ast.get_parent_node_of_type(node_index, &[MainFuncBody, FuncDef], &[])
+    {
+        let result = find_variable_memory_entry(ast, function_node_index, symbol_name);
+        if result.is_some() {
+            return result;
+        }
+    }
+
+    if ast.get_left_sibling(node_index).is_none() {
+        // If it has not left sibling, it is a
+
+    } else {
+        // If it has left siblings and, find the class in which it is located.
+        for class_node_index in ast.get_children_of_child(ast.root.unwrap(), 0) {
+            let result = find_variable_memory_entry(ast, class_node_index, symbol_name);
+            if result.is_some() {
+                return result;
+            }
+        }
+    }
+    None
 }
 
 fn find_variable_memory_entry(
@@ -721,9 +993,9 @@ fn get_current_function_offset(ast: &AST, node_index: usize) -> isize {
     memory_table.offset
 }
 
-fn get_memory_entry(ast: &AST, node_index: usize) -> usize {
-    ast.get_element(node_index).memory_table_entry.unwrap()
-}
+// fn get_memory_entry(ast: &AST, node_index: usize) -> usize {
+//     ast.get_element(node_index).memory_table_entry.unwrap()
+// }
 
 fn add_entry_marker(ast: &AST, moon_code: &mut Vec<String>, node_index: usize) {
     use NodeType::*;
@@ -852,4 +1124,15 @@ fn get_marker_index(moon_code: &mut Vec<String>, marker: &str) -> usize {
             .rev()
             .position(|line| *line == marker)
             .unwrap()
+}
+
+fn get_memory_table_index_from_symbol(ast: &AST, node_index: usize) -> Option<usize> {
+    let symbol_table_index = get_funtion_index(ast, node_index);
+    //ast.get_element(node_index).symbol_table.unwrap();
+    for memory_table in &ast.memory_table_arena.tables {
+        if symbol_table_index == memory_table.get_symbol_index() {
+            return Some(memory_table.get_index());
+        }
+    }
+    None
 }

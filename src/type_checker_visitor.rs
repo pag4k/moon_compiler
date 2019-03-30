@@ -216,48 +216,34 @@ fn function_call(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_i
 }
 fn return_stat(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     // Get the function node index in which the statement is.
-    let function_node = ast.get_parent_node_of_type(node_index, &[NodeType::FuncDef], &[]);
+    if let Some((function_node_index, _)) =
+        ast.get_parent_node_of_type(node_index, &[NodeType::FuncDef], &[])
+    {
+        let function_def_entry_index = ast
+            .get_element(function_node_index)
+            .symbol_table_entry
+            .unwrap();
+        let function_return_type = match ast
+            .symbol_table_arena
+            .get_table_entry(function_def_entry_index)
+            .kind
+            .clone()
+        {
+            SymbolKind::Function(return_type, _) => return_type,
+            _ => unreachable!(),
+        };
 
-    match function_node {
-        // If there is one, verify its return type.
-        Some(function_node) => {
-            let function_node_index = function_node.0;
-            let function_def_entry_index = ast
-                .get_element(function_node_index)
-                .symbol_table_entry
-                .unwrap();
-            let function_return_type = match ast
-                .symbol_table_arena
-                .get_table_entry(function_def_entry_index)
-                .kind
-                .clone()
-            {
-                SymbolKind::Function(return_type, _) => return_type,
-                _ => unreachable!(),
-            };
+        let return_type = ast.get_child_data_type(node_index, 0);
 
-            let return_type = ast.get_child_data_type(node_index, 0);
-
-            match function_return_type {
-                Some(function_return_type) => {
-                    if function_return_type != return_type {
-                        semantic_errors.push(
-                            SemanticError::ReturnTypeDoesNotMatchFuctionDeclaration(
-                                ast.get_leftmost_token(node_index),
-                                function_return_type,
-                                return_type,
-                            ),
-                        );
-                    }
-                }
-                // There will always be a return type since the main function is handled differently.
-                None => unreachable!(),
+        if let Some(function_return_type) = function_return_type {
+            if function_return_type != return_type {
+                semantic_errors.push(SemanticError::ReturnTypeDoesNotMatchFuctionDeclaration(
+                    ast.get_leftmost_token(node_index),
+                    function_return_type,
+                    return_type,
+                ));
             }
         }
-        // If there is none, we are in the main function.
-        None => semantic_errors.push(SemanticError::ShouldNotReturnFromMain(
-            ast.get_leftmost_token(node_index),
-        )),
     }
 }
 

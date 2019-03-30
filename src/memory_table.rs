@@ -39,7 +39,9 @@ impl Display for VariableType {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VariableKind {
     Inherited,
-    Return,
+    ReturnVar,
+    ReturnAddr,
+    InstAddr,
     Param(String),
     Var(String),
     ForVar(String),
@@ -52,12 +54,14 @@ impl Display for VariableKind {
         use VariableKind::*;
         let output = match self {
             Inherited => format!("Inherited"),
-            Return => format!("Return"),
+            ReturnVar => format!("ReturnVar"),
+            ReturnAddr => format!("ReturnAddr"),
+            InstAddr => format!("InstAddr"),
             Param(name) => format!("Param: {}", name),
             Var(name) => format!("Var: {}", name),
             ForVar(name) => format!("ForVar: {}", name),
             TempVar(temp_index) => format!("TempVar: t{}", temp_index),
-            LitVar(temp_index) => format!("LitVal: t{}", temp_index),
+            LitVar(temp_index) => format!("LitVar: t{}", temp_index),
         };
         write!(f, "{}", output)
     }
@@ -66,6 +70,7 @@ impl Display for VariableKind {
 #[derive(Debug)]
 pub struct MemoryTable {
     index: usize,
+    symbol_index: usize,
     pub name: String,
     pub offset: isize,
     temp_count: usize,
@@ -76,8 +81,8 @@ impl Display for MemoryTable {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         let mut output = String::new();
         output.push_str(&format!(
-            "MEMORY TABLE: NAME: {} OFFSET: {} INDEX: {}\n",
-            self.name, self.offset, self.index
+            "MEMORY TABLE: NAME: {} OFFSET: {} SYMBOL INDEX: {} INDEX: {}\n",
+            self.name, self.offset, self.symbol_index, self.index
         ));
         write!(f, "{}", output)
     }
@@ -86,6 +91,18 @@ impl Display for MemoryTable {
 impl Table<MemoryTable, MemoryTableEntry> for MemoryTable {
     fn get_entries(&self) -> &[usize] {
         &self.entries
+    }
+}
+
+impl MemoryTable {
+    pub fn get_index(&self) -> usize {
+        self.index
+    }
+    pub fn get_symbol_index(&self) -> usize {
+        self.symbol_index
+    }
+    pub fn get_name(&self) -> String {
+        self.name.clone()
     }
 }
 
@@ -125,6 +142,34 @@ impl MemoryTableEntry {
             _ => false,
         }
     }
+    pub fn is_return_addr(&self) -> bool {
+        use VariableKind::*;
+        match self.kind {
+            ReturnAddr => true,
+            _ => false,
+        }
+    }
+    pub fn is_return_var(&self) -> bool {
+        use VariableKind::*;
+        match self.kind {
+            ReturnVar => true,
+            _ => false,
+        }
+    }
+    pub fn is_inst_addr(&self) -> bool {
+        use VariableKind::*;
+        match self.kind {
+            InstAddr => true,
+            _ => false,
+        }
+    }
+    pub fn is_param(&self) -> bool {
+        use VariableKind::*;
+        match self.kind {
+            Param(_) => true,
+            _ => false,
+        }
+    }
     // FIXME: I should probably prevent variable names in the form t#.
     pub fn get_name(&self) -> String {
         use VariableKind::*;
@@ -134,20 +179,24 @@ impl MemoryTableEntry {
             ForVar(name) => name.clone(),
             TempVar(temp_index) => format!("t{}", temp_index),
             LitVar(temp_index) => format!("t{}", temp_index),
-            _ => unreachable!(),
+            _ => "%".to_string(),
         }
     }
     pub fn get_offset(&self) -> isize {
         self.offset
     }
+    pub fn get_size(&self) -> isize {
+        self.size as isize
+    }
 }
 
 impl MemoryTableArena {
-    pub fn new_memory_table(&mut self, name: String) -> usize {
+    pub fn new_memory_table(&mut self, symbol_index: usize, name: String) -> usize {
         let index = self.tables.len();
         let memory_table = MemoryTable {
-            name,
             index,
+            symbol_index,
+            name,
             offset: 0,
             temp_count: 0,
             entries: Vec::new(),

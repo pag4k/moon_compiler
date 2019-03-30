@@ -1,34 +1,49 @@
-          % processing function definition: print
-print     sw -4(r14),r15
-          % processing: t0 := 5
-          addi r2,r0,5
-          sw -8(r14),r2
-          % processing: write(t0)
+          % processing function definition: sum (func3)
+func3     sw -8(r14),r15
+          % processing: t0 := e1 + e2
           lw r2,-8(r14)
-          % put value on stack
-          addi r14,r14,-8
-          sw -8(r14),r2
-          % put buffer address on the stack
-          addi r2,r0,buf
-          sw -12(r14),r2
-          % convert int to string for output
-          jl r15,intstr
-          sw -8(r14),r13
-          % output to console
-          jl r15,putstr
-          subi r14,r14,-8
-          lw r15,-4(r14)
+          lw r3,-12(r14)
+          add r4,r2,r3
+          sw -16(r14),r4
+          % processing: return value = t0
+          lw r2,-16(r14)
+          sw -4(r14),r2
+          lw r15,-8(r14)
+          jr r15
+          lw r15,-8(r14)
           jr r15
 
           entry
           addi r14,r0,topaddr
-          % processing: t0 := 10
-          addi r2,r0,10
-          sw -4(r14),r2
-          % processing: write(t0)
-          lw r2,-4(r14)
+          % processing: t0 := 1
+          addi r2,r0,1
+          sw -24(r14),r2
+          % processing: e1 :=  t0
+          lw r2,-24(r14)
+          sw -8(r14),r2
+          % processing: t1 := 2
+          addi r2,r0,2
+          sw -28(r14),r2
+          % processing: e2 :=  t1
+          lw r2,-28(r14)
+          sw -12(r14),r2
+          % processing: function call to sum (func3)
+          % processing: instance address
+          addi r2,r14,-16
+          sw -44(r14),r2
+          addi r14,r14,-32
+          jl r15,func3
+          subi r14,r14,-32
+          % processing: t2 = return value
+          lw r2,-36(r14)
+          sw -32(r14),r2
+          % processing: b :=  sum
+          lw r2,-32(r14)
+          sw -16(r14),r2
+          % processing: write(b)
+          lw r2,-16(r14)
           % put value on stack
-          addi r14,r14,-4
+          addi r14,r14,-32
           sw -8(r14),r2
           % put buffer address on the stack
           addi r2,r0,buf
@@ -38,7 +53,7 @@ print     sw -4(r14),r15
           sw -8(r14),r13
           % output to console
           jl r15,putstr
-          subi r14,r14,-4
+          subi r14,r14,-32
           hlt
           % buffer space used for console output
 buf       res 20

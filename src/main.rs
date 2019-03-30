@@ -528,8 +528,8 @@ mod tests {
             ("class_checker_error1.txt", 3),
             ("class_checker_error2.txt", 1),
             ("class_checker_error3.txt", 1),
-            ("function_checker_error1.txt", 7),
-            ("type_checker_error1.txt", 12),
+            ("function_checker_error1.txt", 8),
+            ("type_checker_error1.txt", 11),
         ];
 
         for (source_filename, error_count) in source_files.iter() {

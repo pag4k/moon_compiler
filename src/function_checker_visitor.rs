@@ -11,11 +11,40 @@ pub fn function_checker_visitor(ast: &mut AST) -> Vec<SemanticError> {
     use NodeType::*;
     let mut semantic_errors: Vec<SemanticError> = Vec::new();
     let mut semantic_actions: SemanticActionMap<SemanticError> = HashMap::new();
+    semantic_actions.insert(MainFuncBody, check_return_stat);
+    semantic_actions.insert(FuncDef, check_return_stat);
     semantic_actions.insert(DataMember, data_member);
     semantic_actions.insert(FunctionCall, function_call);
     semantic_actions.insert(VarElementList, var_element_list);
     ast_traversal(ast, &mut semantic_errors, &semantic_actions);
     semantic_errors
+}
+
+fn check_return_stat(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
+    use NodeType::*;
+    let node_type = ast.get_element(node_index).node_type;
+    let mut return_stat_node_indices: Vec<usize> = Vec::new();
+    ast.find_node_type(node_index, &mut return_stat_node_indices, &[ReturnStat]);
+    match node_type {
+        MainFuncBody => {
+            for return_stat_node_index in return_stat_node_indices {
+                semantic_errors.push(SemanticError::ShouldNotReturnFromMain(
+                    ast.get_leftmost_token(return_stat_node_index),
+                ));
+            }
+        }
+        FuncDef => {
+            if return_stat_node_indices.is_empty() {
+                semantic_errors.push(SemanticError::FunctionHasNoReturnStat(
+                    ast.get_element(ast.get_child(node_index, 2))
+                        .token
+                        .clone()
+                        .unwrap(),
+                ));
+            }
+        }
+        _ => unreachable!(),
+    }
 }
 
 fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
@@ -81,7 +110,6 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
             };
 
             // Second, if any, get member variable entry index.
-            //let function_parent_node_index = ast.get_parent(function_node_index).unwrap();
             let member_variable_entry_index = match ast.get_element(function_node_index).node_type {
                 // It is the main function.
                 NodeType::MainFuncBody => None,
@@ -181,11 +209,11 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
                     ast.get_mut_element(node_index).data_type =
                         Some(variable_symbol_type.clone().remove_dimensions());
                 }
-                ast.get_mut_element(node_index).symbol_table_entry = Some(variable_entry_index);
             }
             Err(error) => semantic_errors.push(error),
         },
     }
+    ast.get_mut_element(node_index).symbol_table_entry = Some(variable_entry_index);
 }
 fn function_call(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     use NodeType::*;
@@ -196,14 +224,14 @@ fn function_call(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_i
     let left_element_node_index = ast.get_left_sibling(node_index);
 
     // Get the function table entry index.
-    let function_table_entry_index = match left_element_node_index {
+    let function_entry_index = match left_element_node_index {
         // If it has a left, node, get the class table index of the previous type.
         Some(left_element_node_index) => {
             match get_symbol_type_and_class_table_from_node(ast, left_element_node_index) {
                 Ok(result) => match result {
                     Some((previous_type, class_table_index)) => {
                         match ast.is_member_function(class_table_index, &function_name) {
-                            Some((_, function_table_entry_index)) => function_table_entry_index,
+                            Some((_, function_entry_index)) => function_entry_index,
                             None => {
                                 semantic_errors.push(SemanticError::UndefinedMemberFunction(
                                     ast.get_leftmost_token(node_index),
@@ -231,30 +259,38 @@ fn function_call(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_i
                 .unwrap();
 
             // Check if it is a parent member function.
-            let function_table_entry_index = match ast
-                .get_element(ast.get_child(function_node_index, 1))
-                .token
-                .clone()
-            {
-                // It is a parent member function, check if the called function is also a member.
-                Some(class_token) => {
-                    let class_table_index = ast
-                        .find_class_symbol_table(&class_token.lexeme.unwrap())
-                        .unwrap();
-                    // If it is a member variable, return table entry.
-                    ast.is_member_function(class_table_index, &function_name)
-                        .map(|(_, entry_index)| entry_index)
+            let function_entry_index = match ast.get_element(function_node_index).node_type {
+                // It is the main function.
+                NodeType::MainFuncBody => None,
+                // It is not the main function.
+                NodeType::FuncDef => {
+                    match ast
+                        .get_element(ast.get_child(function_node_index, 1))
+                        .token
+                        .clone()
+                    {
+                        // It is a parent member function, check if the called function is also a member.
+                        Some(class_token) => {
+                            let class_table_index = ast
+                                .find_class_symbol_table(&class_token.lexeme.unwrap())
+                                .unwrap();
+                            // If it is a member variable, return table entry.
+                            ast.is_member_function(class_table_index, &function_name)
+                                .map(|(_, entry_index)| entry_index)
+                        }
+                        // It is a free function or the main function.
+                        None => None,
+                    }
                 }
-                // It is a free function or the main function.
-                None => None,
+                _ => unreachable!(),
             };
 
-            match function_table_entry_index {
+            match function_entry_index {
                 // It is a member function, return function table entry index.
-                Some(function_table_entry_index) => function_table_entry_index,
+                Some(function_entry_index) => function_entry_index,
                 // It is not a member function, check if it a free function.
                 None => match find_free_function(ast, &function_name) {
-                    Some(function_table_entry_index) => function_table_entry_index,
+                    Some(function_entry_index) => function_entry_index,
                     None => {
                         semantic_errors.push(SemanticError::UndefinedFunction(
                             ast.get_leftmost_token(node_index),
@@ -269,7 +305,7 @@ fn function_call(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_i
     // At this point, the function table entry index has been successfully found.
     let function_return_symbol_type = match &ast
         .symbol_table_arena
-        .get_table_entry(function_table_entry_index)
+        .get_table_entry(function_entry_index)
         .kind
     {
         SymbolKind::Function(symbol_type, _) => match symbol_type {
@@ -283,7 +319,7 @@ fn function_call(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_i
     ast.get_mut_element(node_index).data_type = Some(function_return_symbol_type.clone());
 
     // FIXME: NOT SURE I WANT TO DO THAT
-    ast.get_mut_element(node_index).symbol_table_entry = Some(function_table_entry_index);
+    ast.get_mut_element(node_index).symbol_table_entry = Some(function_entry_index);
 }
 fn var_element_list(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     // Get last element symbol type..
