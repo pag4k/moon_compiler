@@ -21,6 +21,7 @@ pub fn memory_table_generator_visitor(ast: &mut AST) -> Vec<CodeGenError> {
     // ForVar
     semantic_actions.insert(ForStat, for_var);
     // TempVar
+    semantic_actions.insert(IndexList, index_list);
     semantic_actions.insert(RelExpr, temp_var);
     semantic_actions.insert(AddOp, temp_var);
     semantic_actions.insert(MultOp, temp_var);
@@ -252,10 +253,14 @@ fn var_element(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_ind
 }
 
 fn var_element_list(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_index: usize) {
-    // if ast.get_mut_element(node_index).memory_table_entry.is_none() {
-    //     let data_type = ast.get_element(node_index).data_type.as_ref().unwrap();
-    //     let variable_type = symbol_to_variabl_type(&data_type);
-    //     if let Some(size) = get_size(ast, &data_type) {
+    // It is only needed if one element is an array, but it is simpler to always use
+    // a temporary variable for the offset calculation.
+    // if ast.get_mut_element(node_index).memory_table_entry.is_none()
+    //     && !ast.get_children(node_index).is_empty()
+    // {
+    //     let symbol_type = SymbolType::Integer(vec![]);
+    //     let variable_type = symbol_to_variabl_type(&symbol_type);
+    //     if let Some(size) = get_size(ast, &symbol_type) {
     //         let entry_index = ast.memory_table_arena.new_memory_table_entry(
     //             VariableKind::TempVar(0),
     //             variable_type,
@@ -281,6 +286,24 @@ fn for_var(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_index: 
         if let Some(size) = get_size(ast, &symbol_type) {
             let entry_index = ast.memory_table_arena.new_memory_table_entry(
                 VariableKind::ForVar(variable_name.clone()),
+                variable_type,
+                size,
+            );
+            ast.get_mut_element(node_index).memory_table_entry = Some(entry_index);
+        }
+    }
+}
+
+fn index_list(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_index: usize) {
+    // If there is an IndexList, add an integer TempVar to hold the offset in the array.
+    if ast.get_mut_element(node_index).memory_table_entry.is_none()
+        && !ast.get_children(node_index).is_empty()
+    {
+        let symbol_type = SymbolType::Integer(vec![]);
+        let variable_type = symbol_to_variabl_type(&symbol_type);
+        if let Some(size) = get_size(ast, &symbol_type) {
+            let entry_index = ast.memory_table_arena.new_memory_table_entry(
+                VariableKind::TempVar(0),
                 variable_type,
                 size,
             );

@@ -31,7 +31,7 @@ impl SymbolType {
             Class(_, dimension_list) => dimension_list.clone(),
         }
     }
-    pub fn remove_dimensions(&mut self) -> Self {
+    pub fn remove_dimensions(&self) -> Self {
         use SymbolType::*;
         match self {
             Integer(_) => Integer(Vec::new()),

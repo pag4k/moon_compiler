@@ -25,6 +25,8 @@ pub fn code_generator_visitor(ast: &mut AST) -> Vec<String> {
     semantic_actions.insert(FuncDef, func_def);
     semantic_actions.insert(FunctionCall, function_call);
 
+    semantic_actions.insert(DataMember, data_member);
+
     // Statements
     semantic_actions.insert(IfStat, if_stat);
     semantic_actions.insert(ForStat, for_stat);
@@ -208,6 +210,62 @@ fn function_call(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) 
 
     ast.register_pool.push(register1);
     ast.register_pool.push(register2);
+}
+
+fn data_member(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
+    use SymbolKind::*;
+
+    // Get the IndexList node.
+    let index_list_node = ast.get_child(node_index, 1);
+
+    // Only proceed if the IndexList node has a memory entry.
+    if let Some(_) = ast.get_element(index_list_node).memory_table_entry {
+        // Get symbol entry associated with data member.
+        let symbol_entry_index = ast.get_element(node_index).symbol_table_entry.unwrap();
+        let symbol_entry = ast.symbol_table_arena.get_table_entry(symbol_entry_index);
+        let (dimension_list, type_size) = match &symbol_entry.kind {
+            Parameter(symbol_type) | Variable(symbol_type) | For(symbol_type) => (
+                symbol_type.get_dimension_list(),
+                get_size(ast, &symbol_type.remove_dimensions()).unwrap(),
+            ),
+            _ => unreachable!(),
+        };
+
+        let register1 = ast.register_pool.pop();
+        let register2 = ast.register_pool.pop();
+        let register3 = ast.register_pool.pop();
+        add_comment(
+            moon_code,
+            format!("{} = array offset", get_var_name(ast, index_list_node)),
+        );
+        // Initialize the accumulator register that will hold the array offset.
+        subi(moon_code, register1, 0, type_size as isize);
+        //subi(moon_code, register1, 0, 0);
+
+        for (position, index_node) in ast.get_children(index_list_node).into_iter().enumerate() {
+            // Get the current dimension multiplier.
+            let array_offset: usize =
+                dimension_list.iter().skip(position + 1).product::<usize>() * type_size;
+            // Load the current index value.
+            load_node(ast, moon_code, register2, index_node);
+            // Multiply the value and multiplier.
+            moon_code.push(format!(
+                "{}muli r{},r{},{}",
+                INDENT, register3, register2, array_offset,
+            ));
+            // Sub to accumulator register.
+            moon_code.push(format!(
+                "{}sub r{},r{},r{}",
+                INDENT, register1, register1, register3,
+            ));
+        }
+        // Store the offset in the TempVar.
+        store_node(ast, moon_code, index_list_node, register1);
+
+        ast.register_pool.push(register1);
+        ast.register_pool.push(register2);
+        ast.register_pool.push(register3);
+    }
 }
 
 fn binary_op(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
@@ -583,7 +641,7 @@ fn for_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     );
 
     load_node(ast, &mut cond_moon_code, register1, rhs_node_index);
-    store_node(ast, moon_code, assign_node_index, register1);
+    store_node(ast, &mut cond_moon_code, assign_node_index, register1);
 
     // Conditional label
     add_label(&mut cond_moon_code, condfor.clone());
@@ -744,43 +802,6 @@ fn get_funtion_symbol_table_index(ast: &AST, node_index: usize) -> usize {
     }
 }
 
-fn get_offset(ast: &AST, node_index: usize) -> isize {
-    use NodeType::*;
-    let node_type = ast.get_element(node_index).node_type;
-    if let NodeType::VarElementList = node_type {
-        // FIXME: This code seems to work with single inheritence since the
-        // inherited  is at the start of the memory table.
-        let child_nodes = ast.get_children(node_index);
-        let last_node_position = child_nodes.len() - 1;
-        let mut offset: isize = 0;
-        for (position, child_index) in child_nodes.into_iter().enumerate() {
-            let child_node_type = ast.get_element(child_index).node_type;
-            match child_node_type {
-                DataMember => {
-                    let memory_entry = ast
-                        .memory_table_arena
-                        .get_table_entry(get_memory_from_symbol(ast, child_index).unwrap());
-                    offset += memory_entry.get_offset();
-                    if position != last_node_position {
-                        offset += memory_entry.get_size();
-                    }
-                }
-                FunctionCall => {
-                    let entry_index = ast.get_element(child_index).memory_table_entry.unwrap();
-                    let memory_entry = ast.memory_table_arena.get_table_entry(entry_index);
-                    offset = memory_entry.get_offset();
-                }
-                _ => unreachable!(),
-            }
-        }
-        offset
-    } else {
-        let entry_index = ast.get_element(node_index).memory_table_entry.unwrap();
-        let memory_entry = ast.memory_table_arena.get_table_entry(entry_index);
-        memory_entry.get_offset()
-    }
-}
-
 fn get_inst_offset(ast: &AST, node_index: usize) -> Option<isize> {
     let parent_index = ast.get_parent(node_index).unwrap();
     let child_nodes = ast.get_children(parent_index);
@@ -794,17 +815,16 @@ fn get_inst_offset(ast: &AST, node_index: usize) -> Option<isize> {
         return get_inst_addr_offset(ast, function_memory_table_index);
     }
     let mut offset: isize = 0;
-    for (position, child_index) in ast.get_children(parent_index).into_iter().enumerate() {
+    // Note that contrary to when we acces data member, we return the offset
+    // at the "top" of the instance variable because it is necessarily an object.
+    for child_index in ast.get_children(parent_index) {
         if child_index == node_index {
             break;
         }
         let memory_entry = ast
             .memory_table_arena
             .get_table_entry(get_memory_from_symbol(ast, child_index).unwrap());
-        offset += memory_entry.get_offset();
-        if position != function_call_position - 1 {
-            offset += memory_entry.get_size();
-        }
+        offset += memory_entry.get_offset() + memory_entry.get_size();
     }
     Some(offset)
 }
@@ -1091,20 +1111,26 @@ fn load_inst_addresse(ast: &mut AST, moon_code: &mut Vec<String>, node_index: us
     }
 }
 
-fn get_register_and_offset(
+fn get_reference_and_offset_registers(
     ast: &mut AST,
     moon_code: &mut Vec<String>,
     node_index: usize,
-) -> (usize, isize) {
+) -> (usize, usize) {
+    //add_comment(moon_code, format!("Get registers for: {}", node_index));
     use NodeType::*;
+    use SymbolKind::*;
     let node_type = ast.get_element(node_index).node_type;
-    if let NodeType::VarElementList = node_type {
+    let register1 = ast.register_pool.pop();
+
+    let reference_register = if let NodeType::VarElementList = node_type {
+        moon_code.push(format!("{}addi r{},r0,0", INDENT, register1,));
+
         // FIXME: This code seems to work with single inheritence since the
         // inherited  is at the start of the memory table.
         let child_nodes = ast.get_children(node_index);
         let last_node_position = child_nodes.len() - 1;
-        let mut offset: isize = 0;
-        let mut register: usize = 14;
+        //let mut offset: isize = 0;
+        let mut reference_register: usize = 14;
         for (position, child_index) in child_nodes.into_iter().enumerate() {
             let child_node_type = ast.get_element(child_index).node_type;
             match child_node_type {
@@ -1117,36 +1143,128 @@ fn get_register_and_offset(
                         if get_class_node_of_symbol_entry(ast, symbol_entry_index).is_some() {
                             // Set register to instance variable.
                             load_inst_addresse(ast, moon_code, node_index);
-                            register = 12;
+                            reference_register = 12;
                         }
                     }
+
                     let memory_entry = ast
                         .memory_table_arena
                         .get_table_entry(get_memory_from_symbol(ast, child_index).unwrap());
-                    offset += memory_entry.get_offset();
+                    //offset += memory_entry.get_offset();
+
+                    moon_code.push(format!(
+                        "{}addi r{},r{},{}",
+                        INDENT,
+                        register1,
+                        register1,
+                        memory_entry.get_offset()
+                    ));
+
+                    let index_list_node = ast.get_child(child_index, 1);
+
+                    // Only proceed if the IndexList node has a memory entry.
+                    if let Some(memory_entry_index) =
+                        ast.get_element(index_list_node).memory_table_entry
+                    {
+                        add_comment(moon_code, format!("Add total array size."));
+                        moon_code.push(format!(
+                            "{}addi r{},r{},{}",
+                            INDENT,
+                            register1,
+                            register1,
+                            memory_entry.get_size()
+                        ));
+                        let index_list_memory_entry =
+                            ast.memory_table_arena.get_table_entry(memory_entry_index);
+                        let register2 = ast.register_pool.pop();
+                        moon_code.push(format!(
+                            "{}lw r{},{}(r14)",
+                            INDENT,
+                            register2,
+                            index_list_memory_entry.get_offset()
+                        ));
+                        //load_node(ast, moon_code, register2, index_list_node);
+                        moon_code.push(format!(
+                            "{}add r{},r{},r{}",
+                            INDENT, register1, register1, register2
+                        ));
+                        ast.register_pool.push(register2);
+                    }
+
                     if position != last_node_position {
-                        offset += memory_entry.get_size();
+                        let symbol_entry =
+                            ast.symbol_table_arena.get_table_entry(symbol_entry_index);
+                        let type_size = match &symbol_entry.kind {
+                            Parameter(symbol_type) | Variable(symbol_type) | For(symbol_type) => {
+                                get_size(ast, &symbol_type.remove_dimensions()).unwrap()
+                            }
+
+                            _ => unreachable!(),
+                        };
+                        add_comment(moon_code, format!("Add size (excluding last element)."));
+                        moon_code.push(format!(
+                            "{}addi r{},r{},{}",
+                            INDENT, register1, register1, type_size as isize
+                        ));
+
+                        //offset += memory_entry.get_size();
+                        // add_comment(moon_code, format!("Add size (excluding last element)."));
+                        // moon_code.push(format!(
+                        //     "{}addi r{},r{},{}",
+                        //     INDENT,
+                        //     register1,
+                        //     register1,
+                        //     memory_entry.get_size()
+                        // ));
                     }
                 }
                 FunctionCall => {
                     let entry_index = ast.get_element(child_index).memory_table_entry.unwrap();
                     let memory_entry = ast.memory_table_arena.get_table_entry(entry_index);
-                    offset = memory_entry.get_offset();
+                    //offset = memory_entry.get_offset();
+
+                    // Store offset of TempVar for return address.
+                    moon_code.push(format!(
+                        "{}addi r{},r0,{}",
+                        INDENT,
+                        register1,
+                        memory_entry.get_offset()
+                    ));
+
+                    //store_at_offset(moon_code, memory_entry.get_offset(), register1);
                 }
                 _ => unreachable!(),
             }
         }
-        (register, offset)
+        reference_register
     } else {
         let entry_index = ast.get_element(node_index).memory_table_entry.unwrap();
         let memory_entry = ast.memory_table_arena.get_table_entry(entry_index);
-        (14, memory_entry.get_offset())
-    }
+        // Store offset of TempVar for return address.
+        moon_code.push(format!(
+            "{}addi r{},r0,{}",
+            INDENT,
+            register1,
+            memory_entry.get_offset()
+        ));
+
+        //store_at_offset(moon_code, memory_entry.get_offset(), register1);
+        14
+    };
+    ast.register_pool.push(register1);
+    (reference_register, register1)
 }
 
 fn load_node(ast: &mut AST, moon_code: &mut Vec<String>, register_index: usize, node_index: usize) {
-    let (register, offset) = get_register_and_offset(ast, moon_code, node_index);
-    load_from_offset_register(moon_code, register_index, offset, register);
+    let (reference_register, offset_register) =
+        get_reference_and_offset_registers(ast, moon_code, node_index);
+    let register1 = ast.register_pool.pop();
+    moon_code.push(format!(
+        "{}add r{},r{},r{}",
+        INDENT, register1, reference_register, offset_register
+    ));
+    load_from_offset_register(moon_code, register_index, 0, register1);
+    ast.register_pool.push(register1);
 }
 
 fn load_from_offset(moon_code: &mut Vec<String>, register_index: usize, offset: isize) {
@@ -1171,8 +1289,17 @@ fn store_node(
     node_index: usize,
     register_index: usize,
 ) {
-    let (register, offset) = get_register_and_offset(ast, moon_code, node_index);
-    store_at_offset_register(moon_code, offset, register, register_index);
+    let (reference_register, offset_register) =
+        get_reference_and_offset_registers(ast, moon_code, node_index);
+    let register1 = ast.register_pool.pop();
+    moon_code.push(format!(
+        "{}add r{},r{},r{}",
+        INDENT, register1, reference_register, offset_register
+    ));
+    store_at_offset_register(moon_code, 0, register1, register_index);
+    ast.register_pool.push(register1);
+    // let (register, offset) = get_register_and_offset(ast, moon_code, node_index);
+    // store_at_offset_register(moon_code, offset, register, register_index);
 }
 
 fn store_at_offset(moon_code: &mut Vec<String>, offset: isize, register_index: usize) {

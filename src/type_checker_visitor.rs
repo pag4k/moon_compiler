@@ -36,7 +36,7 @@ fn assign_stat(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
 
     if lhs_dimension_list != rhs_dimension_list {
         semantic_errors.push(SemanticError::MismatchedTypeDimensions(
-            ast.get_child_token(node_index, 0),
+            ast.get_leftmost_token(node_index),
             lhs,
             rhs,
         ));

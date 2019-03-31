@@ -1,54 +1,43 @@
-class a : c {
-  integer e1;
-  integer e2;
-  b b;
-  integer sum();
-  integer ppp(integer b);
-};
-class b {
-  integer f1;
-};
-class c {
-  integer g1;
+class a {
+  integer b;
+  integer a[10];
+  integer get(integer n);
 };
 
-integer a::sum() {
-  integer t;
-  t = ppp(e1+e2);
-  e1 = 10;
-  return(e1+e2);
+integer a::get(integer n) {
+  b = 6;
+  return(a[n]);
 };
-
-integer a::ppp(integer b) {
-  write(b);
-  return(b);
-};
-
-/*
-integer fib(integer n) {
-  if (n<2) then {
-    return(n);
-  } else {
-    return(fib(n-1) + fib(n-2));
-  };
-};
-*/
 
 main {
-  a a;
-  integer b;
-  a.e1 = 1;
-  a.e2 = 4;
-  b = a.sum();
-  write(b);
   /*
-  a.b.f1 = 3;
-  a.g1 = 4;
-  write(a.e1);
-  write(a.e2);
-  write(a.b.f1);
-  write(a.g1);
+  a a[10];
+  for(integer i = 0; i < 10; i = i + 1) {
+    a[i].a = 100 + i;
+    //write(10);
+  };
+  
+  for(integer j = 9; j >= 0; j = j - 1) {
+    write(a[j].a);
+  };
   */
+/*
+  integer a[10][10];
+  for(integer i = 0; i < 10; i = i + 1) {
+    a[2][i] = 100 + i;
 
+  };
+  
+  for(integer j = 9; j >= 0; j = j - 1) {
+    write(a[11][j]);
+  };
+*/
+
+  a a;
+  for(integer i = 0; i < 10; i = i + 1) {
+    a.a[i] = 100 + i;
+    write(a.get(i));
+  };
+  
 };
 

@@ -156,7 +156,6 @@ impl NodeType {
                 VarDecl, AssignStat, IfStat, ForStat, ReadStat, WriteStat, ReturnStat,
             ])),
             StatBlock => Single(ManyOf(vec![
-                //VarDecl,
                 AssignStat, IfStat, ForStat, ReadStat, WriteStat, ReturnStat,
             ])),
             DimList => Single(Many(Num)),

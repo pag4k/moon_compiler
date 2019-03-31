@@ -1,36 +1,26 @@
-MEMORY TABLE: NAME: b OFFSET: -4 SYMBOL INDEX: 1 INDEX: 0
-Var: f1, integer, 4, -4
+MEMORY TABLE: NAME: a OFFSET: -44 SYMBOL INDEX: 0 INDEX: 0
+Var: b, integer, 4, -4
+Var: a, integer, 40, -44
 
-MEMORY TABLE: NAME: c OFFSET: -4 SYMBOL INDEX: 2 INDEX: 1
-Var: g1, integer, 4, -4
-
-MEMORY TABLE: NAME: a OFFSET: -16 SYMBOL INDEX: 0 INDEX: 2
-Inherited, c, 4, -4
-Var: e1, integer, 4, -8
-Var: e2, integer, 4, -12
-Var: b, b, 4, -16
-
-MEMORY TABLE: NAME: sum OFFSET: -32 SYMBOL INDEX: 3 INDEX: 3
+MEMORY TABLE: NAME: get OFFSET: -24 SYMBOL INDEX: 1 INDEX: 1
 ReturnVar, integer, 4, -4
 ReturnAddr, integer, 4, -8
 InstAddr, a, 4, -12
-Var: t, integer, 4, -16
-TempVar: t0, integer, 4, -20
+Param: n, integer, 4, -16
+LitVar: t0, integer, 4, -20
 TempVar: t1, integer, 4, -24
-LitVar: t2, integer, 4, -28
-TempVar: t3, integer, 4, -32
 
-MEMORY TABLE: NAME: ppp OFFSET: -16 SYMBOL INDEX: 4 INDEX: 4
-ReturnVar, integer, 4, -4
-ReturnAddr, integer, 4, -8
-InstAddr, a, 4, -12
-Param: b, integer, 4, -16
-
-MEMORY TABLE: NAME: program OFFSET: -32 SYMBOL INDEX: 5 INDEX: 5
-Var: a, a, 16, -16
-Var: b, integer, 4, -20
-LitVar: t0, integer, 4, -24
-LitVar: t1, integer, 4, -28
-TempVar: t2, integer, 4, -32
+MEMORY TABLE: NAME: program OFFSET: -84 SYMBOL INDEX: 2 INDEX: 2
+Var: a, a, 44, -44
+LitVar: t0, integer, 4, -48
+LitVar: t1, integer, 4, -52
+TempVar: t2, integer, 4, -56
+LitVar: t3, integer, 4, -60
+TempVar: t4, integer, 4, -64
+TempVar: t5, integer, 4, -68
+LitVar: t6, integer, 4, -72
+TempVar: t7, integer, 4, -76
+TempVar: t8, integer, 4, -80
+ForVar: i, integer, 4, -84
 
  
