@@ -1,7 +1,3 @@
-class c  {
-  a a;
-};
-
 class a {
   integer b;
   integer a[10];
@@ -12,7 +8,6 @@ integer a::get(integer n) {
   b = 6;
   return(a[n]);
 };
-
 
 main {
   /*
@@ -38,10 +33,10 @@ main {
   };
 */
 
-  c a;
+  a a;
   for(integer i = 0; i < 10; i = i + 1) {
-    a.a.a[i] = 100 + i;
-    write(a.a.get(i));
+    a.a[i] = 100 + i;
+    write(a.get(i));
   };
   
 };

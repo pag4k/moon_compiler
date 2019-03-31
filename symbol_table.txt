@@ -1,13 +1,16 @@
-SYMBOL TABLE: NAME: Global INDEX: 3
-0. Name: a, Class, Link: Some(0)
-1. Name: main, Function: Return Type: None, Parameters: , Link: Some(2)
-SYMBOL TABLE: NAME: a INDEX: 0
+SYMBOL TABLE: NAME: Global INDEX: 4
+0. Name: c, Class, Link: Some(0)
+1. Name: a, Class, Link: Some(1)
+2. Name: main, Function: Return Type: None, Parameters: , Link: Some(3)
+SYMBOL TABLE: NAME: c INDEX: 0
+0. Name: a, Variable: a, Link: None
+SYMBOL TABLE: NAME: a INDEX: 1
 0. Name: b, Variable: integer, Link: None
 1. Name: a, Variable: integer[10], Link: None
-2. Name: get, Function: Return Type: integer, Parameters: integer, Link: Some(1)
-SYMBOL TABLE: NAME: get INDEX: 1
+2. Name: get, Function: Return Type: integer, Parameters: integer, Link: Some(2)
+SYMBOL TABLE: NAME: get INDEX: 2
 0. Name: n, Parameter: integer, Link: None
-SYMBOL TABLE: NAME: main INDEX: 2
-0. Name: a, Variable: a, Link: None
+SYMBOL TABLE: NAME: main INDEX: 3
+0. Name: a, Variable: c, Link: None
 1. Name: i, For: integer, Link: None
  

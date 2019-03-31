@@ -27,16 +27,6 @@ integer c::ppp(integer b) {
   return(b);
 };
 
-/*
-integer fib(integer n) {
-  if (n<2) then {
-    return(n);
-  } else {
-    return(fib(n-1) + fib(n-2));
-  };
-};
-*/
-
 main {
   a a;
   //a gg[10];
