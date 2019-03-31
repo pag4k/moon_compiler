@@ -17,7 +17,6 @@ pub fn memory_table_generator_visitor(ast: &mut AST) -> Vec<CodeGenError> {
     semantic_actions.insert(VarDecl, var_decl);
     //semantic_actions.insert(DataMember, var_element);
     semantic_actions.insert(FunctionCall, var_element);
-    semantic_actions.insert(VarElementList, var_element_list);
     // ForVar
     semantic_actions.insert(ForStat, for_var);
     // TempVar
@@ -39,15 +38,9 @@ fn class_decl(ast: &mut AST, code_gen_errors: &mut Vec<CodeGenError>, node_index
     if ast
         .get_children_of_child(node_index, 1)
         .iter()
-        .any(|&child_index| {
-            get_class_size(
-                ast,
-                &ast.symbol_table_arena
-                    .get_table_entry(ast.get_element(child_index).symbol_table_entry.unwrap())
-                    .name,
-            )
-            .is_none()
-        })
+        .map(|&child_index| get_symbol_entry(ast, child_index))
+        .map(|symbol_entry| symbol_entry.get_name())
+        .any(|class_name| get_class_size(ast, class_name).is_none())
     {
         code_gen_errors.push(CodeGenError::ClassNotSizedYet);
         return;
@@ -57,13 +50,9 @@ fn class_decl(ast: &mut AST, code_gen_errors: &mut Vec<CodeGenError>, node_index
     if ast
         .get_children_of_child(node_index, 2)
         .iter()
-        .filter(|&&child_index| {
-            ast.symbol_table_arena
-                .get_table_entry(ast.get_element(child_index).symbol_table_entry.unwrap())
-                .kind
-                .is_variable()
-        })
-        .any(|&child_index| ast.get_element(child_index).memory_table_entry.is_none())
+        .filter(|&&child_index| ast.get_element(child_index).memory_table_entry.is_none())
+        .map(|&child_index| get_symbol_entry(ast, child_index))
+        .any(|symbol_entry| symbol_entry.is_variable())
     {
         code_gen_errors.push(CodeGenError::ClassNotSizedYet);
         return;
@@ -71,17 +60,17 @@ fn class_decl(ast: &mut AST, code_gen_errors: &mut Vec<CodeGenError>, node_index
 
     if ast.get_element(node_index).memory_table.is_none() {
         let symbol_table_index = ast.get_element(node_index).symbol_table.unwrap();
-        let class_name = &ast.symbol_table_arena.get_table(symbol_table_index).name;
+        let class_name = ast
+            .symbol_table_arena
+            .get_table(symbol_table_index)
+            .get_name();
         let memory_table_index = ast
             .memory_table_arena
             .new_memory_table(symbol_table_index, class_name.clone());
         ast.get_mut_element(node_index).memory_table = Some(memory_table_index);
         // Add inherited classes.
         for child_index in ast.get_children_of_child(node_index, 1).into_iter() {
-            let inherited_class_name = &ast
-                .symbol_table_arena
-                .get_table_entry(ast.get_element(child_index).symbol_table_entry.unwrap())
-                .name;
+            let inherited_class_name = get_symbol_entry(ast, child_index).get_name();
             let variable_type = VariableType::Class(inherited_class_name.clone());
             let size = get_class_size(ast, inherited_class_name).unwrap();
             let entry_index = ast.memory_table_arena.new_memory_table_entry(
@@ -129,19 +118,27 @@ fn func_def(ast: &mut AST, code_gen_errors: &mut Vec<CodeGenError>, node_index: 
         return;
     }
     let symbol_table_index = ast.get_element(node_index).symbol_table.unwrap();
-    let class_name = &ast.symbol_table_arena.get_table(symbol_table_index).name;
+    let class_name = ast
+        .symbol_table_arena
+        .get_table(symbol_table_index)
+        .get_name();
     let memory_table_index = ast
         .memory_table_arena
         .new_memory_table(symbol_table_index, class_name.clone());
     ast.get_mut_element(node_index).memory_table = Some(memory_table_index);
 
-    let entry_index = ast.get_element(node_index).symbol_table_entry.unwrap();
+    let entry_index = get_symbol_entry_index(ast, node_index);
 
     // Add return variable.
-    let return_symbol_type = match &ast.symbol_table_arena.get_table_entry(entry_index).kind {
-        SymbolKind::Function(return_symbol_type, _) => return_symbol_type.as_ref().unwrap(),
-        _ => unreachable!(),
-    };
+    let return_symbol_type = ast
+        .symbol_table_arena
+        .get_table_entry(entry_index)
+        .get_symbol_type()
+        .unwrap();
+    // .kind {
+    //     SymbolKind::Function(return_symbol_type, _) => return_symbol_type.as_ref().unwrap(),
+    //     _ => unreachable!(),
+    // };
     let variable_type = symbol_to_variabl_type(&return_symbol_type);
     let entry_index = ast.memory_table_arena.new_memory_table_entry(
         VariableKind::ReturnVar,
@@ -162,17 +159,11 @@ fn func_def(ast: &mut AST, code_gen_errors: &mut Vec<CodeGenError>, node_index: 
 
     // If member variable, add parameter for instance address.
     let class_node_index = ast.get_child(node_index, 1);
-    if let NodeType::Type = ast.get_element(class_node_index).node_type {
-        let class_name = ast
-            .get_element(class_node_index)
-            .token
-            .clone()
-            .unwrap()
-            .lexeme
-            .unwrap();
+    if let NodeType::Type = ast.get_node_type(class_node_index) {
+        let class_name = ast.get_lexeme(class_node_index);
         let entry_index = ast.memory_table_arena.new_memory_table_entry(
             VariableKind::InstAddr,
-            VariableType::Class(class_name),
+            VariableType::Class(class_name.clone()),
             get_size(ast, return_symbol_type).unwrap(),
         );
         ast.memory_table_arena
@@ -181,14 +172,13 @@ fn func_def(ast: &mut AST, code_gen_errors: &mut Vec<CodeGenError>, node_index: 
 
     // Add parameters in reverse order (need to check the nodes since the symbol table does not have their names).
     for child_index in ast.get_children_of_child(node_index, 3).into_iter().rev() {
-        let symbol_entry = ast
-            .symbol_table_arena
-            .get_table_entry(ast.get_element(child_index).symbol_table_entry.unwrap());
-        let variable_name = &symbol_entry.name;
-        let symbol_type = match &symbol_entry.kind {
-            SymbolKind::Parameter(symbol_type) => symbol_type,
-            _ => unreachable!(),
-        };
+        let symbol_entry = get_symbol_entry(ast, child_index);
+        let variable_name = symbol_entry.get_name();
+        let symbol_type = symbol_entry.get_symbol_type().unwrap();
+        // .kind {
+        //     SymbolKind::Parameter(symbol_type) => symbol_type,
+        //     _ => unreachable!(),
+        // };
         let variable_type = symbol_to_variabl_type(&symbol_type);
         let entry_index = ast.memory_table_arena.new_memory_table_entry(
             VariableKind::Param(variable_name.clone()),
@@ -213,14 +203,13 @@ fn func_def(ast: &mut AST, code_gen_errors: &mut Vec<CodeGenError>, node_index: 
 fn var_decl(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_index: usize) {
     if ast.get_mut_element(node_index).memory_table_entry.is_none() {
         // FIXME: GET DATA TYPE
-        let symbol_entry = ast
-            .symbol_table_arena
-            .get_table_entry(ast.get_element(node_index).symbol_table_entry.unwrap());
-        let variable_name = &symbol_entry.name;
-        let symbol_type = match &symbol_entry.kind {
-            SymbolKind::Variable(symbol_type) => symbol_type,
-            _ => unreachable!(),
-        };
+        let symbol_entry = get_symbol_entry(ast, node_index);
+        let variable_name = symbol_entry.get_name();
+        let symbol_type = symbol_entry.get_symbol_type().unwrap();
+        // .kind {
+        //     SymbolKind::Variable(symbol_type) => symbol_type,
+        //     _ => unreachable!(),
+        // };
         let variable_type = symbol_to_variabl_type(&symbol_type);
 
         if let Some(size) = get_size(ast, &symbol_type) {
@@ -236,10 +225,8 @@ fn var_decl(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_index:
 
 fn var_element(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_index: usize) {
     if ast.get_mut_element(node_index).memory_table_entry.is_none() {
-        let data_type = ast.get_element(node_index).data_type.as_ref().unwrap();
+        let data_type = ast.get_data_type(node_index);
         let variable_type = symbol_to_variabl_type(&data_type);
-        let symbol_enty_index = ast.get_element(node_index).symbol_table_entry.unwrap();
-        let symbol_enty = ast.symbol_table_arena.get_table_entry(symbol_enty_index);
 
         if let Some(size) = get_size(ast, &data_type) {
             let entry_index = ast.memory_table_arena.new_memory_table_entry(
@@ -252,35 +239,15 @@ fn var_element(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_ind
     }
 }
 
-fn var_element_list(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_index: usize) {
-    // It is only needed if one element is an array, but it is simpler to always use
-    // a temporary variable for the offset calculation.
-    // if ast.get_mut_element(node_index).memory_table_entry.is_none()
-    //     && !ast.get_children(node_index).is_empty()
-    // {
-    //     let symbol_type = SymbolType::Integer(vec![]);
-    //     let variable_type = symbol_to_variabl_type(&symbol_type);
-    //     if let Some(size) = get_size(ast, &symbol_type) {
-    //         let entry_index = ast.memory_table_arena.new_memory_table_entry(
-    //             VariableKind::TempVar(0),
-    //             variable_type,
-    //             size,
-    //         );
-    //         ast.get_mut_element(node_index).memory_table_entry = Some(entry_index);
-    //     }
-    // }
-}
-
 fn for_var(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_index: usize) {
     if ast.get_mut_element(node_index).memory_table_entry.is_none() {
-        let symbol_entry = ast
-            .symbol_table_arena
-            .get_table_entry(ast.get_element(node_index).symbol_table_entry.unwrap());
-        let variable_name = &symbol_entry.name;
-        let symbol_type = match &symbol_entry.kind {
-            SymbolKind::For(symbol_type) => symbol_type,
-            _ => unreachable!(),
-        };
+        let symbol_entry = get_symbol_entry(ast, node_index);
+        let variable_name = symbol_entry.get_name();
+        let symbol_type = symbol_entry.get_symbol_type().unwrap();
+        // .kind {
+        //     SymbolKind::For(symbol_type) => symbol_type,
+        //     _ => unreachable!(),
+        // };
         let variable_type = symbol_to_variabl_type(&symbol_type);
 
         if let Some(size) = get_size(ast, &symbol_type) {
@@ -314,7 +281,7 @@ fn index_list(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_inde
 
 fn temp_var(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_index: usize) {
     if ast.get_mut_element(node_index).memory_table_entry.is_none() {
-        let data_type = ast.get_element(node_index).data_type.as_ref().unwrap();
+        let data_type = ast.get_data_type(node_index);
         let variable_type = symbol_to_variabl_type(&data_type);
         if let Some(size) = get_size(ast, &data_type) {
             let entry_index = ast.memory_table_arena.new_memory_table_entry(
@@ -329,7 +296,7 @@ fn temp_var(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_index:
 
 fn lit_var(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_index: usize) {
     if ast.get_mut_element(node_index).memory_table_entry.is_none() {
-        let data_type = ast.get_element(node_index).data_type.as_ref().unwrap();
+        let data_type = ast.get_data_type(node_index);
         let variable_type = symbol_to_variabl_type(&data_type);
         if let Some(size) = get_size(ast, &data_type) {
             let entry_index = ast.memory_table_arena.new_memory_table_entry(
@@ -346,13 +313,7 @@ fn get_var(ast: &mut AST, node_index: usize, var_entries: &mut Vec<usize>) {
     for child_index in ast.get_children(node_index) {
         get_var(ast, child_index, var_entries);
     }
-
     if let Some(entry_index) = ast.get_element(node_index).memory_table_entry {
-        let memory_entry = ast.memory_table_arena.get_table_entry(entry_index);
-        //if memory_entry.is_temp_var() || memory_entry.is_lit_var() {
         var_entries.push(entry_index);
-        //} else {
-        //    unreachable!();
-        //}
     }
 }

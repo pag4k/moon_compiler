@@ -13,16 +13,16 @@ pub enum VariableType {
     Class(String),
 }
 
-impl VariableType {
-    pub fn new(memory_type: &str) -> Self {
-        use VariableType::*;
-        match memory_type {
-            "integer" => Integer,
-            "float" => Float,
-            _ => Class(memory_type.to_string()),
-        }
-    }
-}
+// impl VariableType {
+//     pub fn new(memory_type: &str) -> Self {
+//         use VariableType::*;
+//         match memory_type {
+//             "integer" => Integer,
+//             "float" => Float,
+//             _ => Class(memory_type.to_string()),
+//         }
+//     }
+// }
 
 impl Display for VariableType {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
@@ -53,10 +53,10 @@ impl Display for VariableKind {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         use VariableKind::*;
         let output = match self {
-            Inherited => format!("Inherited"),
-            ReturnVar => format!("ReturnVar"),
-            ReturnAddr => format!("ReturnAddr"),
-            InstAddr => format!("InstAddr"),
+            Inherited => "Inherited".to_string(),
+            ReturnVar => "ReturnVar".to_string(),
+            ReturnAddr => "ReturnAddr".to_string(),
+            InstAddr => "InstAddr".to_string(),
             Param(name) => format!("Param: {}", name),
             Var(name) => format!("Var: {}", name),
             ForVar(name) => format!("ForVar: {}", name),
@@ -128,20 +128,20 @@ impl Display for MemoryTableEntry {
 }
 
 impl MemoryTableEntry {
-    pub fn is_temp_var(&self) -> bool {
-        use VariableKind::*;
-        match self.kind {
-            TempVar(_) => true,
-            _ => false,
-        }
-    }
-    pub fn is_lit_var(&self) -> bool {
-        use VariableKind::*;
-        match self.kind {
-            LitVar(_) => true,
-            _ => false,
-        }
-    }
+    // pub fn is_temp_var(&self) -> bool {
+    //     use VariableKind::*;
+    //     match self.kind {
+    //         TempVar(_) => true,
+    //         _ => false,
+    //     }
+    // }
+    // pub fn is_lit_var(&self) -> bool {
+    //     use VariableKind::*;
+    //     match self.kind {
+    //         LitVar(_) => true,
+    //         _ => false,
+    //     }
+    // }
     pub fn is_return_addr(&self) -> bool {
         use VariableKind::*;
         match self.kind {

@@ -36,16 +36,16 @@ fn assign_stat(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
 
     if lhs_dimension_list != rhs_dimension_list {
         semantic_errors.push(SemanticError::MismatchedTypeDimensions(
-            ast.get_leftmost_token(node_index),
-            lhs,
-            rhs,
+            ast.get_leftmost_token(node_index).clone(),
+            lhs.clone(),
+            rhs.clone(),
         ));
         return;
     }
 
     // Check if types match.
     // The only mismatch allowed is integer to float.
-    if !match (lhs.clone(), rhs.clone()) {
+    if !match (lhs, rhs) {
         (Integer(_), Integer(_)) => true,
         (Float(_), Float(_)) => true,
         (Float(_), Integer(_)) => true,
@@ -53,91 +53,90 @@ fn assign_stat(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
         _ => false,
     } {
         semantic_errors.push(SemanticError::MismatchedTypes(
-            ast.get_leftmost_token(node_index),
-            lhs,
-            rhs,
+            ast.get_leftmost_token(node_index).clone(),
+            lhs.clone(),
+            rhs.clone(),
         ));
     }
 }
 fn rel_expr(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     use SymbolType::*;
 
-    //dbg!(ast.g(node_index));
     let left_type = ast.get_child_data_type(node_index, 0);
     let right_type = ast.get_child_data_type(node_index, 2);
-    let symbol_type = match (left_type.clone(), right_type.clone()) {
+    let symbol_type = match (left_type, right_type) {
         (Integer(_), Integer(_)) => SymbolType::Integer(Vec::new()),
         (Float(_), Float(_)) => SymbolType::Integer(Vec::new()),
         (Float(_), Integer(_)) => SymbolType::Integer(Vec::new()),
         (Integer(_), Float(_)) => SymbolType::Integer(Vec::new()),
         _ => {
             semantic_errors.push(SemanticError::InvalidRelOperation(
-                ast.get_leftmost_token(node_index),
+                ast.get_leftmost_token(node_index).clone(),
                 left_type.clone(),
-                right_type,
+                right_type.clone(),
             ));
-            ast.get_mut_element(node_index).data_type = Some(left_type);
+            ast.set_data_type(node_index, Some(left_type.clone()));
             return;
         }
     };
-    ast.get_mut_element(node_index).data_type = Some(symbol_type);
+    ast.set_data_type(node_index, Some(symbol_type));
 }
 fn add_op(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     use SymbolType::*;
 
     let left_type = ast.get_child_data_type(node_index, 0);
     let right_type = ast.get_child_data_type(node_index, 1);
-    let symbol_type = match (left_type.clone(), right_type.clone()) {
+    let symbol_type = match (left_type, right_type) {
         (Integer(_), Integer(_)) => left_type,
         (Float(_), Float(_)) => left_type,
         (Float(_), Integer(_)) => left_type,
         (Integer(_), Float(_)) => right_type,
         _ => {
             semantic_errors.push(SemanticError::InvalidAddOperation(
-                ast.get_token(node_index),
+                ast.get_token(node_index).clone(),
                 left_type.clone(),
-                right_type,
+                right_type.clone(),
             ));
-            ast.get_mut_element(node_index).data_type = Some(left_type);
+            ast.set_data_type(node_index, Some(left_type.clone()));
             return;
         }
     };
-    ast.get_mut_element(node_index).data_type = Some(symbol_type);
+    ast.set_data_type(node_index, Some(symbol_type.clone()));
 }
 fn mult_op(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     use SymbolType::*;
 
     let left_type = ast.get_child_data_type(node_index, 0);
     let right_type = ast.get_child_data_type(node_index, 1);
-    let symbol_type = match (left_type.clone(), right_type.clone()) {
+    let symbol_type = match (left_type, right_type) {
         (Integer(_), Integer(_)) => left_type,
         (Float(_), Float(_)) => left_type,
         (Float(_), Integer(_)) => left_type,
         (Integer(_), Float(_)) => right_type,
         _ => {
             semantic_errors.push(SemanticError::InvalidMultOperation(
-                ast.get_token(node_index),
+                ast.get_token(node_index).clone(),
                 left_type.clone(),
-                right_type,
+                right_type.clone(),
             ));
-            ast.get_mut_element(node_index).data_type = Some(left_type);
+            ast.set_data_type(node_index, Some(left_type.clone()));
             return;
         }
     };
-    ast.get_mut_element(node_index).data_type = Some(symbol_type);
+    ast.set_data_type(node_index, Some(symbol_type.clone()));
 }
 
 fn not_sign(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     let child_type = ast.get_child_data_type(node_index, 0);
-    ast.get_mut_element(node_index).data_type = Some(child_type);
+    ast.set_data_type(node_index, Some(child_type.clone()));
 }
 fn num(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
-    let symbol_type = match get_token_type(ast, node_index) {
+    let symbol_type = match ast.get_token_type(node_index) {
         TokenType::IntNum => SymbolType::Integer(Vec::new()),
         TokenType::FloatNum => SymbolType::Float(Vec::new()),
         _ => unreachable!(),
     };
-    ast.get_mut_element(node_index).data_type = Some(symbol_type);
+    ast.set_data_type(node_index, Some(symbol_type));
 }
 fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     let invalid_index_position: Vec<(usize, SymbolType)> = ast
@@ -145,10 +144,7 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
         .iter()
         .enumerate()
         .map(|(dimension_index, child_index)| {
-            (
-                dimension_index,
-                ast.get_element(*child_index).clone().data_type.unwrap(),
-            )
+            (dimension_index, ast.get_data_type(*child_index).clone())
         })
         .filter(|(_, data_type)| match data_type {
             SymbolType::Integer(_) => false,
@@ -158,35 +154,38 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
     for (index, (dimension_index, _)) in invalid_index_position.iter().enumerate() {
         // FIXME: NOT SURE
         // Fix the type issue to continue and catch more errors.
-        ast.get_mut_element(ast.get_children_of_child(node_index, 1)[*dimension_index])
-            .data_type = Some(SymbolType::Integer(Vec::new()));
+        ast.set_data_type(
+            ast.get_children_of_child(node_index, 1)[*dimension_index],
+            Some(SymbolType::Integer(Vec::new())),
+        );
 
         semantic_errors.push(SemanticError::ArrayIndiceMustBeInteger(
-            ast.get_leftmost_token(node_index),
+            ast.get_leftmost_token(node_index).clone(),
             invalid_index_position[index].clone(),
         ));
     }
 }
 fn function_call(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     let entry_index = ast.get_element(node_index).symbol_table_entry.unwrap();
-    let function_parameter_list = match ast
+    let function_parameter_list = ast
         .symbol_table_arena
         .get_table_entry(entry_index)
-        .kind
-        .clone()
-    {
-        SymbolKind::Function(_, function_parameter_list) => function_parameter_list,
-        _ => unreachable!(),
-    };
+        .get_parameter_symbol_types();
+    //     .kind
+    //     .clone()
+    // {
+    //     SymbolKind::Function(_, function_parameter_list) => function_parameter_list,
+    //     _ => unreachable!(),
+    // };
     let argument_node_list = ast.get_children_of_child(node_index, 1);
-    let argument_parameter_list: Vec<SymbolType> = argument_node_list
+    let argument_parameter_list: Vec<&SymbolType> = argument_node_list
         .iter()
-        .map(|&child_index| ast.get_element(child_index).data_type.clone().unwrap())
+        .map(|&child_index| ast.get_data_type(child_index))
         .collect();
 
     if function_parameter_list.len() != argument_parameter_list.len() {
         semantic_errors.push(SemanticError::WrongNumberOfArguments(
-            ast.get_child_token(node_index, 0),
+            ast.get_child_token(node_index, 0).clone(),
             function_parameter_list.len(),
             argument_parameter_list.len(),
         ));
@@ -209,7 +208,7 @@ fn function_call(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_i
 
     for (index, _, _) in invalid_arguments.clone() {
         semantic_errors.push(SemanticError::InvalidArgument(
-            ast.get_child_token(node_index, 0),
+            ast.get_child_token(node_index, 0).clone(),
             invalid_arguments[index].clone(),
         ));
     }
@@ -223,34 +222,27 @@ fn return_stat(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
             .get_element(function_node_index)
             .symbol_table_entry
             .unwrap();
-        let function_return_type = match ast
+        let function_return_type = ast
             .symbol_table_arena
             .get_table_entry(function_def_entry_index)
-            .kind
-            .clone()
-        {
-            SymbolKind::Function(return_type, _) => return_type,
-            _ => unreachable!(),
-        };
+            .get_symbol_type();
+        //     .kind
+        //     .clone()
+        // {
+        //     SymbolKind::Function(return_type, _) => return_type,
+        //     _ => unreachable!(),
+        // };
 
         let return_type = ast.get_child_data_type(node_index, 0);
 
         if let Some(function_return_type) = function_return_type {
             if function_return_type != return_type {
                 semantic_errors.push(SemanticError::ReturnTypeDoesNotMatchFuctionDeclaration(
-                    ast.get_leftmost_token(node_index),
-                    function_return_type,
-                    return_type,
+                    ast.get_leftmost_token(node_index).clone(),
+                    function_return_type.clone(),
+                    return_type.clone(),
                 ));
             }
         }
     }
-}
-
-fn get_token_type(ast: &AST, node_index: usize) -> TokenType {
-    ast.get_element(node_index)
-        .clone()
-        .token
-        .unwrap()
-        .token_type
 }

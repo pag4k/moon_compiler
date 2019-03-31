@@ -97,41 +97,41 @@ impl Display for SymbolKind {
     }
 }
 
-impl SymbolKind {
-    pub fn is_variable(&self) -> bool {
-        use SymbolKind::*;
-        match self {
-            Variable(_) => true,
-            _ => false,
-        }
-    }
-    pub fn is_parameter(&self) -> bool {
-        use SymbolKind::*;
-        match self {
-            Parameter(_) => true,
-            _ => false,
-        }
-    }
-    pub fn is_for(&self) -> bool {
-        use SymbolKind::*;
-        match self {
-            For(_) => true,
-            _ => false,
-        }
-    }
-    pub fn is_function(&self) -> bool {
-        use SymbolKind::*;
-        match self {
-            Function(_, _) => true,
-            _ => false,
-        }
-    }
-}
+// impl SymbolKind {
+//     pub fn is_variable(&self) -> bool {
+//         use SymbolKind::*;
+//         match self {
+//             Variable(_) => true,
+//             _ => false,
+//         }
+//     }
+//     pub fn is_parameter(&self) -> bool {
+//         use SymbolKind::*;
+//         match self {
+//             Parameter(_) => true,
+//             _ => false,
+//         }
+//     }
+//     pub fn is_for(&self) -> bool {
+//         use SymbolKind::*;
+//         match self {
+//             For(_) => true,
+//             _ => false,
+//         }
+//     }
+//     pub fn is_function(&self) -> bool {
+//         use SymbolKind::*;
+//         match self {
+//             Function(_, _) => true,
+//             _ => false,
+//         }
+//     }
+// }
 
 #[derive(Debug)]
 pub struct SymbolTable {
-    pub index: usize,
-    pub name: String,
+    index: usize,
+    name: String,
     entries: Vec<usize>,
 }
 
@@ -155,11 +155,29 @@ impl Table<SymbolTable, SymbolTableEntry> for SymbolTable {
     }
 }
 
+impl SymbolTable {
+    pub fn get_index(&self) -> usize {
+        self.index
+    }
+    pub fn get_name(&self) -> &String {
+        &self.name
+    }
+    pub fn get_name_clone(&self) -> String {
+        self.name.clone()
+    }
+    pub fn has_name(&self, other_name: &str) -> bool {
+        self.name == other_name
+    }
+    pub fn set_name(&mut self, name: String) {
+        self.name = name;
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SymbolTableEntry {
-    pub name: String,
-    pub kind: SymbolKind,
-    pub link: Option<usize>,
+    name: String,
+    kind: SymbolKind,
+    link: Option<usize>,
 }
 
 impl Display for SymbolTableEntry {
@@ -169,6 +187,73 @@ impl Display for SymbolTableEntry {
             "{}",
             format!("Name: {}, {}, Link: {:?}", self.name, self.kind, self.link)
         )
+    }
+}
+
+impl SymbolTableEntry {
+    pub fn get_name(&self) -> &String {
+        &self.name
+    }
+    pub fn get_name_clone(&self) -> String {
+        self.name.clone()
+    }
+    pub fn has_name(&self, other_name: &str) -> bool {
+        self.name == other_name
+    }
+    pub fn get_kind(&self) -> &SymbolKind {
+        &self.kind
+    }
+    pub fn get_kind_clone(&self) -> SymbolKind {
+        self.kind.clone()
+    }
+    pub fn get_link(&self) -> Option<usize> {
+        self.link
+    }
+    pub fn set_link(&mut self, link: Option<usize>) {
+        self.link = link;
+    }
+    pub fn get_symbol_type(&self) -> Option<&SymbolType> {
+        use SymbolKind::*;
+        match &self.kind {
+            Parameter(symbol_type) | Variable(symbol_type) | For(symbol_type) => Some(symbol_type),
+            Function(symbol_type, _) => symbol_type.as_ref(),
+            _ => None,
+        }
+    }
+    pub fn get_parameter_symbol_types(&self) -> &[SymbolType] {
+        use SymbolKind::*;
+        match &self.kind {
+            Function(_, parameter_symbol_types) => parameter_symbol_types,
+            _ => unreachable!(),
+        }
+    }
+    pub fn is_variable(&self) -> bool {
+        use SymbolKind::*;
+        match self.kind {
+            Variable(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_parameter(&self) -> bool {
+        use SymbolKind::*;
+        match self.kind {
+            Parameter(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_for(&self) -> bool {
+        use SymbolKind::*;
+        match self.kind {
+            For(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_function(&self) -> bool {
+        use SymbolKind::*;
+        match self.kind {
+            Function(_, _) => true,
+            _ => false,
+        }
     }
 }
 

@@ -22,8 +22,8 @@ fn prog(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, _node_index: us
     for class_table_index in ast.get_class_tables_in_table(ast.symbol_table_arena.root.unwrap()) {
         for member_entry_index in ast.symbol_table_arena.get_table_entries(class_table_index) {
             let function_symbol_entry = ast.symbol_table_arena.get_table_entry(*member_entry_index);
-            let function_name = function_symbol_entry.name.clone();
-            if function_symbol_entry.kind.is_function() && function_symbol_entry.link.is_none() {
+            let function_name = function_symbol_entry.get_name_clone();
+            if function_symbol_entry.is_function() && function_symbol_entry.get_link().is_none() {
                 semantic_errors.push(SemanticError::MemberFunctionDeclHasNoDef(
                     ast.get_leftmost_token(
                         get_node_index_with_entry_index(
@@ -32,7 +32,8 @@ fn prog(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, _node_index: us
                             *member_entry_index,
                         )
                         .unwrap(),
-                    ),
+                    )
+                    .clone(),
                     function_name,
                 ));
                 return;
@@ -52,21 +53,19 @@ fn prog(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, _node_index: us
         let base_class_name = ast
             .symbol_table_arena
             .get_table(class_table_index)
-            .name
-            .clone();
+            .get_name();
         for inherited_class_index in ast.get_class_tables_in_table(class_table_index) {
             for entry_index in ast.symbol_table_arena.get_table_entries(class_table_index) {
                 let symbol_entry = ast.symbol_table_arena.get_table_entry(*entry_index);
-                let member_name = &symbol_entry.name;
-                if symbol_entry.kind.is_function() {
-                    if let Some((class_table_index, member_entry_index)) =
+                let member_name = symbol_entry.get_name();
+                if symbol_entry.is_function() {
+                    if let Some((class_table_index, _)) =
                         ast.is_member_function(inherited_class_index, member_name)
                     {
                         let class_name = ast
                             .symbol_table_arena
                             .get_table(class_table_index)
-                            .name
-                            .clone();
+                            .get_name_clone();
                         semantic_errors.push(SemanticError::ShadowInheritedMemberFunction(
                             ast.get_leftmost_token(
                                 get_node_index_with_entry_index(
@@ -75,21 +74,21 @@ fn prog(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, _node_index: us
                                     *entry_index,
                                 )
                                 .unwrap(),
-                            ),
+                            )
+                            .clone(),
                             base_class_name.clone(),
                             member_name.clone(),
                             class_name,
                         ))
                     }
-                } else if symbol_entry.kind.is_variable() {
-                    if let Some((class_table_index, member_entry_index)) =
+                } else if symbol_entry.is_variable() {
+                    if let Some((class_table_index, _)) =
                         ast.is_member_variable(inherited_class_index, member_name)
                     {
                         let class_name = ast
                             .symbol_table_arena
                             .get_table(class_table_index)
-                            .name
-                            .clone();
+                            .get_name();
                         semantic_errors.push(SemanticError::ShadowInheritedMemberVariable(
                             ast.get_leftmost_token(
                                 get_node_index_with_entry_index(
@@ -98,10 +97,11 @@ fn prog(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, _node_index: us
                                     *entry_index,
                                 )
                                 .unwrap(),
-                            ),
+                            )
+                            .clone(),
                             base_class_name.clone(),
                             member_name.clone(),
-                            class_name,
+                            class_name.clone(),
                         ))
                     }
                 }
@@ -118,7 +118,7 @@ fn class_decl(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_inde
         match ast.find_class_symbol_table(&parent_name) {
             Some(parent_table_index) => {
                 let entry_index = ast.symbol_table_arena.new_symbol_table_entry(
-                    parent_name,
+                    parent_name.clone(),
                     SymbolKind::Class,
                     Some(parent_table_index),
                 );
@@ -128,7 +128,7 @@ fn class_decl(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_inde
             }
             None => {
                 semantic_errors.push(SemanticError::UndefinedClass(
-                    ast.get_leftmost_token(child_index),
+                    ast.get_leftmost_token(child_index).clone(),
                 ));
             }
         }
@@ -140,7 +140,9 @@ fn node_type(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index
         && type_name != "float"
         && ast.find_class_symbol_table(&type_name).is_none()
     {
-        semantic_errors.push(SemanticError::UndefinedClass(ast.get_token(node_index)));
+        semantic_errors.push(SemanticError::UndefinedClass(
+            ast.get_token(node_index).clone(),
+        ));
     }
 }
 
@@ -162,12 +164,13 @@ fn check_circular_dependency_in_class(
         class_table_index_stack.push(class_table_index);
         let dependency_list: Vec<String> = class_table_index_stack
             .iter()
-            .map(|&index| ast.symbol_table_arena.get_table(index).name.clone())
+            .map(|&index| ast.symbol_table_arena.get_table(index).get_name_clone())
             .collect();
         return Err(SemanticError::CircularClassDependency(
             ast.get_leftmost_token(
                 get_node_index_with_entry_index(ast, ast.root.unwrap(), class_table_index).unwrap(),
-            ),
+            )
+            .clone(),
             dependency_list,
         ));
     }
@@ -214,16 +217,17 @@ fn get_member_variable_in_table(ast: &AST, class_table_index: usize) -> Vec<usiz
     ast.symbol_table_arena
         .get_table_entries(class_table_index)
         .iter()
-        .map(|entry_index| ast.symbol_table_arena.get_table_entry(*entry_index))
+        .map(|&entry_index| ast.symbol_table_arena.get_table_entry(entry_index))
+        .filter(|symbol_entry| symbol_entry.is_variable())
+        // .filter_map(|symbol_entry| {
+        //     if let SymbolKind::Variable(symbol_type) = &symbol_entry.kind {
+        //         Some(symbol_type)
+        //     } else {
+        //         None
+        //     }
+        //})
         .filter_map(|symbol_entry| {
-            if let SymbolKind::Variable(symbol_type) = &symbol_entry.kind {
-                Some(symbol_type)
-            } else {
-                None
-            }
-        })
-        .filter_map(|symbol_type| {
-            if let SymbolType::Class(class_name, _) = symbol_type {
+            if let SymbolType::Class(class_name, _) = symbol_entry.get_symbol_type().unwrap() {
                 ast.find_class_symbol_table(&class_name)
             } else {
                 None

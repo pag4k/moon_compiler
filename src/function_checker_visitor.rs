@@ -22,24 +22,21 @@ pub fn function_checker_visitor(ast: &mut AST) -> Vec<SemanticError> {
 
 fn check_return_stat(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     use NodeType::*;
-    let node_type = ast.get_element(node_index).node_type;
+    let node_type = ast.get_node_type(node_index);
     let mut return_stat_node_indices: Vec<usize> = Vec::new();
     ast.find_node_type(node_index, &mut return_stat_node_indices, &[ReturnStat]);
     match node_type {
         MainFuncBody => {
             for return_stat_node_index in return_stat_node_indices {
                 semantic_errors.push(SemanticError::ShouldNotReturnFromMain(
-                    ast.get_leftmost_token(return_stat_node_index),
+                    ast.get_leftmost_token(return_stat_node_index).clone(),
                 ));
             }
         }
         FuncDef => {
             if return_stat_node_indices.is_empty() {
                 semantic_errors.push(SemanticError::FunctionHasNoReturnStat(
-                    ast.get_element(ast.get_child(node_index, 2))
-                        .token
-                        .clone()
-                        .unwrap(),
+                    ast.get_token(ast.get_child(node_index, 2)).clone(),
                 ));
             }
         }
@@ -68,7 +65,7 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
                             Some((_, variable_entry_index)) => variable_entry_index,
                             None => {
                                 semantic_errors.push(SemanticError::UndefinedMemberVariable(
-                                    ast.get_leftmost_token(node_index),
+                                    ast.get_leftmost_token(node_index).clone(),
                                     previous_type.clone(),
                                 ));
                                 return;
@@ -110,23 +107,23 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
             };
 
             // Second, if any, get member variable entry index.
-            let member_variable_entry_index = match ast.get_element(function_node_index).node_type {
+            let member_variable_entry_index = match ast.get_node_type(function_node_index) {
                 // It is the main function.
                 NodeType::MainFuncBody => None,
                 // It is not the main function.
                 NodeType::FuncDef => {
-                    match &ast.get_element(ast.get_child(function_node_index, 1)).token {
+                    let scope_node_index = ast.get_child(function_node_index, 1);
+                    if ast.has_token(scope_node_index) {
                         // It is a member function, check if it is a member variable.
-                        Some(class_token) => {
-                            let class_table_index = ast
-                                .find_class_symbol_table(class_token.lexeme.as_ref().unwrap())
-                                .unwrap();
-                            // If it is a member variable, return table entry.
-                            ast.is_member_variable(class_table_index, &variable_name)
-                                .map(|(_, entry_index)| entry_index)
-                        }
+                        let class_table_index = ast
+                            .find_class_symbol_table(ast.get_lexeme(scope_node_index))
+                            .unwrap();
+                        // If it is a member variable, return table entry.
+                        ast.is_member_variable(class_table_index, &variable_name)
+                            .map(|(_, entry_index)| entry_index)
+                    } else {
                         // It is a free function.
-                        None => None,
+                        None
                     }
                 }
                 _ => unreachable!(),
@@ -163,11 +160,10 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
                 // It is neither. Return error.
                 (None, None) => {
                     semantic_errors.push(SemanticError::UndefinedLocalVariable(
-                        ast.get_leftmost_token(node_index),
+                        ast.get_leftmost_token(node_index).clone(),
                         ast.symbol_table_arena
                             .get_table(function_table_index)
-                            .name
-                            .clone(),
+                            .get_name_clone(),
                     ));
                     return;
                 }
@@ -176,16 +172,18 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
     };
 
     // At this point, the variable entry index has been successfully found.
-    let variable_symbol_type = match &ast
+    let variable_symbol_type = ast
         .symbol_table_arena
         .get_table_entry(variable_entry_index)
-        .kind
-    {
-        SymbolKind::Variable(symbol_type)
-        | SymbolKind::Parameter(symbol_type)
-        | SymbolKind::For(symbol_type) => symbol_type.clone(),
-        _ => unreachable!(),
-    };
+        .get_symbol_type()
+        .unwrap();
+    //     .kind
+    // {
+    //     SymbolKind::Variable(symbol_type)
+    //     | SymbolKind::Parameter(symbol_type)
+    //     | SymbolKind::For(symbol_type) => symbol_type.clone(),
+    //     _ => unreachable!(),
+    // };
 
     // Check if it is the last element in VarElementList and set the DataMember symbol type accordingly.
     match ast.get_right_sibling(node_index) {
@@ -193,21 +191,25 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
             if let Err(error) = check_number_of_dimensions(ast, variable_entry_index, node_index) {
                 semantic_errors.push(error);
             }
-            ast.get_mut_element(node_index).data_type =
-                Some(variable_symbol_type.clone().remove_dimensions());
+            ast.set_data_type(
+                node_index,
+                Some(variable_symbol_type.clone().remove_dimensions()),
+            );
         }
         None => match is_array_type(ast, variable_entry_index, node_index) {
             Ok(is_array_type) => {
                 if is_array_type {
-                    ast.get_mut_element(node_index).data_type = Some(variable_symbol_type.clone());
+                    ast.set_data_type(node_index, Some(variable_symbol_type.clone()));
                 } else {
                     if let Err(error) =
                         check_number_of_dimensions(ast, variable_entry_index, node_index)
                     {
                         semantic_errors.push(error);
                     }
-                    ast.get_mut_element(node_index).data_type =
-                        Some(variable_symbol_type.clone().remove_dimensions());
+                    ast.set_data_type(
+                        node_index,
+                        Some(variable_symbol_type.clone().remove_dimensions()),
+                    );
                 }
             }
             Err(error) => semantic_errors.push(error),
@@ -234,7 +236,7 @@ fn function_call(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_i
                             Some((_, function_entry_index)) => function_entry_index,
                             None => {
                                 semantic_errors.push(SemanticError::UndefinedMemberFunction(
-                                    ast.get_leftmost_token(node_index),
+                                    ast.get_leftmost_token(node_index).clone(),
                                     previous_type.clone(),
                                 ));
                                 return;
@@ -259,27 +261,23 @@ fn function_call(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_i
                 .unwrap();
 
             // Check if it is a parent member function.
-            let function_entry_index = match ast.get_element(function_node_index).node_type {
+            let function_entry_index = match ast.get_node_type(function_node_index) {
                 // It is the main function.
                 NodeType::MainFuncBody => None,
                 // It is not the main function.
                 NodeType::FuncDef => {
-                    match ast
-                        .get_element(ast.get_child(function_node_index, 1))
-                        .token
-                        .clone()
-                    {
+                    let scope_node_index = ast.get_child(function_node_index, 1);
+                    if ast.has_token(scope_node_index) {
                         // It is a parent member function, check if the called function is also a member.
-                        Some(class_token) => {
-                            let class_table_index = ast
-                                .find_class_symbol_table(&class_token.lexeme.unwrap())
-                                .unwrap();
-                            // If it is a member variable, return table entry.
-                            ast.is_member_function(class_table_index, &function_name)
-                                .map(|(_, entry_index)| entry_index)
-                        }
+                        let class_table_index = ast
+                            .find_class_symbol_table(ast.get_lexeme(scope_node_index))
+                            .unwrap();
+                        // If it is a member variable, return table entry.
+                        ast.is_member_function(class_table_index, &function_name)
+                            .map(|(_, entry_index)| entry_index)
+                    } else {
                         // It is a free function or the main function.
-                        None => None,
+                        None
                     }
                 }
                 _ => unreachable!(),
@@ -293,7 +291,7 @@ fn function_call(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_i
                     Some(function_entry_index) => function_entry_index,
                     None => {
                         semantic_errors.push(SemanticError::UndefinedFunction(
-                            ast.get_leftmost_token(node_index),
+                            ast.get_leftmost_token(node_index).clone(),
                         ));
                         return;
                     }
@@ -303,20 +301,22 @@ fn function_call(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_i
     };
 
     // At this point, the function table entry index has been successfully found.
-    let function_return_symbol_type = match &ast
+    let function_return_symbol_type = ast
         .symbol_table_arena
         .get_table_entry(function_entry_index)
-        .kind
-    {
-        SymbolKind::Function(symbol_type, _) => match symbol_type {
-            Some(symbol_type) => symbol_type.clone(),
-            None => unreachable!(),
-        },
-        _ => unreachable!(),
-    };
+        .get_symbol_type()
+        .unwrap();
+    //     .kind
+    // {
+    //     SymbolKind::Function(symbol_type, _) => match symbol_type {
+    //         Some(symbol_type) => symbol_type.clone(),
+    //         None => unreachable!(),
+    //     },
+    //     _ => unreachable!(),
+    // };
 
     // Set symbol type to the function return type.
-    ast.get_mut_element(node_index).data_type = Some(function_return_symbol_type.clone());
+    ast.set_data_type(node_index, Some(function_return_symbol_type.clone()));
 
     // FIXME: NOT SURE I WANT TO DO THAT
     ast.get_mut_element(node_index).symbol_table_entry = Some(function_entry_index);
@@ -324,11 +324,13 @@ fn function_call(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_i
 fn var_element_list(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     // Get last element symbol type..
     let last_child_index = *ast.get_children(node_index).iter().last().unwrap();
-    let last_element_type = ast.get_mut_element(last_child_index).data_type.clone();
 
     // Assign the last symbol type to the list.
-    if last_element_type.is_some() {
-        ast.get_mut_element(node_index).data_type = last_element_type;
+    if ast.has_data_type(last_child_index) {
+        ast.set_data_type(
+            node_index,
+            Some(ast.get_data_type(last_child_index).clone()),
+        );
         if let Some(symbol_table_entry) = ast.get_mut_element(last_child_index).symbol_table_entry {
             ast.get_mut_element(node_index).symbol_table_entry = Some(symbol_table_entry);
         }
@@ -377,17 +379,16 @@ fn is_variable_declared(ast: &AST, node_index: usize) -> bool {
             )
             .unwrap();
         statement_node_index = new_statement_node_index;
-        if [MainFuncBody, FuncBody].contains(
-            &ast.get_element(ast.get_parent(statement_node_index).unwrap())
-                .node_type,
-        ) {
+        if [MainFuncBody, FuncBody]
+            .contains(ast.get_node_type(ast.get_parent(statement_node_index).unwrap()))
+        {
             break;
         }
     }
 
     while let Some(left_statement_node_index) = ast.get_left_sibling(statement_node_index) {
         statement_node_index = left_statement_node_index;
-        if ast.get_note_type(statement_node_index) == VarDecl
+        if *ast.get_node_type(statement_node_index) == VarDecl
             && ast.get_child_lexeme(statement_node_index, 1) == variable_name
         {
             return true;
@@ -401,23 +402,23 @@ fn get_symbol_type_and_class_table_from_node(
     ast: &AST,
     node_index: usize, //symbol_type: &SymbolType
 ) -> Result<Option<(SymbolType, usize)>, SemanticError> {
-    let symbol_type = &get_node_symbol_type(ast, node_index);
-
-    match symbol_type {
+    if ast.has_data_type(node_index) {
         // If the symbol type is found, verify if it is a class.
-        Some(symbol_type) => match symbol_type {
+        let symbol_type = ast.get_data_type(node_index);
+        match symbol_type {
             SymbolType::Class(type_name, _) => Ok(Some((
                 symbol_type.clone(),
                 get_class_table_from_name(ast, &type_name),
             ))),
             _ => Err(SemanticError::DotOperatorWithInvalidClass(
-                ast.get_leftmost_token(node_index),
+                ast.get_leftmost_token(node_index).clone(),
                 symbol_type.clone(),
             )),
-        },
+        }
+    } else {
         // If it is not found, it means that there was an earlier error.
         // Return None so that it can be ignored.
-        None => Ok(None),
+        Ok(None)
     }
 }
 
@@ -426,7 +427,9 @@ fn get_class_table_from_name(ast: &AST, class_name: &str) -> usize {
     ast.get_class_tables_in_table(ast.symbol_table_arena.root.unwrap())
         .into_iter()
         .find(|&class_table_index| {
-            class_name == ast.symbol_table_arena.get_table(class_table_index).name
+            ast.symbol_table_arena
+                .get_table(class_table_index)
+                .has_name(class_name)
         })
         .unwrap()
 }
@@ -436,22 +439,16 @@ fn is_array_type(
     symbol_entry_index: usize,
     data_member_node: usize,
 ) -> Result<bool, SemanticError> {
-    use SymbolKind::*;
-
     let symbol_entry = ast.symbol_table_arena.get_table_entry(symbol_entry_index);
-    let dimension_list_len = match symbol_entry.clone().kind {
-        Variable(symbol_type) | Parameter(symbol_type) | For(symbol_type) => {
-            symbol_type.get_dimension_list().len()
-        }
-        _ => unreachable!(),
-    };
+    let symbol_type = symbol_entry.get_symbol_type().unwrap();
+    let dimension_list_len = symbol_type.get_dimension_list().len();
 
     let index_list_len = ast.get_children_of_child(data_member_node, 1).len();
     match (dimension_list_len == 0, index_list_len == 0) {
         (true, true) => Ok(false),
         (false, true) => Ok(true),
         (true, false) => Err(SemanticError::MismatchedNumberOfDimension(
-            ast.get_leftmost_token(data_member_node),
+            ast.get_leftmost_token(data_member_node).clone(),
             dimension_list_len,
             index_list_len,
         )),
@@ -464,20 +461,14 @@ fn check_number_of_dimensions(
     symbol_entry_index: usize,
     data_member_node: usize,
 ) -> Result<(), SemanticError> {
-    use SymbolKind::*;
-
     let symbol_entry = ast.symbol_table_arena.get_table_entry(symbol_entry_index);
-    let dimension_list_len = match symbol_entry.clone().kind {
-        Variable(symbol_type) | Parameter(symbol_type) | For(symbol_type) => {
-            symbol_type.get_dimension_list().len()
-        }
-        _ => unreachable!(),
-    };
+    let symbol_type = symbol_entry.get_symbol_type().unwrap();
+    let dimension_list_len = symbol_type.get_dimension_list().len();
 
     let index_list_len = ast.get_children_of_child(data_member_node, 1).len();
     if dimension_list_len != index_list_len {
         return Err(SemanticError::MismatchedNumberOfDimension(
-            ast.get_leftmost_token(data_member_node),
+            ast.get_leftmost_token(data_member_node).clone(),
             dimension_list_len,
             index_list_len,
         ));
@@ -493,7 +484,7 @@ pub fn get_variable_entry_in_function_table(
 ) -> Option<usize> {
     for entry_index in ast.symbol_table_arena.get_table_entries(table_index) {
         let symbol_entry = ast.symbol_table_arena.get_table_entry(*entry_index);
-        if symbol_entry.kind.is_variable() && symbol_entry.name == name {
+        if symbol_entry.is_variable() && symbol_entry.has_name(name) {
             return Some(*entry_index);
         }
     }
@@ -508,7 +499,7 @@ pub fn get_parameter_entry_in_function_table(
 ) -> Option<usize> {
     for entry_index in ast.symbol_table_arena.get_table_entries(table_index) {
         let symbol_entry = ast.symbol_table_arena.get_table_entry(*entry_index);
-        if symbol_entry.kind.is_for() && symbol_entry.name == name {
+        if symbol_entry.is_for() && symbol_entry.has_name(name) {
             return Some(*entry_index);
         }
     }
@@ -519,16 +510,12 @@ pub fn get_parameter_entry_in_function_table(
 pub fn get_for_entry_in_function_table(ast: &AST, table_index: usize, name: &str) -> Option<usize> {
     for entry_index in ast.symbol_table_arena.get_table_entries(table_index) {
         let symbol_entry = ast.symbol_table_arena.get_table_entry(*entry_index);
-        if symbol_entry.kind.is_parameter() && symbol_entry.name == name {
+        if symbol_entry.is_parameter() && symbol_entry.has_name(name) {
             return Some(*entry_index);
         }
     }
 
     None
-}
-
-fn get_node_symbol_type(ast: &AST, node_index: usize) -> Option<SymbolType> {
-    ast.get_element(node_index).data_type.clone()
 }
 
 fn find_free_function(ast: &AST, name: &str) -> Option<usize> {
@@ -537,7 +524,7 @@ fn find_free_function(ast: &AST, name: &str) -> Option<usize> {
         .get_table_entries(ast.symbol_table_arena.root.unwrap())
     {
         let symbol_entry = ast.symbol_table_arena.get_table_entry(*entry_index);
-        if symbol_entry.kind.is_function() && symbol_entry.name == name {
+        if symbol_entry.is_function() && symbol_entry.has_name(name) {
             return Some(*entry_index);
         }
     }
@@ -553,19 +540,17 @@ fn check_if_valid_local_variable(
 ) -> Result<(), SemanticError> {
     use SymbolKind::*;
 
-    let variable_name = ast.get_child_lexeme(node_index, 0);
     let variable_symbol_entry = ast.symbol_table_arena.get_table_entry(variable_entry_index);
 
-    match variable_symbol_entry.kind {
+    match variable_symbol_entry.get_kind() {
         // If it is a variable, check if it is declared before.
         Variable(_) => {
             if !is_variable_declared(ast, node_index) {
                 return Err(SemanticError::VariableUsedBeforeBeingDeclared(
-                    ast.get_leftmost_token(node_index),
+                    ast.get_leftmost_token(node_index).clone(),
                     ast.symbol_table_arena
                         .get_table(function_table_index)
-                        .name
-                        .clone(),
+                        .get_name_clone(),
                 ));
             }
         }
@@ -575,11 +560,10 @@ fn check_if_valid_local_variable(
         For(_) => {
             if !is_for_variable_in_scope(ast, node_index) {
                 return Err(SemanticError::ForVariableUsedOutOfScope(
-                    ast.get_leftmost_token(node_index),
+                    ast.get_leftmost_token(node_index).clone(),
                     ast.symbol_table_arena
                         .get_table(function_table_index)
-                        .name
-                        .clone(),
+                        .get_name_clone(),
                 ));
             }
         }

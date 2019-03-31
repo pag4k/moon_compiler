@@ -2,7 +2,6 @@ use crate::ast_node::*;
 use crate::ast_visitor::*;
 use crate::code_generation_common::*;
 use crate::language::*;
-use crate::symbol_table::*;
 
 use std::collections::HashMap;
 
@@ -103,7 +102,7 @@ fn func_def(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     store_at_offset(&mut function_moon_code, return_addr_offset, 15);
     push_at(moon_code, function_moon_code, FUNCTION_MARKER);
 
-    add_label(moon_code, format!("{}", end_func_label));
+    add_label(moon_code, end_func_label.clone());
     // Load return address.
     load_from_offset(moon_code, 15, return_addr_offset);
     // Jump back to calling function.
@@ -211,23 +210,30 @@ fn function_call(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) 
 }
 
 fn data_member(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
-    use SymbolKind::*;
-
     // Get the IndexList node.
     let index_list_node = ast.get_child(node_index, 1);
 
     // Only proceed if the IndexList node has a memory entry.
-    if let Some(_) = ast.get_element(index_list_node).memory_table_entry {
+    if ast
+        .get_element(index_list_node)
+        .memory_table_entry
+        .is_some()
+    {
         // Get symbol entry associated with data member.
-        let symbol_entry_index = ast.get_element(node_index).symbol_table_entry.unwrap();
+        let symbol_entry_index = get_symbol_entry_index(ast, node_index);
         let symbol_entry = ast.symbol_table_arena.get_table_entry(symbol_entry_index);
-        let (dimension_list, type_size) = match &symbol_entry.kind {
-            Parameter(symbol_type) | Variable(symbol_type) | For(symbol_type) => (
-                symbol_type.get_dimension_list(),
-                get_size(ast, &symbol_type.remove_dimensions()).unwrap(),
-            ),
-            _ => unreachable!(),
-        };
+
+        let symbol_type = symbol_entry.get_symbol_type().unwrap();
+        let dimension_list = symbol_type.get_dimension_list();
+        let type_size = get_size(ast, &symbol_type.remove_dimensions()).unwrap();
+
+        // let (dimension_list, type_size) = match &symbol_entry.kind {
+        //     Parameter(symbol_type) | Variable(symbol_type) | For(symbol_type) => (
+        //         symbol_type.get_dimension_list(),
+        //         get_size(ast, &symbol_type.remove_dimensions()).unwrap(),
+        //     ),
+        //     _ => unreachable!(),
+        // };
 
         let register1 = ast.register_pool.pop();
         let register2 = ast.register_pool.pop();
@@ -270,41 +276,27 @@ fn binary_op(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     use NodeType::*;
     use OperatorType::*;
 
-    let (rhs_node_index1, op_node_index, rhs_node_index2) =
-        match ast.get_element(node_index).node_type {
-            RelExpr => (
-                ast.get_child(node_index, 0),
-                ast.get_child(node_index, 1),
-                ast.get_child(node_index, 2),
-            ),
-            AddOp | MultOp => (
-                ast.get_child(node_index, 0),
-                node_index,
-                ast.get_child(node_index, 1),
-            ),
-            _ => unreachable!(),
-        };
-
-    // Get operation
-    let operator = match ast
-        .get_element(op_node_index)
-        .token
-        .as_ref()
-        .unwrap()
-        .token_type
-    {
-        TokenType::Operator(operator) => operator,
+    let (rhs_node_index1, op_node_index, rhs_node_index2) = match ast.get_node_type(node_index) {
+        RelExpr => (
+            ast.get_child(node_index, 0),
+            ast.get_child(node_index, 1),
+            ast.get_child(node_index, 2),
+        ),
+        AddOp | MultOp => (
+            ast.get_child(node_index, 0),
+            node_index,
+            ast.get_child(node_index, 1),
+        ),
         _ => unreachable!(),
     };
 
-    let operator_lexeme = ast
-        .get_element(op_node_index)
-        .token
-        .as_ref()
-        .unwrap()
-        .lexeme
-        .clone()
-        .unwrap();
+    // Get operation
+    let operator = match ast.get_token_type(op_node_index) {
+        TokenType::Operator(operator) => operator.clone(),
+        _ => unreachable!(),
+    };
+
+    let operator_lexeme = ast.get_lexeme(op_node_index).clone();
 
     // FIXME: Need to allow other operation than +
     // FIXME: Next 3 lines assume very simple VarElementList.
@@ -421,7 +413,7 @@ fn binary_op(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
         }
         Or => {
             // || operands
-            let or_index = ast.register_pool.get_and();
+            let or_index = ast.register_pool.get_or();
             let zero = format!("zeroor{}", or_index);
             let end = format!("endor{}", or_index);
             moon_code.push(format!("{}bz r{},{}", INDENT, register1, zero,));
@@ -449,7 +441,7 @@ fn unary_op(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     use OperatorType::*;
 
     let (lhs_node_index, operator, operator_lexeme, rhs_node_index) =
-        match ast.get_element(node_index).node_type {
+        match ast.get_node_type(node_index) {
             NodeType::AssignStat | NodeType::AssignForStat => (
                 ast.get_child(node_index, 0),
                 Assignment,
@@ -459,25 +451,13 @@ fn unary_op(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
             NodeType::Not => (
                 node_index,
                 Not,
-                ast.get_element(node_index)
-                    .token
-                    .as_ref()
-                    .unwrap()
-                    .lexeme
-                    .clone()
-                    .unwrap(),
+                ast.get_lexeme(node_index).clone(),
                 ast.get_child(node_index, 0),
             ),
             NodeType::Sign => (
                 node_index,
                 Subtraction,
-                ast.get_element(node_index)
-                    .token
-                    .as_ref()
-                    .unwrap()
-                    .lexeme
-                    .clone()
-                    .unwrap(),
+                ast.get_lexeme(node_index).clone(),
                 ast.get_child(node_index, 0),
             ),
             _ => unreachable!(),
@@ -547,15 +527,7 @@ fn num(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     add_if_marker(ast, moon_code, node_index);
     add_for_marker(ast, moon_code, node_index);
 
-    let data = ast
-        .get_element(node_index)
-        .token
-        .as_ref()
-        .unwrap()
-        .lexeme
-        .as_ref()
-        .unwrap()
-        .clone();
+    let data = ast.get_lexeme(node_index).clone();
     // Then, do the processing of this nodes' visitor
     // create a local variable and allocate a register to this subcomputation
     let register1 = ast.register_pool.pop();
@@ -578,7 +550,7 @@ fn if_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
 
     let register1 = ast.register_pool.pop();
 
-    let if_index = ast.register_pool.get_not();
+    let if_index = ast.register_pool.get_if();
     let elseif = format!("elseif{}", if_index);
     let endif = format!("endif{}", if_index);
 
@@ -749,7 +721,7 @@ fn leaf(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
 }
 
 fn get_var_name(ast: &AST, node_index: usize) -> String {
-    let node_type = ast.get_element(node_index).node_type;
+    let node_type = ast.get_node_type(node_index);
     if let NodeType::VarElementList = node_type {
         let last_child_index = *ast.get_children(node_index).iter().last().unwrap();
         ast.symbol_table_arena
@@ -758,8 +730,7 @@ fn get_var_name(ast: &AST, node_index: usize) -> String {
                     .symbol_table_entry
                     .unwrap(),
             )
-            .name
-            .clone()
+            .get_name_clone()
     } else {
         // First try to get it from the memory entry and then from the table.
         if let Some(entry_index) = ast.get_element(node_index).memory_table_entry {
@@ -778,10 +749,10 @@ fn get_func_name(ast: &AST, node_index: usize) -> String {
     // First try to get it from the memory entry and then from the table.
     if let Some(entry_index) = ast.get_element(node_index).symbol_table_entry {
         let symbol_entry = ast.symbol_table_arena.get_table_entry(entry_index);
-        symbol_entry.name.clone()
+        symbol_entry.get_name_clone()
     } else if let Some(table_index) = ast.get_element(node_index).symbol_table {
         let symbol_table = ast.symbol_table_arena.get_table(table_index);
-        symbol_table.name.clone()
+        symbol_table.get_name_clone()
     } else {
         unreachable!("Node has neither a memory table nor an memory entry.");
     }
@@ -791,10 +762,10 @@ fn get_funtion_symbol_table_index(ast: &AST, node_index: usize) -> usize {
     // First try to get it from the memory entry and then from the table.
     if let Some(entry_index) = ast.get_element(node_index).symbol_table_entry {
         let symbol_entry = ast.symbol_table_arena.get_table_entry(entry_index);
-        symbol_entry.link.unwrap()
+        symbol_entry.get_link().unwrap()
     } else if let Some(table_index) = ast.get_element(node_index).symbol_table {
         let symbol_table = ast.symbol_table_arena.get_table(table_index);
-        symbol_table.index
+        symbol_table.get_index()
     } else {
         unreachable!("Node has neither a symbol table nor an symbol entry with a link.");
     }
@@ -881,9 +852,9 @@ fn get_params(ast: &AST, memory_table_index_index: usize) -> Vec<usize> {
 
 fn get_memory_from_symbol(ast: &AST, node_index: usize) -> Option<usize> {
     use NodeType::*;
-    let symbol_entry_index = ast.get_element(node_index).symbol_table_entry.unwrap();
+    let symbol_entry_index = get_symbol_entry_index(ast, node_index);
     let symbol_entry = ast.symbol_table_arena.get_table_entry(symbol_entry_index);
-    let symbol_name = &symbol_entry.name;
+    let symbol_name = &symbol_entry.get_name();
 
     // Check if it is a member variable.
     if let Some(class_node_index) = get_class_node_of_symbol_entry(ast, symbol_entry_index) {
@@ -900,11 +871,7 @@ fn get_memory_from_symbol(ast: &AST, node_index: usize) -> Option<usize> {
     unreachable!();
 }
 
-fn find_variable_memory_entry(
-    ast: &AST,
-    node_index: usize,
-    variable_name: &String,
-) -> Option<usize> {
+fn find_variable_memory_entry(ast: &AST, node_index: usize, variable_name: &str) -> Option<usize> {
     let memory_table_index = ast.get_element(node_index).memory_table.unwrap();
     for &entry_index in ast.memory_table_arena.get_table_entries(memory_table_index) {
         let memory_entry = ast.memory_table_arena.get_table_entry(entry_index);
@@ -962,7 +929,7 @@ fn add_if_marker(ast: &AST, moon_code: &mut Vec<String>, node_index: usize) {
         return;
     }
 
-    let stat_block_node_index = if let StatBlock = ast.get_element(node_index).node_type {
+    let stat_block_node_index = if let StatBlock = ast.get_node_type(node_index) {
         node_index
     } else {
         // If the node does not have StatBlock parent, return.
@@ -976,7 +943,7 @@ fn add_if_marker(ast: &AST, moon_code: &mut Vec<String>, node_index: usize) {
     //println!("{}", stat_block_node_index);
     let grand_parent_node_index = ast.get_parent(stat_block_node_index).unwrap();
     // If it is a IfStat, add one of the two marker.
-    if let IfStat = ast.get_element(grand_parent_node_index).node_type {
+    if let IfStat = ast.get_node_type(grand_parent_node_index) {
         // If it has a right sibling, it is the if block, if it has not, it is the else block.
         if ast.get_right_sibling(stat_block_node_index).is_some() {
             moon_code.push(IF_MARKER.to_string());
@@ -1000,7 +967,7 @@ fn add_for_marker(ast: &AST, moon_code: &mut Vec<String>, node_index: usize) {
     {
         // If parent is a ForStat, add FOR_COND_MARKER.
         let grand_parent_node_index = ast.get_parent(rel_expr_node_index).unwrap();
-        if let ForStat = ast.get_element(grand_parent_node_index).node_type {
+        if let ForStat = ast.get_node_type(grand_parent_node_index) {
             moon_code.push(FOR_COND_MARKER.to_string());
         }
     }
@@ -1011,12 +978,12 @@ fn add_for_marker(ast: &AST, moon_code: &mut Vec<String>, node_index: usize) {
     {
         // If parent is a ForStat, add FOR_INCR_MARKER.
         let grand_parent_node_index = ast.get_parent(assign_for_star_node_index).unwrap();
-        if let ForStat = ast.get_element(grand_parent_node_index).node_type {
+        if let ForStat = ast.get_node_type(grand_parent_node_index) {
             moon_code.push(FOR_INCR_MARKER.to_string());
         }
     }
 
-    let stat_block_node_index = if let StatBlock = ast.get_element(node_index).node_type {
+    let stat_block_node_index = if let StatBlock = ast.get_node_type(node_index) {
         Some(node_index)
     } else {
         // If the node has a StatBlock parent.
@@ -1029,7 +996,7 @@ fn add_for_marker(ast: &AST, moon_code: &mut Vec<String>, node_index: usize) {
     if let Some(stat_block_node_index) = stat_block_node_index {
         let grand_parent_node_index = ast.get_parent(stat_block_node_index).unwrap();
         // If it is a ForStat, add FOR_LOOP_MARKER.
-        if let ForStat = ast.get_element(grand_parent_node_index).node_type {
+        if let ForStat = ast.get_node_type(grand_parent_node_index) {
             println!("{}", node_index);
             moon_code.push(FOR_LOOP_MARKER.to_string());
         }
@@ -1109,16 +1076,11 @@ fn load_inst_addresse(ast: &mut AST, moon_code: &mut Vec<String>, node_index: us
     }
 }
 
-fn get_reference_and_offset_registers(
-    ast: &mut AST,
-    moon_code: &mut Vec<String>,
-    node_index: usize,
-) -> Offset {
+fn get_offset(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) -> Offset {
     use NodeType::*;
-    use SymbolKind::*;
 
     // If it is a VarElementList, handle differently.
-    if let NodeType::VarElementList = ast.get_element(node_index).node_type {
+    if let NodeType::VarElementList = ast.get_node_type(node_index) {
         // FIXME: This code seems to work with single inheritence since the
         // inherited  is at the start of the memory table.
         let child_nodes = ast.get_children(node_index);
@@ -1128,12 +1090,11 @@ fn get_reference_and_offset_registers(
         let mut offset: isize = 0;
         let mut include_array = false;
         for (position, child_index) in child_nodes.into_iter().enumerate() {
-            let child_node_type = ast.get_element(child_index).node_type;
+            let child_node_type = ast.get_node_type(child_index);
             match child_node_type {
                 DataMember => {
                     // Get symbol entry associated with data member.
-                    let symbol_entry_index =
-                        ast.get_element(child_index).symbol_table_entry.unwrap();
+                    let symbol_entry_index = get_symbol_entry_index(ast, child_index);
                     if position == 0 {
                         //  Check if symbol entry is a member variable.
                         if get_class_node_of_symbol_entry(ast, symbol_entry_index).is_some() {
@@ -1201,13 +1162,9 @@ fn get_reference_and_offset_registers(
                     if position != last_node_position {
                         let symbol_entry =
                             ast.symbol_table_arena.get_table_entry(symbol_entry_index);
-                        let type_size = match &symbol_entry.kind {
-                            Parameter(symbol_type) | Variable(symbol_type) | For(symbol_type) => {
-                                get_size(ast, &symbol_type.remove_dimensions()).unwrap()
-                            }
+                        let symbol_type = symbol_entry.get_symbol_type().unwrap();
+                        let type_size = get_size(ast, &symbol_type.remove_dimensions()).unwrap();
 
-                            _ => unreachable!(),
-                        };
                         if include_array {
                             moon_code.push(format!(
                                 "{}addi r{},r{},{}",
@@ -1247,7 +1204,7 @@ fn get_reference_and_offset_registers(
 fn load_node(ast: &mut AST, moon_code: &mut Vec<String>, register_index: usize, node_index: usize) {
     use Offset::*;
 
-    match get_reference_and_offset_registers(ast, moon_code, node_index) {
+    match get_offset(ast, moon_code, node_index) {
         Immediate(reference_register, immediate_offset) => {
             load_from_offset_register(
                 moon_code,
@@ -1287,7 +1244,7 @@ fn store_node(
 ) {
     use Offset::*;
 
-    match get_reference_and_offset_registers(ast, moon_code, node_index) {
+    match get_offset(ast, moon_code, node_index) {
         Immediate(reference_register, immediate_offset) => {
             store_at_offset_register(
                 moon_code,

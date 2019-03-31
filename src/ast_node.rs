@@ -1,3 +1,4 @@
+use crate::language::*;
 use crate::lexical_analyzer::*;
 use crate::memory_table::*;
 use crate::symbol_table::*;
@@ -252,13 +253,13 @@ impl FromStr for NodeType {
 
 #[derive(Clone)]
 pub struct NodeElement {
-    pub node_type: NodeType,
-    pub token: Option<Token>,
+    node_type: NodeType,
+    token: Option<Token>,
     pub symbol_table: Option<usize>,
     pub symbol_table_entry: Option<usize>,
     pub memory_table: Option<usize>,
     pub memory_table_entry: Option<usize>,
-    pub data_type: Option<SymbolType>,
+    data_type: Option<SymbolType>,
 }
 
 impl Display for NodeElement {
@@ -274,15 +275,21 @@ impl Display for NodeElement {
 }
 
 impl AST {
-    pub fn get_token(&self, node_index: usize) -> Token {
-        self.get_element(node_index).token.clone().unwrap()
+    pub fn get_node_type(&self, node_index: usize) -> &NodeType {
+        &self.get_element(node_index).node_type
+    }
+    pub fn has_token(&self, node_index: usize) -> bool {
+        self.get_element(node_index).token.as_ref().is_some()
+    }
+    pub fn get_token(&self, node_index: usize) -> &Token {
+        self.get_element(node_index).token.as_ref().unwrap()
     }
 
-    pub fn get_child_token(&self, node_index: usize, child_index: usize) -> Token {
+    pub fn get_child_token(&self, node_index: usize, child_index: usize) -> &Token {
         self.get_token(self.get_children(node_index)[child_index])
     }
 
-    pub fn get_leftmost_token(&self, node_index: usize) -> Token {
+    pub fn get_leftmost_token(&self, node_index: usize) -> &Token {
         let child_index_list = self.get_children(node_index);
         if child_index_list.is_empty() {
             self.get_token(node_index)
@@ -291,27 +298,41 @@ impl AST {
         }
     }
 
-    pub fn get_lexeme(&self, node_index: usize) -> String {
+    pub fn get_lexeme(&self, node_index: usize) -> &String {
         self.get_element(node_index)
             .token
-            .clone()
+            .as_ref()
             .unwrap()
             .lexeme
+            .as_ref()
             .unwrap()
     }
 
-    pub fn get_child_lexeme(&self, node_index: usize, child_index: usize) -> String {
+    pub fn get_child_lexeme(&self, node_index: usize, child_index: usize) -> &String {
         self.get_lexeme(self.get_children(node_index)[child_index])
     }
 
-    pub fn get_note_type(&self, node_index: usize) -> NodeType {
-        self.get_element(node_index).node_type
+    pub fn get_token_type(&self, node_index: usize) -> &TokenType {
+        &self
+            .get_element(node_index)
+            .token
+            .as_ref()
+            .unwrap()
+            .token_type
     }
-
-    pub fn get_child_data_type(&self, node_index: usize, child_index: usize) -> SymbolType {
+    pub fn has_data_type(&self, node_index: usize) -> bool {
+        self.get_element(node_index).data_type.is_some()
+    }
+    pub fn get_data_type(&self, node_index: usize) -> &SymbolType {
+        self.get_element(node_index).data_type.as_ref().unwrap()
+    }
+    pub fn set_data_type(&mut self, node_index: usize, symbol_type: Option<SymbolType>) {
+        self.get_mut_element(node_index).data_type = symbol_type;
+    }
+    pub fn get_child_data_type(&self, node_index: usize, child_index: usize) -> &SymbolType {
         self.get_element(self.get_children(node_index)[child_index])
-            .clone()
             .data_type
+            .as_ref()
             .unwrap()
     }
 
@@ -386,7 +407,7 @@ impl AST {
                             return Err(WrongNodeOnStackOne(
                                 new_node_type,
                                 child_node_type,
-                                self.get_note_type(top_node_id),
+                                self.get_node_type(top_node_id).clone(),
                             ));
                         }
                     }
@@ -400,7 +421,7 @@ impl AST {
                             return Err(WrongNodeOnStackList(
                                 new_node_type,
                                 node_list,
-                                self.get_note_type(top_node_id),
+                                self.get_node_type(top_node_id).clone(),
                             ));
                         }
                     }
@@ -428,7 +449,7 @@ impl AST {
     }
 
     fn add_one(&mut self, new_node_id: usize, node_type: NodeType, top_node_id: usize) -> bool {
-        if self.get_note_type(top_node_id) == node_type {
+        if *self.get_node_type(top_node_id) == node_type {
             self.add_left_child(new_node_id, top_node_id);
             true
         } else {
@@ -441,7 +462,7 @@ impl AST {
         node_list: &[NodeType],
         top_node_id: usize,
     ) -> bool {
-        if node_list.contains(&self.get_note_type(top_node_id)) {
+        if node_list.contains(&self.get_node_type(top_node_id)) {
             self.add_left_child(new_node_id, top_node_id);
             true
         } else {
@@ -461,9 +482,9 @@ impl AST {
         {
             panic!("Intersection between target_node_types and excluded_node_types.")
         }
-        let node_type = self.get_note_type(node_index);
+        let node_type = self.get_node_type(node_index);
         if target_node_types.contains(&node_type) {
-            Some((node_index, node_type))
+            Some((node_index, *node_type))
         } else if excluded_node_types.contains(&node_type) {
             None
         } else {
@@ -491,9 +512,9 @@ impl AST {
         {
             panic!("Intersection between target_node_types and excluded_node_types.")
         }
-        let node_type = self.get_note_type(node_index);
+        let node_type = self.get_node_type(node_index);
         if target_node_types.contains(&node_type) {
-            Some((node_index, node_type))
+            Some((node_index, *node_type))
         } else if excluded_node_types.contains(&node_type)
             || self.get_left_sibling(node_index).is_some()
         {

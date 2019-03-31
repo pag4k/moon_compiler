@@ -8,8 +8,8 @@ impl AST {
             .iter()
             .map(|entry_index| self.symbol_table_arena.get_table_entry(*entry_index))
             .filter_map(|symbol_entry| {
-                if let SymbolKind::Class = symbol_entry.kind {
-                    symbol_entry.link
+                if let SymbolKind::Class = symbol_entry.get_kind() {
+                    symbol_entry.get_link()
                 } else {
                     None
                 }
@@ -20,7 +20,7 @@ impl AST {
     pub fn find_function_in_table(&self, table_index: usize, name: &str) -> Option<usize> {
         for entry_index in self.symbol_table_arena.get_table_entries(table_index) {
             let symbol_entry = self.symbol_table_arena.get_table_entry(*entry_index);
-            if symbol_entry.kind.is_function() && symbol_entry.name == name {
+            if symbol_entry.is_function() && symbol_entry.has_name(name) {
                 return Some(*entry_index);
             }
         }
@@ -71,8 +71,7 @@ impl AST {
             let class_name = self
                 .symbol_table_arena
                 .get_table(class_table_index)
-                .name
-                .clone();
+                .get_name_clone();
             if name == class_name {
                 return Some(class_table_index);
             }
@@ -87,10 +86,10 @@ impl AST {
     ) -> Option<usize> {
         for entry_index in self.symbol_table_arena.get_table_entries(table_index) {
             let symbol_entry = self.symbol_table_arena.get_table_entry(*entry_index);
-            if symbol_entry.name == name {
-                if symbol_entry.kind.is_variable() {
+            if symbol_entry.has_name(name) {
+                if symbol_entry.is_variable() {
                     return Some(*entry_index);
-                } else if symbol_entry.kind.is_parameter() {
+                } else if symbol_entry.is_parameter() {
                     unreachable!();
                 }
             }

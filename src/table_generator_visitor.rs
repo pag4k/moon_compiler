@@ -53,7 +53,7 @@ fn prog(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usi
     let program_table_index = ast.get_element(stat_block_node_index).symbol_table.unwrap();
     ast.symbol_table_arena
         .get_mut_table(program_table_index)
-        .name = name.clone();
+        .set_name(name.clone());
 
     // Create main function entry and add it to the global scope.
     let entry_index = ast.symbol_table_arena.new_symbol_table_entry(
@@ -69,16 +69,14 @@ fn prog(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usi
 }
 
 fn class_decl(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
-    let name = ast.get_child_lexeme(node_index, 0);
+    let name = ast.get_child_lexeme(node_index, 0).clone();
 
     let table_index = ast.symbol_table_arena.new_symbol_table(name.clone());
     ast.get_mut_element(node_index).symbol_table = Some(table_index);
 
-    let entry_index = ast.symbol_table_arena.new_symbol_table_entry(
-        name.clone(),
-        SymbolKind::Class,
-        Some(table_index),
-    );
+    let entry_index =
+        ast.symbol_table_arena
+            .new_symbol_table_entry(name, SymbolKind::Class, Some(table_index));
     ast.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
 
     // Get members
@@ -92,11 +90,13 @@ fn class_decl(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_inde
 }
 fn func_def(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     // Function Definition has an entry and a table.
-    let name = ast.get_child_lexeme(node_index, 2);
+    let name = ast.get_child_lexeme(node_index, 2).clone();
 
     // Take table from StatBlock
     let table_index = transfer_symbol_table(ast, ast.get_child(node_index, 4), node_index);
-    ast.symbol_table_arena.get_mut_table(table_index).name = name.clone();
+    ast.symbol_table_arena
+        .get_mut_table(table_index)
+        .set_name(name.clone());
 
     let return_type = make_type_from_child(ast, node_index, 0, Vec::new());
 
@@ -107,15 +107,17 @@ fn func_def(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index:
             .get_mut_element(parameter_index)
             .symbol_table_entry
             .unwrap();
-        let parameter_type = match ast
+        let parameter_type = ast
             .symbol_table_arena
             .get_table_entry(entry_index)
-            .kind
-            .clone()
-        {
-            SymbolKind::Parameter(parameter_type) => parameter_type,
-            _ => unreachable!(),
-        };
+            .get_symbol_type()
+            .unwrap();
+        //     .kind
+        //     .clone()
+        // {
+        //     SymbolKind::Parameter(parameter_type) => parameter_type,
+        //     _ => unreachable!(),
+        // };
 
         parameters.push(parameter_type.clone());
         if let Err(error) = add_entry_to_table(ast, table_index, parameter_index) {
@@ -124,7 +126,7 @@ fn func_def(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index:
     }
 
     let entry_index = ast.symbol_table_arena.new_symbol_table_entry(
-        name,
+        name.clone(),
         SymbolKind::Function(Some(return_type), parameters),
         Some(table_index),
     );
@@ -132,7 +134,7 @@ fn func_def(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index:
 }
 fn func_decl(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     // Function Declaration just has an entry.
-    let name = ast.get_child_lexeme(node_index, 1);
+    let name = ast.get_child_lexeme(node_index, 1).clone();
     let return_type = make_type_from_child(ast, node_index, 0, Vec::new());
 
     // Get parameters
@@ -142,15 +144,17 @@ fn func_decl(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, node_inde
             .get_mut_element(parameter_index)
             .symbol_table_entry
             .unwrap();
-        let parameter_type = match ast
+        let parameter_type = ast
             .symbol_table_arena
             .get_table_entry(entry_index)
-            .kind
-            .clone()
-        {
-            SymbolKind::Parameter(parameter_type) => parameter_type,
-            _ => unreachable!(),
-        };
+            .get_symbol_type()
+            .unwrap();
+        //     .kind
+        //     .clone()
+        // {
+        //     SymbolKind::Parameter(parameter_type) => parameter_type,
+        //     _ => unreachable!(),
+        // };
 
         parameters.push(parameter_type.clone());
     }
@@ -172,7 +176,7 @@ fn var_decl(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index:
     {
         if dimension < 1 {
             semantic_errors.push(SemanticError::DimensionMustBeGreaterThanZero(
-                ast.get_leftmost_token(node_index),
+                ast.get_leftmost_token(node_index).clone(),
                 index,
                 dimension,
             ));
@@ -185,7 +189,7 @@ fn var_decl(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index:
         .collect();
     let parameter_type = make_type_from_child(ast, node_index, 0, indices);
     let entry_index = ast.symbol_table_arena.new_symbol_table_entry(
-        name,
+        name.clone(),
         SymbolKind::Variable(parameter_type),
         None,
     );
@@ -201,7 +205,7 @@ fn f_param(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: 
     {
         if dimension < 1 {
             semantic_errors.push(SemanticError::DimensionMustBeGreaterThanZero(
-                ast.get_leftmost_token(node_index),
+                ast.get_leftmost_token(node_index).clone(),
                 index,
                 dimension,
             ));
@@ -214,21 +218,23 @@ fn f_param(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: 
         .collect();
     let parameter_type = make_type_from_child(ast, node_index, 0, indices);
     let entry_index = ast.symbol_table_arena.new_symbol_table_entry(
-        name,
+        name.clone(),
         SymbolKind::Parameter(parameter_type),
         None,
     );
     ast.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
 }
-fn for_stat(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
+fn for_stat(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     // FIXME: Check if for variable is integer.
     let symbol_type = make_type_from_child(ast, node_index, 0, Vec::new());
 
     let name = ast.get_child_lexeme(node_index, 1);
     //let table_index = ast.symbol_table_arena.new_symbol_table(name.clone());
-    let entry_index =
-        ast.symbol_table_arena
-            .new_symbol_table_entry(name, SymbolKind::For(symbol_type), None);
+    let entry_index = ast.symbol_table_arena.new_symbol_table_entry(
+        name.clone(),
+        SymbolKind::For(symbol_type),
+        None,
+    );
     //let first_child_index = ast.get_children(node_index)[0];
 
     ast.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
@@ -249,7 +255,7 @@ fn stat_block(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_inde
             .symbol_table_entry
             .is_some()
         {
-            if ast.get_element(variable_index).node_type == NodeType::ForStat {
+            if let NodeType::ForStat = ast.get_node_type(variable_index) {
                 continue;
             }
             if let Err(error) = add_entry_to_table(ast, table_index, variable_index) {
@@ -274,29 +280,12 @@ fn make_type_from_child(
     child_index: usize,
     indices: Vec<usize>,
 ) -> SymbolType {
-    SymbolType::new(
-        &ast.get_element(ast.get_children(node_index)[child_index])
-            .token
-            .as_ref()
-            .unwrap()
-            .lexeme
-            .clone()
-            .unwrap(),
-        indices,
-    )
+    SymbolType::new(ast.get_child_lexeme(node_index, child_index), indices)
 }
 
 fn get_dimension(ast: &AST, node_index: usize) -> usize {
     // We can directly parse since a non integer dimensions is a syntax error.
-    ast.get_element(node_index)
-        .token
-        .as_ref()
-        .unwrap()
-        .lexeme
-        .as_ref()
-        .unwrap()
-        .parse::<usize>()
-        .unwrap()
+    ast.get_lexeme(node_index).parse::<usize>().unwrap()
 }
 
 fn add_function(
@@ -313,66 +302,60 @@ fn add_function(
     let function_name = ast
         .symbol_table_arena
         .get_table(function_definition_table_index)
-        .name
-        .clone();
+        .get_name_clone();
 
-    match ast
-        .get_element(ast.get_children(function_node_index)[1])
-        .token
-        .clone()
-    {
+    let scope_node_index = ast.get_children(function_node_index)[1];
+    if ast.has_token(scope_node_index) {
         // If member function, link it in its class.
-        Some(token) => {
-            let class_name = token.lexeme.clone().unwrap();
-            let class_table_index = match ast.find_class_symbol_table(&class_name) {
-                Some(class_table_index) => class_table_index,
-                None => {
-                    return Err(SemanticError::UndefinedClass(
-                        ast.get_token(ast.get_children(function_node_index)[1]),
-                    ));
-                }
-            };
-            match ast.find_function_in_table(class_table_index, &function_name) {
-                Some(function_declaration_entry_index) => {
-                    // Get a clone of the definition entry and remore link.
-                    let mut function_definition_entry = (*ast
-                        .symbol_table_arena
-                        .get_table_entry(function_definition_table_entry_index))
-                    .clone();
-                    function_definition_entry.link = None;
-                    // Get a clone of the definition entry.
-                    let function_declaration_entry = (*ast
-                        .symbol_table_arena
-                        .get_table_entry(function_declaration_entry_index))
-                    .clone();
-                    // Compare declaration and definition, assumin neither has a link.
-                    if function_declaration_entry == function_definition_entry {
-                        ast.symbol_table_arena
-                            .get_mut_table_entry(function_declaration_entry_index)
-                            .link = Some(function_definition_table_index);
-                        return Ok(());
-                    } else {
-                        return Err(SemanticError::MismatchMemberFunctionDeclAndDef(
-                            ast.get_leftmost_token(function_node_index),
-                            function_name.clone(),
-                            function_declaration_entry.kind,
-                            function_definition_entry.kind,
-                        ));
-                    }
-                }
-                None => {
-                    return Err(SemanticError::MemberFunctionDefDoesNotHaveDecl(
-                        ast.get_leftmost_token(function_node_index),
+        let class_name = ast.get_lexeme(scope_node_index);
+        let class_table_index = match ast.find_class_symbol_table(&class_name) {
+            Some(class_table_index) => class_table_index,
+            None => {
+                return Err(SemanticError::UndefinedClass(
+                    ast.get_child_token(function_node_index, 1).clone(),
+                ));
+            }
+        };
+        match ast.find_function_in_table(class_table_index, &function_name) {
+            Some(function_declaration_entry_index) => {
+                // Get a clone of the definition entry and remore link.
+                let mut function_definition_entry = (*ast
+                    .symbol_table_arena
+                    .get_table_entry(function_definition_table_entry_index))
+                .clone();
+                function_definition_entry.set_link(None);
+                // Get a clone of the definition entry.
+                let function_declaration_entry = (*ast
+                    .symbol_table_arena
+                    .get_table_entry(function_declaration_entry_index))
+                .clone();
+                // Compare declaration and definition, assumin neither has a link.
+                if function_declaration_entry == function_definition_entry {
+                    ast.symbol_table_arena
+                        .get_mut_table_entry(function_declaration_entry_index)
+                        .set_link(Some(function_definition_table_index));
+                    return Ok(());
+                } else {
+                    return Err(SemanticError::MismatchMemberFunctionDeclAndDef(
+                        ast.get_leftmost_token(function_node_index).clone(),
                         function_name.clone(),
+                        function_declaration_entry.get_kind_clone(),
+                        function_definition_entry.get_kind_clone(),
                     ));
                 }
             }
+            None => {
+                return Err(SemanticError::MemberFunctionDefDoesNotHaveDecl(
+                    ast.get_leftmost_token(function_node_index).clone(),
+                    function_name.clone(),
+                ));
+            }
         }
+    } else {
         // If free function, add to global.
-        None => {
-            add_entry_to_table(ast, table_index, function_node_index)?;
-        }
+        add_entry_to_table(ast, table_index, function_node_index)?;
     }
+
     Ok(())
 }
 
@@ -401,12 +384,21 @@ fn add_entry_to_table(
 
 fn check_duplicate(ast: &AST, table_index: usize, node_index: usize) -> Result<(), SemanticError> {
     let entry_index = ast.get_element(node_index).symbol_table_entry.unwrap();
-    let name = &ast.symbol_table_arena.get_table_entry(entry_index).name;
+    let name = ast
+        .symbol_table_arena
+        .get_table_entry(entry_index)
+        .get_name();
     for entry in ast.symbol_table_arena.get_table_entries(table_index) {
-        if ast.symbol_table_arena.get_table_entry(*entry).name == *name {
+        if ast
+            .symbol_table_arena
+            .get_table_entry(*entry)
+            .has_name(name)
+        {
             return Err(SemanticError::DuplicateIdentifier(
-                ast.get_leftmost_token(node_index),
-                ast.symbol_table_arena.get_table(table_index).name.clone(),
+                ast.get_leftmost_token(node_index).clone(),
+                ast.symbol_table_arena
+                    .get_table(table_index)
+                    .get_name_clone(),
                 name.clone(),
             ));
         }
@@ -420,7 +412,7 @@ fn get_for_node_indices(ast: &mut AST, node_index: usize, for_node_indices: &mut
         get_for_node_indices(ast, child_index, for_node_indices);
     }
 
-    if let NodeType::ForStat = ast.get_element(node_index).node_type {
+    if let NodeType::ForStat = ast.get_node_type(node_index) {
         if ast.get_element(node_index).symbol_table_entry.is_some() {
             for_node_indices.push(node_index);
         }

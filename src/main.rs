@@ -43,7 +43,7 @@ use semantic_error::*;
 use std::env;
 use std::fs;
 use std::fs::File;
-use std::io::prelude::*;
+// use std::io::prelude::*;
 use std::path::Path;
 use syntactic_analyzer::*;
 use syntactic_error::*;
@@ -140,7 +140,7 @@ fn combine_errors(
     errors
 }
 
-fn print_errors(errors: &Vec<Error>, error_file: &mut File) {
+fn print_errors(errors: &[Error], error_file: &mut File) {
     println!("Found {} errors:", errors.len());
     for error in errors {
         println!("{}", error);
@@ -162,7 +162,7 @@ fn print_memory_table(ast: &AST, memory_table_file: &mut File) {
         .expect("Could not write to symbol table file.");
 }
 
-fn print_moon_code(code: &Vec<String>, moon_code_file: &mut File) {
+fn print_moon_code(code: &[String], moon_code_file: &mut File) {
     for line in code {
         moon_code_file
             .write_fmt(format_args!("{}\n", line))
@@ -170,7 +170,7 @@ fn print_moon_code(code: &Vec<String>, moon_code_file: &mut File) {
     }
 }
 
-fn compile(source: &str) -> Option<Vec<Error>> {
+fn compile(source: &str) -> (Option<Vec<Error>>, Option<bool>) {
     let atocc_filename = "atocc.txt";
     let path = Path::new(atocc_filename);
     let mut atocc_file = match File::create(&path) {
@@ -180,7 +180,7 @@ fn compile(source: &str) -> Option<Vec<Error>> {
                 "ERROR: Something went wrong creating AtoCC file: {}. Exiting...",
                 atocc_filename
             );
-            return None;
+            return (None, None);
         }
     };
 
@@ -193,7 +193,7 @@ fn compile(source: &str) -> Option<Vec<Error>> {
                 "ERROR: Something went wrong creating error file: {}. Exiting...",
                 error_filename
             );
-            return None;
+            return (None, None);
         }
     };
 
@@ -206,7 +206,7 @@ fn compile(source: &str) -> Option<Vec<Error>> {
                 "ERROR: Something went wrong creating symbol table file: {}. Exiting...",
                 symbol_table_filename
             );
-            return None;
+            return (None, None);
         }
     };
 
@@ -219,7 +219,7 @@ fn compile(source: &str) -> Option<Vec<Error>> {
                 "ERROR: Something went wrong creating memory table file: {}. Exiting...",
                 memory_table_filename
             );
-            return None;
+            return (None, None);
         }
     };
 
@@ -232,7 +232,7 @@ fn compile(source: &str) -> Option<Vec<Error>> {
                 "ERROR: Something went wrong creating moon code file: {}. Exiting...",
                 moon_code_filename
             );
-            return None;
+            return (None, None);
         }
     };
 
@@ -260,7 +260,7 @@ fn compile(source: &str) -> Option<Vec<Error>> {
 
     if tokens.is_empty() {
         println!("Error: Empty program. Exiting...");
-        return None;
+        return (None, None);
     } else {
         println!("Lexical analysis completed.");
     }
@@ -273,7 +273,7 @@ fn compile(source: &str) -> Option<Vec<Error>> {
                 "ERROR: Something went wrong reading grammar file: {}. Exiting...",
                 grammar_filename
             );
-            return None;
+            return (None, None);
         }
     };
 
@@ -287,7 +287,7 @@ fn compile(source: &str) -> Option<Vec<Error>> {
         }
         Err(error) => {
             println!("{}", error);
-            return None;
+            return (None, None);
         }
     };
 
@@ -298,7 +298,7 @@ fn compile(source: &str) -> Option<Vec<Error>> {
         }
         Err(error) => {
             println!("{}", error);
-            return None;
+            return (None, None);
         }
     };
 
@@ -349,7 +349,7 @@ fn compile(source: &str) -> Option<Vec<Error>> {
                 "ERROR: Abstract syntaxt tree error: {}. Exiting...",
                 ast_error
             );
-            return None;
+            return (None, None);
         }
     };
 
@@ -361,7 +361,7 @@ fn compile(source: &str) -> Option<Vec<Error>> {
     {
         let errors = combine_errors(lexical_errors, syntactic_errors, Vec::new());
         print_errors(&errors, &mut error_file);
-        return Some(errors);
+        return (Some(errors), None);
     }
 
     let ast_filename = "ast.gv";
@@ -379,7 +379,7 @@ fn compile(source: &str) -> Option<Vec<Error>> {
         let errors = combine_errors(lexical_errors, syntactic_errors, semantic_errors);
         print_errors(&errors, &mut error_file);
         print_symbol_table(&ast, &mut symbol_table_file);
-        return Some(errors);
+        return (Some(errors), None);
     }
 
     //let semantic_warning_and_errors = ast.semantic_class_checker();
@@ -402,7 +402,7 @@ fn compile(source: &str) -> Option<Vec<Error>> {
         let errors = combine_errors(lexical_errors, syntactic_errors, semantic_errors);
         print_errors(&errors, &mut error_file);
         print_symbol_table(&ast, &mut symbol_table_file);
-        return Some(errors);
+        return (Some(errors), None);
     }
 
     //let semantic_errors = ast.semantic_function_checker();
@@ -414,7 +414,7 @@ fn compile(source: &str) -> Option<Vec<Error>> {
         let errors = combine_errors(lexical_errors, syntactic_errors, semantic_errors);
         print_errors(&errors, &mut error_file);
         print_symbol_table(&ast, &mut symbol_table_file);
-        return Some(errors);
+        return (Some(errors), None);
     }
 
     //let semantic_errors = ast.type_checker();
@@ -426,14 +426,14 @@ fn compile(source: &str) -> Option<Vec<Error>> {
         let errors = combine_errors(lexical_errors, syntactic_errors, semantic_errors);
         print_errors(&errors, &mut error_file);
         print_symbol_table(&ast, &mut symbol_table_file);
-        return Some(errors);
+        return (Some(errors), None);
     }
 
     if !lexical_errors.is_empty() || !syntactic_errors.is_empty() {
         let errors = combine_errors(lexical_errors, syntactic_errors, semantic_errors);
         print_errors(&errors, &mut error_file);
         print_symbol_table(&ast, &mut symbol_table_file);
-        return Some(errors);
+        return (Some(errors), None);
     }
 
     println!("Compilation completed without errors!");
@@ -459,11 +459,18 @@ fn compile(source: &str) -> Option<Vec<Error>> {
     println!("----------------------------------------");
     println!("Status: {}", output.status);
     println!("----------------------------------------");
+    println!("stdout");
+    println!("----------------------------------------");
     io::stdout().write_all(&output.stdout).unwrap();
+    println!("----------------------------------------");
+    println!("stderr");
+    println!("----------------------------------------");
     io::stderr().write_all(&output.stderr).unwrap();
     println!("----------------------------------------");
 
-    None
+    // The moon processor only uses stderr if there is a code error.
+    // Not if there is a runtime error or if the output is wrong.
+    (None, Some(output.status.success()))
 }
 
 #[cfg(test)]
@@ -488,8 +495,13 @@ mod tests {
             println!();
             println!("Compiling file: {}", source_filename);
             match crate::compile(&source) {
-                Some(errors) => assert!(*error_count == errors.len()),
-                None => assert!(*error_count == 0),
+                (Some(errors), None) => assert!(*error_count == errors.len()),
+                (None, Some(is_success)) => {
+                    assert!(*error_count == 0);
+                    assert!(is_success);
+                }
+                (Some(_), Some(_)) => unreachable!(),
+                (None, None) => assert!(*error_count == 0),
             }
         }
     }
@@ -513,8 +525,13 @@ mod tests {
             println!();
             println!("Compiling file: {}", source_filename);
             match crate::compile(&source) {
-                Some(errors) => assert!(*error_count == errors.len()),
-                None => assert!(*error_count == 0),
+                (Some(errors), None) => assert!(*error_count == errors.len()),
+                (None, Some(is_success)) => {
+                    assert!(*error_count == 0);
+                    assert!(is_success);
+                }
+                (Some(_), Some(_)) => unreachable!(),
+                (None, None) => assert!(*error_count == 0),
             }
         }
     }
@@ -546,8 +563,13 @@ mod tests {
             println!();
             println!("Compiling file: {}", source_filename);
             match crate::compile(&source) {
-                Some(errors) => assert!(*error_count == errors.len()),
-                None => assert!(*error_count == 0),
+                (Some(errors), None) => assert!(*error_count == errors.len()),
+                (None, Some(is_success)) => {
+                    assert!(*error_count == 0);
+                    assert!(is_success);
+                }
+                (Some(_), Some(_)) => unreachable!(),
+                (None, None) => assert!(*error_count == 0),
             }
         }
     }

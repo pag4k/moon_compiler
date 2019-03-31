@@ -15,8 +15,7 @@ pub fn get_class_node_index(ast: &AST, class_name: &str) -> Option<usize> {
                 .find(|&child_index| {
                         ast.symbol_table_arena
                                 .get_table(ast.get_element(child_index).symbol_table.unwrap())
-                                .name
-                                == class_name
+                                .has_name(class_name)
                 })
 }
 
@@ -47,4 +46,13 @@ pub fn symbol_to_variabl_type(symbol_type: &SymbolType) -> VariableType {
                 Float(_) => VariableType::Float,
                 Class(name, _) => VariableType::Class(name.clone()),
         }
+}
+
+pub fn get_symbol_entry_index(ast: &AST, node_index: usize) -> usize {
+        ast.get_element(node_index).symbol_table_entry.unwrap()
+}
+
+pub fn get_symbol_entry(ast: &AST, node_index: usize) -> &SymbolTableEntry {
+        ast.symbol_table_arena
+                .get_table_entry(get_symbol_entry_index(ast, node_index))
 }

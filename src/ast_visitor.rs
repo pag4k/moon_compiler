@@ -22,7 +22,7 @@ fn visit<ErrorType>(
         visit(ast, errors, semantic_actions, child_index);
     }
 
-    let node_type = ast.get_note_type(node_index);
+    let node_type = ast.get_node_type(node_index);
     if let Some(semantic_action) = semantic_actions.get(&node_type) {
         semantic_action(ast, errors, node_index);
     }
