@@ -257,8 +257,8 @@ pub struct NodeElement {
     token: Option<Token>,
     pub symbol_table: Option<usize>,
     pub symbol_table_entry: Option<usize>,
-    pub memory_table: Option<usize>,
-    pub memory_table_entry: Option<usize>,
+    memory_table: Option<usize>,
+    memory_table_entry: Option<usize>,
     data_type: Option<SymbolType>,
 }
 
@@ -319,6 +319,36 @@ impl AST {
             .as_ref()
             .unwrap()
             .token_type
+    }
+    pub fn get_symbol_table_index(&self, node_index: usize) -> usize {
+        self.get_element(node_index).symbol_table.unwrap()
+    }
+    pub fn has_symbol_table_index(&self, node_index: usize) -> bool {
+        self.get_element(node_index).symbol_table.is_some()
+    }
+    pub fn get_symbol_entry_index(&self, node_index: usize) -> usize {
+        self.get_element(node_index).symbol_table_entry.unwrap()
+    }
+    pub fn has_symbol_entry_index(&self, node_index: usize) -> bool {
+        self.get_element(node_index).symbol_table_entry.is_some()
+    }
+    pub fn get_memory_table_index(&self, node_index: usize) -> usize {
+        self.get_element(node_index).memory_table.unwrap()
+    }
+    pub fn set_memory_table_index(&mut self, node_index: usize, memory_table_index: Option<usize>) {
+        self.get_mut_element(node_index).memory_table = memory_table_index;
+    }
+    pub fn has_memory_table_index(&self, node_index: usize) -> bool {
+        self.get_element(node_index).memory_table.is_some()
+    }
+    pub fn get_memory_entry_index(&self, node_index: usize) -> usize {
+        self.get_element(node_index).memory_table_entry.unwrap()
+    }
+    pub fn set_memory_entry_index(&mut self, node_index: usize, memory_entry_index: Option<usize>) {
+        self.get_mut_element(node_index).memory_table_entry = memory_entry_index;
+    }
+    pub fn has_memory_entry_index(&self, node_index: usize) -> bool {
+        self.get_element(node_index).memory_table_entry.is_some()
     }
     pub fn has_data_type(&self, node_index: usize) -> bool {
         self.get_element(node_index).data_type.is_some()
@@ -407,7 +437,7 @@ impl AST {
                             return Err(WrongNodeOnStackOne(
                                 new_node_type,
                                 child_node_type,
-                                self.get_node_type(top_node_id).clone(),
+                                *self.get_node_type(top_node_id),
                             ));
                         }
                     }
@@ -421,7 +451,7 @@ impl AST {
                             return Err(WrongNodeOnStackList(
                                 new_node_type,
                                 node_list,
-                                self.get_node_type(top_node_id).clone(),
+                                *self.get_node_type(top_node_id),
                             ));
                         }
                     }

@@ -50,7 +50,7 @@ fn class_decl(ast: &mut AST, code_gen_errors: &mut Vec<CodeGenError>, node_index
     if ast
         .get_children_of_child(node_index, 2)
         .iter()
-        .filter(|&&child_index| ast.get_element(child_index).memory_table_entry.is_none())
+        .filter(|&&child_index| !ast.has_memory_entry_index(child_index))
         .map(|&child_index| get_symbol_entry(ast, child_index))
         .any(|symbol_entry| symbol_entry.is_variable())
     {
@@ -58,8 +58,8 @@ fn class_decl(ast: &mut AST, code_gen_errors: &mut Vec<CodeGenError>, node_index
         return;
     }
 
-    if ast.get_element(node_index).memory_table.is_none() {
-        let symbol_table_index = ast.get_element(node_index).symbol_table.unwrap();
+    if !ast.has_memory_table_index(node_index) {
+        let symbol_table_index = ast.get_symbol_table_index(node_index);
         let class_name = ast
             .symbol_table_arena
             .get_table(symbol_table_index)
@@ -67,7 +67,7 @@ fn class_decl(ast: &mut AST, code_gen_errors: &mut Vec<CodeGenError>, node_index
         let memory_table_index = ast
             .memory_table_arena
             .new_memory_table(symbol_table_index, class_name.clone());
-        ast.get_mut_element(node_index).memory_table = Some(memory_table_index);
+        ast.set_memory_table_index(node_index, Some(memory_table_index));
         // Add inherited classes.
         for child_index in ast.get_children_of_child(node_index, 1).into_iter() {
             let inherited_class_name = get_symbol_entry(ast, child_index).get_name();
@@ -83,8 +83,8 @@ fn class_decl(ast: &mut AST, code_gen_errors: &mut Vec<CodeGenError>, node_index
         }
         // Add member variables.
         for child_index in ast.get_children_of_child(node_index, 2).into_iter() {
-            if ast.get_element(child_index).memory_table_entry.is_some() {
-                let entry_index = ast.get_element(child_index).memory_table_entry.unwrap();
+            if ast.has_memory_entry_index(child_index) {
+                let entry_index = ast.get_memory_entry_index(child_index);
                 ast.memory_table_arena
                     .add_entry(memory_table_index, entry_index);
             }
@@ -96,11 +96,11 @@ fn main_func_body(ast: &mut AST, code_gen_errors: &mut Vec<CodeGenError>, node_i
     if !code_gen_errors.is_empty() {
         return;
     }
-    let symbol_table_index = ast.get_element(node_index).symbol_table.unwrap();
+    let symbol_table_index = ast.get_symbol_table_index(node_index);
     let memory_table_index = ast
         .memory_table_arena
         .new_memory_table(symbol_table_index, "program".to_string());
-    ast.get_mut_element(node_index).memory_table = Some(memory_table_index);
+    ast.set_memory_table_index(node_index, Some(memory_table_index));
 
     // Add var, temp_var and lit_var.
     for child_index in ast.get_children(node_index).into_iter() {
@@ -117,7 +117,7 @@ fn func_def(ast: &mut AST, code_gen_errors: &mut Vec<CodeGenError>, node_index: 
     if !code_gen_errors.is_empty() {
         return;
     }
-    let symbol_table_index = ast.get_element(node_index).symbol_table.unwrap();
+    let symbol_table_index = ast.get_symbol_table_index(node_index);
     let class_name = ast
         .symbol_table_arena
         .get_table(symbol_table_index)
@@ -125,7 +125,7 @@ fn func_def(ast: &mut AST, code_gen_errors: &mut Vec<CodeGenError>, node_index: 
     let memory_table_index = ast
         .memory_table_arena
         .new_memory_table(symbol_table_index, class_name.clone());
-    ast.get_mut_element(node_index).memory_table = Some(memory_table_index);
+    ast.set_memory_table_index(node_index, Some(memory_table_index));
 
     let entry_index = get_symbol_entry_index(ast, node_index);
 
@@ -201,7 +201,7 @@ fn func_def(ast: &mut AST, code_gen_errors: &mut Vec<CodeGenError>, node_index: 
 }
 
 fn var_decl(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_index: usize) {
-    if ast.get_mut_element(node_index).memory_table_entry.is_none() {
+    if !ast.has_memory_entry_index(node_index) {
         // FIXME: GET DATA TYPE
         let symbol_entry = get_symbol_entry(ast, node_index);
         let variable_name = symbol_entry.get_name();
@@ -218,13 +218,13 @@ fn var_decl(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_index:
                 variable_type,
                 size,
             );
-            ast.get_mut_element(node_index).memory_table_entry = Some(entry_index);
+            ast.set_memory_entry_index(node_index, Some(entry_index));
         }
     }
 }
 
 fn var_element(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_index: usize) {
-    if ast.get_mut_element(node_index).memory_table_entry.is_none() {
+    if !ast.has_memory_entry_index(node_index) {
         let data_type = ast.get_data_type(node_index);
         let variable_type = symbol_to_variabl_type(&data_type);
 
@@ -234,13 +234,13 @@ fn var_element(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_ind
                 variable_type,
                 size,
             );
-            ast.get_mut_element(node_index).memory_table_entry = Some(entry_index);
+            ast.set_memory_entry_index(node_index, Some(entry_index));
         }
     }
 }
 
 fn for_var(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_index: usize) {
-    if ast.get_mut_element(node_index).memory_table_entry.is_none() {
+    if !ast.has_memory_entry_index(node_index) {
         let symbol_entry = get_symbol_entry(ast, node_index);
         let variable_name = symbol_entry.get_name();
         let symbol_type = symbol_entry.get_symbol_type().unwrap();
@@ -256,16 +256,14 @@ fn for_var(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_index: 
                 variable_type,
                 size,
             );
-            ast.get_mut_element(node_index).memory_table_entry = Some(entry_index);
+            ast.set_memory_entry_index(node_index, Some(entry_index));
         }
     }
 }
 
 fn index_list(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_index: usize) {
     // If there is an IndexList, add an integer TempVar to hold the offset in the array.
-    if ast.get_mut_element(node_index).memory_table_entry.is_none()
-        && !ast.get_children(node_index).is_empty()
-    {
+    if !ast.has_memory_entry_index(node_index) && !ast.get_children(node_index).is_empty() {
         let symbol_type = SymbolType::Integer(vec![]);
         let variable_type = symbol_to_variabl_type(&symbol_type);
         if let Some(size) = get_size(ast, &symbol_type) {
@@ -274,13 +272,13 @@ fn index_list(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_inde
                 variable_type,
                 size,
             );
-            ast.get_mut_element(node_index).memory_table_entry = Some(entry_index);
+            ast.set_memory_entry_index(node_index, Some(entry_index));
         }
     }
 }
 
 fn temp_var(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_index: usize) {
-    if ast.get_mut_element(node_index).memory_table_entry.is_none() {
+    if !ast.has_memory_entry_index(node_index) {
         let data_type = ast.get_data_type(node_index);
         let variable_type = symbol_to_variabl_type(&data_type);
         if let Some(size) = get_size(ast, &data_type) {
@@ -289,13 +287,13 @@ fn temp_var(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_index:
                 variable_type,
                 size,
             );
-            ast.get_mut_element(node_index).memory_table_entry = Some(entry_index);
+            ast.set_memory_entry_index(node_index, Some(entry_index));
         }
     }
 }
 
 fn lit_var(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_index: usize) {
-    if ast.get_mut_element(node_index).memory_table_entry.is_none() {
+    if !ast.has_memory_entry_index(node_index) {
         let data_type = ast.get_data_type(node_index);
         let variable_type = symbol_to_variabl_type(&data_type);
         if let Some(size) = get_size(ast, &data_type) {
@@ -304,7 +302,7 @@ fn lit_var(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_index: 
                 variable_type,
                 size,
             );
-            ast.get_mut_element(node_index).memory_table_entry = Some(entry_index);
+            ast.set_memory_entry_index(node_index, Some(entry_index));
         }
     }
 }
@@ -313,7 +311,7 @@ fn get_var(ast: &mut AST, node_index: usize, var_entries: &mut Vec<usize>) {
     for child_index in ast.get_children(node_index) {
         get_var(ast, child_index, var_entries);
     }
-    if let Some(entry_index) = ast.get_element(node_index).memory_table_entry {
-        var_entries.push(entry_index);
+    if ast.has_memory_entry_index(node_index) {
+        var_entries.push(ast.get_memory_entry_index(node_index));
     }
 }

@@ -30,13 +30,22 @@ pub fn get_size(ast: &AST, symbol_type: &SymbolType) -> Option<usize> {
 }
 
 pub fn get_class_size(ast: &AST, class_name: &str) -> Option<usize> {
-        get_class_node_index(ast, class_name)
-                .map(|node_index| {
-                        ast.get_element(node_index).memory_table.map(|table_index| {
-                                -ast.memory_table_arena.get_table(table_index).offset as usize
-                        })
-                })
-                .unwrap()
+        match get_class_node_index(ast, class_name) {
+                // Check if the class can be found.
+                Some(node_index) => {
+                        // Check if the class has a memory table.
+                        if ast.has_memory_table_index(node_index) {
+                                let memory_table_index = ast.get_memory_table_index(node_index);
+                                Some(ast.memory_table_arena
+                                        .get_table(memory_table_index)
+                                        .offset
+                                        .abs() as usize)
+                        } else {
+                                None
+                        }
+                }
+                None => None,
+        }
 }
 
 pub fn symbol_to_variabl_type(symbol_type: &SymbolType) -> VariableType {

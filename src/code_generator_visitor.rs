@@ -87,7 +87,7 @@ fn func_def(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     let end_func_label = format!("endfunc{}", function_index);
 
     // Get return address variable offset.
-    let memory_table_index = ast.get_element(node_index).memory_table.unwrap();
+    let memory_table_index = ast.get_memory_table_index(node_index);
     let return_addr_offset = get_return_addr_offset(ast, memory_table_index);
 
     // Code to add at function marker.
@@ -214,11 +214,7 @@ fn data_member(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     let index_list_node = ast.get_child(node_index, 1);
 
     // Only proceed if the IndexList node has a memory entry.
-    if ast
-        .get_element(index_list_node)
-        .memory_table_entry
-        .is_some()
-    {
+    if ast.has_memory_entry_index(index_list_node) {
         // Get symbol entry associated with data member.
         let symbol_entry_index = get_symbol_entry_index(ast, node_index);
         let symbol_entry = ast.symbol_table_arena.get_table_entry(symbol_entry_index);
@@ -292,7 +288,7 @@ fn binary_op(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
 
     // Get operation
     let operator = match ast.get_token_type(op_node_index) {
-        TokenType::Operator(operator) => operator.clone(),
+        TokenType::Operator(operator) => *operator,
         _ => unreachable!(),
     };
 
@@ -301,11 +297,8 @@ fn binary_op(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     // FIXME: Need to allow other operation than +
     // FIXME: Next 3 lines assume very simple VarElementList.
     let lhs_node_index = node_index;
-    // let lhs_memory_entry_index = get_memory_entry(ast, lhs_node_index);
     let lhs_variable_name = get_var_name(ast, lhs_node_index);
-    // let rhs_memory_entry_index1 = ast.get_element(rhs_node_index1).memory_table_entry.unwrap();
     let rhs_variable_name1 = get_var_name(ast, rhs_node_index1);
-    // let rhs_memory_entry_index2 = ast.get_element(rhs_node_index2).memory_table_entry.unwrap();
     let rhs_variable_name2 = get_var_name(ast, rhs_node_index2);
 
     // Then, do the processing of this nodes' visitor
@@ -465,10 +458,7 @@ fn unary_op(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
 
     // FIXME: Need to allow other operation than +
     // FIXME: Next 3 lines assume very simple VarElementList.
-    //let lhs_node_index = node_index;
-    // let lhs_memory_entry_index = get_memory_entry(ast, lhs_node_index);
     let lhs_variable_name = get_var_name(ast, lhs_node_index);
-    // let rhs_memory_entry_index1 = ast.get_element(rhs_node_index1).memory_table_entry.unwrap();
     let rhs_variable_name = get_var_name(ast, rhs_node_index);
 
     // Then, do the processing of this nodes' visitor
@@ -725,19 +715,17 @@ fn get_var_name(ast: &AST, node_index: usize) -> String {
     if let NodeType::VarElementList = node_type {
         let last_child_index = *ast.get_children(node_index).iter().last().unwrap();
         ast.symbol_table_arena
-            .get_table_entry(
-                ast.get_element(last_child_index)
-                    .symbol_table_entry
-                    .unwrap(),
-            )
+            .get_table_entry(ast.get_symbol_entry_index(last_child_index))
             .get_name_clone()
     } else {
         // First try to get it from the memory entry and then from the table.
-        if let Some(entry_index) = ast.get_element(node_index).memory_table_entry {
-            let memory_entry = ast.memory_table_arena.get_table_entry(entry_index);
+        if ast.has_memory_entry_index(node_index) {
+            let memory_entry_index = ast.get_memory_entry_index(node_index);
+            let memory_entry = ast.memory_table_arena.get_table_entry(memory_entry_index);
             memory_entry.get_name()
-        } else if let Some(table_index) = ast.get_element(node_index).memory_table {
-            let memory_table = ast.memory_table_arena.get_table(table_index);
+        } else if ast.has_memory_table_index(node_index) {
+            let memory_table_index = ast.get_memory_table_index(node_index);
+            let memory_table = ast.memory_table_arena.get_table(memory_table_index);
             memory_table.get_name()
         } else {
             unreachable!("Node has neither a memory table nor an memory entry.");
@@ -872,7 +860,7 @@ fn get_memory_from_symbol(ast: &AST, node_index: usize) -> Option<usize> {
 }
 
 fn find_variable_memory_entry(ast: &AST, node_index: usize, variable_name: &str) -> Option<usize> {
-    let memory_table_index = ast.get_element(node_index).memory_table.unwrap();
+    let memory_table_index = ast.get_memory_table_index(node_index);
     for &entry_index in ast.memory_table_arena.get_table_entries(memory_table_index) {
         let memory_entry = ast.memory_table_arena.get_table_entry(entry_index);
         if memory_entry.is_named_var() && *variable_name == memory_entry.get_name() {
@@ -1020,7 +1008,6 @@ fn get_marker_index(moon_code: &mut Vec<String>, marker: &str) -> usize {
 
 fn get_memory_table_index_from_symbol(ast: &AST, node_index: usize) -> Option<usize> {
     let symbol_table_index = get_funtion_symbol_table_index(ast, node_index);
-    //ast.get_element(node_index).symbol_table.unwrap();
     for memory_table in &ast.memory_table_arena.tables {
         if symbol_table_index == memory_table.get_symbol_index() {
             return Some(memory_table.get_index());
@@ -1031,7 +1018,7 @@ fn get_memory_table_index_from_symbol(ast: &AST, node_index: usize) -> Option<us
 
 fn get_class_node_of_symbol_entry(ast: &AST, symbol_entry_index: usize) -> Option<usize> {
     for class_node_index in ast.get_children_of_child(ast.root.unwrap(), 0) {
-        let class_table_index = ast.get_element(class_node_index).symbol_table.unwrap();
+        let class_table_index = ast.get_symbol_table_index(class_node_index);
         if ast
             .symbol_table_arena
             .get_table_entries(class_table_index)
@@ -1054,7 +1041,7 @@ fn get_function_node_index_and_memory_table_index(
     {
         Some((
             function_node_index,
-            ast.get_element(function_node_index).memory_table.unwrap(),
+            ast.get_memory_table_index(function_node_index),
         ))
     } else {
         None
@@ -1065,8 +1052,7 @@ fn load_inst_addresse(ast: &mut AST, moon_code: &mut Vec<String>, node_index: us
     if let Some((function_node_index, _)) =
         ast.get_parent_node_of_type(node_index, &[NodeType::FuncDef], &[])
     {
-        let function_memory_table_index =
-            ast.get_element(function_node_index).memory_table.unwrap();
+        let function_memory_table_index = ast.get_memory_table_index(function_node_index);
         let inst_addr_offset = get_inst_addr_offset(ast, function_memory_table_index).unwrap();
         let register1 = ast.register_pool.pop();
         add_comment(moon_code, format!("Loading instance address to r{}", 12));
@@ -1121,10 +1107,8 @@ fn get_offset(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) -> 
 
                     let index_list_node = ast.get_child(child_index, 1);
 
-                    // Only proceed if the IndexList node has a memory entry.
-                    if let Some(memory_entry_index) =
-                        ast.get_element(index_list_node).memory_table_entry
-                    {
+                    if ast.has_memory_entry_index(index_list_node) {
+                        let memory_entry_index = ast.get_memory_entry_index(index_list_node);
                         if !include_array {
                             add_comment(
                                 moon_code,
@@ -1179,7 +1163,7 @@ fn get_offset(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) -> 
                 // value TempVar.
                 // FIXME: So this code assumes that this is the last element.
                 FunctionCall => {
-                    let entry_index = ast.get_element(child_index).memory_table_entry.unwrap();
+                    let entry_index = ast.get_memory_entry_index(child_index);
                     let memory_entry = ast.memory_table_arena.get_table_entry(entry_index);
                     include_array = false;
                     offset = memory_entry.get_offset();
@@ -1194,7 +1178,7 @@ fn get_offset(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) -> 
             Offset::Immediate(reference_register, offset)
         }
     } else {
-        let entry_index = ast.get_element(node_index).memory_table_entry.unwrap();
+        let entry_index = ast.get_memory_entry_index(node_index);
         let memory_entry = ast.memory_table_arena.get_table_entry(entry_index);
 
         return Offset::Immediate(14, memory_entry.get_offset());
