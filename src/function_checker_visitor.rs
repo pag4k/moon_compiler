@@ -306,14 +306,6 @@ fn function_call(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_i
         .get_table_entry(function_entry_index)
         .get_symbol_type()
         .unwrap();
-    //     .kind
-    // {
-    //     SymbolKind::Function(symbol_type, _) => match symbol_type {
-    //         Some(symbol_type) => symbol_type.clone(),
-    //         None => unreachable!(),
-    //     },
-    //     _ => unreachable!(),
-    // };
 
     // Set symbol type to the function return type.
     ast.set_data_type(node_index, Some(function_return_symbol_type.clone()));

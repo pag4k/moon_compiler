@@ -406,21 +406,19 @@ fn compile(source: &str) -> (Option<Vec<Error>>, Option<bool>) {
     }
 
     //let semantic_errors = ast.semantic_function_checker();
-    let semantic_errors = function_checker_visitor(&mut ast);
+    let mut semantic_errors = function_checker_visitor(&mut ast);
 
     println!("Semantic function checking completed.");
 
-    if !semantic_errors.is_empty() {
-        let errors = combine_errors(lexical_errors, syntactic_errors, semantic_errors);
-        print_errors(&errors, &mut error_file);
-        print_symbol_table(&ast, &mut symbol_table_file);
-        return (Some(errors), None);
-    }
+    // if !semantic_errors.is_empty() {
+    //     let errors = combine_errors(lexical_errors, syntactic_errors, semantic_errors);
+    //     print_errors(&errors, &mut error_file);
+    //     print_symbol_table(&ast, &mut symbol_table_file);
+    //     return (Some(errors), None);
+    // }
 
-    //let semantic_errors = ast.type_checker();
-
+    semantic_errors.append(&mut type_checker_visitor(&mut ast));
     println!("Type checking completed.");
-    let semantic_errors = type_checker_visitor(&mut ast);
 
     if !semantic_errors.is_empty() {
         let errors = combine_errors(lexical_errors, syntactic_errors, semantic_errors);
@@ -547,6 +545,7 @@ mod tests {
             ("class_checker_error3.txt", 1),
             ("function_checker_error1.txt", 8),
             ("type_checker_error1.txt", 11),
+            ("combined_error1.txt", 9),
         ];
 
         for (source_filename, error_count) in source_files.iter() {

@@ -359,11 +359,14 @@ impl AST {
     pub fn set_data_type(&mut self, node_index: usize, symbol_type: Option<SymbolType>) {
         self.get_mut_element(node_index).data_type = symbol_type;
     }
-    pub fn get_child_data_type(&self, node_index: usize, child_index: usize) -> &SymbolType {
+    pub fn get_child_data_type(
+        &self,
+        node_index: usize,
+        child_index: usize,
+    ) -> Option<&SymbolType> {
         self.get_element(self.get_children(node_index)[child_index])
             .data_type
             .as_ref()
-            .unwrap()
     }
 
     pub fn make_node(
