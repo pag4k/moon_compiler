@@ -92,6 +92,9 @@ impl Table<MemoryTable, MemoryTableEntry> for MemoryTable {
     fn get_entries(&self) -> &[usize] {
         &self.entries
     }
+    fn get_mut_entries(&mut self) -> &mut Vec<usize> {
+        &mut self.entries
+    }
 }
 
 impl MemoryTable {

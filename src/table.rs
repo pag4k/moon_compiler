@@ -1,5 +1,6 @@
 pub trait Table<T, E> {
     fn get_entries(&self) -> &[usize];
+    fn get_mut_entries(&mut self) -> &mut Vec<usize>;
 }
 
 pub struct TableArena<T, E> {
@@ -35,5 +36,11 @@ where
     }
     pub fn get_mut_table_entry(&mut self, index: usize) -> &mut E {
         &mut self.table_entries[index]
+    }
+    pub fn remove_entry_from_position(&mut self, table_entry_index: usize, entry_position: usize) {
+        // The entry will stay in the entry list, but should note be refered anywhere.
+        self.tables[table_entry_index]
+            .get_mut_entries()
+            .remove(entry_position);
     }
 }

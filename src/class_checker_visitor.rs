@@ -41,11 +41,9 @@ fn prog(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, _node_index: us
         }
     }
 
-    // FIXME: If a base class is analysed first and there is a circular dependency between its parents, the error is located at the base class.
     // At this point, all inherited classes should be properly linked, so circular dependancy can be checked.
-    if let Err(error) = check_circular_dependency(ast) {
+    while let Err(error) = check_circular_dependency(ast) {
         semantic_errors.push(error);
-        return;
     }
 
     // At this point, there are no circular dependancy, so shadowed member can be checked.
@@ -146,7 +144,7 @@ fn node_type(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index
     }
 }
 
-fn check_circular_dependency(ast: &AST) -> Result<(), SemanticError> {
+fn check_circular_dependency(ast: &mut AST) -> Result<(), SemanticError> {
     for class_table_index in ast.get_class_tables_in_table(ast.symbol_table_arena.root.unwrap()) {
         let mut class_table_index_stack: Vec<usize> = Vec::new();
         check_circular_dependency_in_class(ast, class_table_index, &mut class_table_index_stack)?;
@@ -156,35 +154,76 @@ fn check_circular_dependency(ast: &AST) -> Result<(), SemanticError> {
 }
 
 fn check_circular_dependency_in_class(
-    ast: &AST,
-    class_table_index: usize,
+    ast: &mut AST,
+    new_class_table_index: usize,
     class_table_index_stack: &mut Vec<usize>,
 ) -> Result<(), SemanticError> {
-    if class_table_index_stack.contains(&class_table_index) {
-        class_table_index_stack.push(class_table_index);
-        let dependency_list: Vec<String> = class_table_index_stack
+    // Check if the next table index can be found in the stack.
+    if let Some(duplicated_class_position) = class_table_index_stack
+        .iter()
+        .position(|&table_index| table_index == new_class_table_index)
+    {
+        // Get last class_index before adding the duplicated one.
+        let last_class_table_index = *class_table_index_stack.last().unwrap();
+        // Add duplicated class_index on stack.
+        class_table_index_stack.push(new_class_table_index);
+        let splitted_class_table_index_stack =
+            class_table_index_stack.split_off(duplicated_class_position);
+
+        let dependency_list: Vec<String> = splitted_class_table_index_stack
             .iter()
             .map(|&index| ast.symbol_table_arena.get_table(index).get_name_clone())
             .collect();
+
+        // In the last class, remove link to or variable of the duplicated one.
+        // This is to remove the dependency and allow the process to continue.
+        let duplicated_class_name = ast
+            .symbol_table_arena
+            .get_table(new_class_table_index)
+            .get_name_clone();
+        for (position, entry_index) in ast
+            .symbol_table_arena
+            .get_table_entries(last_class_table_index)
+            .to_vec()
+            .into_iter()
+            .enumerate()
+        {
+            let symbol_entry = ast.symbol_table_arena.get_mut_table_entry(entry_index);
+            if symbol_entry.is_class() {
+                if let Some(link_index) = symbol_entry.get_link() {
+                    if link_index == new_class_table_index {
+                        symbol_entry.set_link(None);
+                        break;
+                    }
+                }
+            } else if symbol_entry.is_variable()
+                && symbol_entry.has_class_name(&duplicated_class_name)
+            {
+                ast.symbol_table_arena
+                    .remove_entry_from_position(last_class_table_index, position);
+                break;
+            }
+        }
         return Err(SemanticError::CircularClassDependency(
             ast.get_leftmost_token(
-                get_node_index_with_entry_index(ast, ast.root.unwrap(), class_table_index).unwrap(),
+                get_node_index_with_entry_index(ast, ast.root.unwrap(), new_class_table_index)
+                    .unwrap(),
             )
             .clone(),
             dependency_list,
         ));
     }
     let mut class_table_index_stack = class_table_index_stack.clone();
-    class_table_index_stack.push(class_table_index);
+    class_table_index_stack.push(new_class_table_index);
 
-    for sub_class_table_index in ast.get_class_tables_in_table(class_table_index) {
+    for sub_class_table_index in ast.get_class_tables_in_table(new_class_table_index) {
         check_circular_dependency_in_class(
             ast,
             sub_class_table_index,
             &mut class_table_index_stack.clone(),
         )?;
     }
-    for sub_class_table_index in get_member_variable_in_table(ast, class_table_index) {
+    for sub_class_table_index in get_member_variable_in_table(ast, new_class_table_index) {
         check_circular_dependency_in_class(
             ast,
             sub_class_table_index,
@@ -219,13 +258,6 @@ fn get_member_variable_in_table(ast: &AST, class_table_index: usize) -> Vec<usiz
         .iter()
         .map(|&entry_index| ast.symbol_table_arena.get_table_entry(entry_index))
         .filter(|symbol_entry| symbol_entry.is_variable())
-        // .filter_map(|symbol_entry| {
-        //     if let SymbolKind::Variable(symbol_type) = &symbol_entry.kind {
-        //         Some(symbol_type)
-        //     } else {
-        //         None
-        //     }
-        //})
         .filter_map(|symbol_entry| {
             if let SymbolType::Class(class_name, _) = symbol_entry.get_symbol_type().unwrap() {
                 ast.find_class_symbol_table(&class_name)

@@ -1,12 +1,21 @@
-class InheritedUtility : Utility {
-  integer member1;};
 
-class Utility : InheritedUtility, Bad_class {
+class Utility : InheritedUtility {
   integer var1[4][5][7][8][9][1][1];
-  float var2;
-  //integer member1;
   integer findMax(integer aray[100]);
-  integer findMin(integer array[100]);};
+  integer findMin(integer array[100]);
+  };
+
+class InheritedUtility: III {
+  InheritedUtility cl;
+  integer member1;
+  III a;
+};
+
+class III {
+  integer tt;
+  InheritedUtility cl;
+};
+
 
 integer Utility::findMax(integer array[100]){
   integer maxValue;
@@ -26,13 +35,12 @@ integer Utility::findMin(integer array[100]){
         minValue = array[idx];}
       else{};
   };
-  return (minValue);};
+  return (1);};
 
 integer randomize(){
   integer value;
   Utility utility;
   value = 100 * (2 + 3);
-  value = 1 + ((2.04 * 2.47)  - 3.0) + 7.0006 > 1 && ! - 1;
   return (9);};
 
 main {
@@ -40,11 +48,15 @@ main {
   integer idx;
   integer maxValue;
   integer minValue;
-  Bad_type utility;
+  Utility utility;
   Utility arrayUtility[2][3][6][7];
   for(integer t = 0; t<=100 ; t = t + 1) {
     read(sample[t]);
     sample[t] = (sample[t] * randomize());
   };
+  maxValue = utility.findMax(sample);
+  minValue = utility.findMin(sample);
+  utility.var1[4][1][0][0][0][0][0] = 10;
   write(maxValue);
   write(minValue);};
+

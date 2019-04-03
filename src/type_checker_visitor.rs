@@ -158,6 +158,7 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
         .get_children_of_child(node_index, 1)
         .iter()
         .enumerate()
+        .filter(|(_, child_index)| ast.has_data_type(**child_index))
         .map(|(dimension_index, child_index)| {
             (dimension_index, ast.get_data_type(*child_index).clone())
         })

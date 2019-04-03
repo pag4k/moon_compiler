@@ -928,7 +928,6 @@ fn add_if_marker(ast: &AST, moon_code: &mut Vec<String>, node_index: usize) {
             }
         }
     };
-    //println!("{}", stat_block_node_index);
     let grand_parent_node_index = ast.get_parent(stat_block_node_index).unwrap();
     // If it is a IfStat, add one of the two marker.
     if let IfStat = ast.get_node_type(grand_parent_node_index) {
@@ -985,7 +984,6 @@ fn add_for_marker(ast: &AST, moon_code: &mut Vec<String>, node_index: usize) {
         let grand_parent_node_index = ast.get_parent(stat_block_node_index).unwrap();
         // If it is a ForStat, add FOR_LOOP_MARKER.
         if let ForStat = ast.get_node_type(grand_parent_node_index) {
-            println!("{}", node_index);
             moon_code.push(FOR_LOOP_MARKER.to_string());
         }
     }

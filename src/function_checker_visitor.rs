@@ -177,13 +177,6 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
         .get_table_entry(variable_entry_index)
         .get_symbol_type()
         .unwrap();
-    //     .kind
-    // {
-    //     SymbolKind::Variable(symbol_type)
-    //     | SymbolKind::Parameter(symbol_type)
-    //     | SymbolKind::For(symbol_type) => symbol_type.clone(),
-    //     _ => unreachable!(),
-    // };
 
     // Check if it is the last element in VarElementList and set the DataMember symbol type accordingly.
     match ast.get_right_sibling(node_index) {
@@ -314,7 +307,7 @@ fn function_call(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_i
     ast.get_mut_element(node_index).symbol_table_entry = Some(function_entry_index);
 }
 fn var_element_list(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
-    // Get last element symbol type..
+    // Get last element symbol type.
     let last_child_index = *ast.get_children(node_index).iter().last().unwrap();
 
     // Assign the last symbol type to the list.
@@ -398,10 +391,12 @@ fn get_symbol_type_and_class_table_from_node(
         // If the symbol type is found, verify if it is a class.
         let symbol_type = ast.get_data_type(node_index);
         match symbol_type {
-            SymbolType::Class(type_name, _) => Ok(Some((
-                symbol_type.clone(),
-                get_class_table_from_name(ast, &type_name),
-            ))),
+            SymbolType::Class(type_name, _) => match get_class_table_from_name(ast, &type_name) {
+                Some(class_table_index) => Ok(Some((symbol_type.clone(), class_table_index))),
+                None => Err(SemanticError::UndefinedClass(
+                    ast.get_leftmost_token(node_index).clone(),
+                )),
+            },
             _ => Err(SemanticError::DotOperatorWithInvalidClass(
                 ast.get_leftmost_token(node_index).clone(),
                 symbol_type.clone(),
@@ -415,7 +410,7 @@ fn get_symbol_type_and_class_table_from_node(
 }
 
 // We assume that the class name have all been validated.
-fn get_class_table_from_name(ast: &AST, class_name: &str) -> usize {
+fn get_class_table_from_name(ast: &AST, class_name: &str) -> Option<usize> {
     ast.get_class_tables_in_table(ast.symbol_table_arena.root.unwrap())
         .into_iter()
         .find(|&class_table_index| {
@@ -423,7 +418,6 @@ fn get_class_table_from_name(ast: &AST, class_name: &str) -> usize {
                 .get_table(class_table_index)
                 .has_name(class_name)
         })
-        .unwrap()
 }
 
 fn is_array_type(

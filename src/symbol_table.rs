@@ -153,6 +153,9 @@ impl Table<SymbolTable, SymbolTableEntry> for SymbolTable {
     fn get_entries(&self) -> &[usize] {
         &self.entries
     }
+    fn get_mut_entries(&mut self) -> &mut Vec<usize> {
+        &mut self.entries
+    }
 }
 
 impl SymbolTable {
@@ -224,6 +227,23 @@ impl SymbolTableEntry {
         use SymbolKind::*;
         match &self.kind {
             Function(_, parameter_symbol_types) => parameter_symbol_types,
+            _ => unreachable!(),
+        }
+    }
+    pub fn is_class(&self) -> bool {
+        use SymbolKind::*;
+        match self.kind {
+            Class => true,
+            _ => false,
+        }
+    }
+    pub fn has_class_name(&self, class_name: &str) -> bool {
+        use SymbolKind::*;
+        match &self.kind {
+            Variable(symbol_type) => match symbol_type {
+                SymbolType::Class(name, _) => name == class_name,
+                _ => false,
+            },
             _ => unreachable!(),
         }
     }

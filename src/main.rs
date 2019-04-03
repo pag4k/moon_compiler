@@ -382,31 +382,31 @@ fn compile(source: &str) -> (Option<Vec<Error>>, Option<bool>) {
         return (Some(errors), None);
     }
 
-    //let semantic_warning_and_errors = ast.semantic_class_checker();
-    let semantic_warning_and_errors = class_checker_visitor(&mut ast);
-    let (mut semantic_warnings, semantic_errors): (Vec<SemanticError>, Vec<SemanticError>) =
-        semantic_warning_and_errors
-            .into_iter()
-            .partition(SemanticError::is_warning);
-    if !semantic_warnings.is_empty() {
-        semantic_warnings.sort_by_key(TokenLocation::get_location);
-        println!("Found {} warnings:", semantic_warnings.len());
-        for semantic_warning in semantic_warnings {
-            println!("{}", semantic_warning);
-        }
-    }
-
+    // let semantic_warning_and_errors = class_checker_visitor(&mut ast);
+    // let (mut semantic_warnings, mut semantic_errors): (Vec<SemanticError>, Vec<SemanticError>) =
+    //     semantic_warning_and_errors
+    //         .into_iter()
+    //         .partition(SemanticError::is_warning);
+    // if !semantic_warnings.is_empty() {
+    //     semantic_warnings.sort_by_key(TokenLocation::get_location);
+    //     println!("Found {} warnings:", semantic_warnings.len());
+    //     for semantic_warning in semantic_warnings {
+    //         println!("{}", semantic_warning);
+    //     }
+    // }
+    let mut semantic_errors: Vec<SemanticError> = class_checker_visitor(&mut ast);
     println!("Semantic class checking completed.");
 
-    if !semantic_errors.is_empty() {
-        let errors = combine_errors(lexical_errors, syntactic_errors, semantic_errors);
-        print_errors(&errors, &mut error_file);
-        print_symbol_table(&ast, &mut symbol_table_file);
-        return (Some(errors), None);
-    }
+    // if !semantic_errors.is_empty() {
+    //     let errors = combine_errors(lexical_errors, syntactic_errors, semantic_errors);
+    //     print_errors(&errors, &mut error_file);
+    //     print_symbol_table(&ast, &mut symbol_table_file);
+    //     return (Some(errors), None);
+    // }
 
-    //let semantic_errors = ast.semantic_function_checker();
-    let mut semantic_errors = function_checker_visitor(&mut ast);
+    semantic_errors.append(&mut function_checker_visitor(&mut ast));
+
+    // let mut semantic_errors = function_checker_visitor(&mut ast);
 
     println!("Semantic function checking completed.");
 
@@ -543,6 +543,7 @@ mod tests {
             ("class_checker_error1.txt", 3),
             ("class_checker_error2.txt", 1),
             ("class_checker_error3.txt", 1),
+            ("class_checker_error4.txt", 2),
             ("function_checker_error1.txt", 8),
             ("type_checker_error1.txt", 11),
             ("combined_error1.txt", 9),
