@@ -36,7 +36,7 @@ pub fn code_generator_visitor(ast: &mut AST) -> Vec<String> {
     semantic_actions.insert(AddOp, binary_op);
     semantic_actions.insert(MultOp, binary_op);
     // Unary operation
-    semantic_actions.insert(AssignStat, unary_op);
+    semantic_actions.insert(AssignStat, assign_stat);
     semantic_actions.insert(AssignForStat, unary_op);
     semantic_actions.insert(Not, unary_op);
     semantic_actions.insert(Sign, unary_op);
@@ -513,6 +513,14 @@ fn unary_op(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     ast.register_pool.push(register3);
 }
 
+fn assign_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
+    let lhs_node_index = ast.get_child(node_index, 0);
+    let lhs_node_index = ast.get_child(lhs_node_index, 0);
+    let rhs_node_index = ast.get_child(node_index, 1);
+
+    copy_var(ast, moon_code, lhs_node_index, rhs_node_index);
+}
+
 fn num(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     add_entry_marker(ast, moon_code, node_index);
     add_if_marker(ast, moon_code, node_index);
@@ -527,8 +535,22 @@ fn num(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
         moon_code,
         format!("{} := {}", get_var_name(ast, node_index), data),
     );
-    // create a value corresponding to the literal value
-    addi(moon_code, register1, 0, data.parse().unwrap());
+    // Create a value corresponding to the literal value
+    // TODO: This is a temporary solution for floats.
+    // Their decimal part is just removed.
+    let integer = if let Ok(integer) = data.parse::<usize>() {
+        integer
+    } else if let Ok(float) = data.parse::<f32>() {
+        float as usize
+    } else {
+        // This should never happen since the lexical analysis validated.
+        unreachable!()
+    };
+
+    // Clamp since the compiler does not accept immediate value of 16 bits.
+    let integer = if integer > 16384 { 16384 } else { integer };
+
+    addi(moon_code, register1, 0, integer as isize);
     // assign this value to a temporary variable (assumed to have been previously created by the symbol table generator)
     store_node(ast, moon_code, node_index, register1);
     // deallocate the register for the current node
@@ -575,8 +597,6 @@ fn for_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     let cond_node_index = ast.get_child(node_index, 3);
 
     let register1 = ast.register_pool.pop();
-    //let register2 = ast.register_pool.pop();
-    //let register3 = ast.register_pool.pop();
 
     let for_index = ast.register_pool.get_for();
     let condfor = format!("condfor{}", for_index);
@@ -608,7 +628,6 @@ fn for_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     add_label(&mut cond_moon_code, condfor.clone());
 
     ast.register_pool.push(register1);
-    //ast.register_pool.push(register2);
 
     push_at(moon_code, cond_moon_code, FOR_COND_MARKER);
 
@@ -1353,4 +1372,45 @@ fn add_instruction(moon_code: &mut Vec<String>, label: Option<String>, instructi
             moon_code.push(format!("{}{}", INDENT, instruction));
         }
     }
+}
+
+fn copy_var(
+    ast: &mut AST,
+    moon_code: &mut Vec<String>,
+    lhs_node_index: usize,
+    rhs_node_index: usize,
+) {
+    //let lhs_variable_name = get_var_name(ast, lhs_node_index);
+    //let rhs_variable_name = get_var_name(ast, rhs_node_index);
+
+    let lhs_memory_entry_index = ast.get_memory_entry_index(lhs_node_index);
+    let rhs_memory_entry_index = ast.get_memory_entry_index(rhs_node_index);
+
+    let lhs_memory_entry = ast
+        .memory_table_arena
+        .get_table_entry(lhs_memory_entry_index);
+    let rhs_memory_entry = ast
+        .memory_table_arena
+        .get_table_entry(rhs_memory_entry_index);
+
+    let memory_size = lhs_memory_entry.get_size();
+    assert!(memory_size == rhs_memory_entry.get_size());
+    assert!(memory_size % 4 == 0);
+
+    let lhs_offset = lhs_memory_entry.get_offset();
+    let rhs_offset = rhs_memory_entry.get_offset();
+
+    let register1 = ast.register_pool.pop();
+
+    // add_comment(
+    //     moon_code,
+    //     format!("{} := {}", lhs_variable_name, rhs_variable_name,),
+    // );
+
+    for inner_offset in (0..memory_size).step_by(4) {
+        load_from_offset(moon_code, register1, rhs_offset + inner_offset);
+        store_at_offset(moon_code, lhs_offset + inner_offset, register1);
+    }
+    // deallocate the registers
+    ast.register_pool.push(register1);
 }

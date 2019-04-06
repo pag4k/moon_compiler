@@ -1,25 +1,26 @@
-class c  {
-  integer a;
-};
-
-class a : c{
+class a {
+  integer g;
   integer b;
-  integer a[10];
-  integer get(integer n);
+  integer h;
+
+  integer func(integer n);
+
 };
 
-integer a::get(integer n) {
-  b = 6;
-  return(a[n]);
+integer a::func(integer n) {
+    return(b);
+
+  integer b;
+  b = n;
 };
 
 
 main {
-  
-  c a;
-  for(integer i = 0; i < 10; i = i + 1) {
-    //a.a.a[i] = 100 + i;
-    //write(a.a.get(i));
-  };
+
+  a a;
+  a.b = 3;
+  a b;
+  b = a;
+  write(b.func(6));
   
 };

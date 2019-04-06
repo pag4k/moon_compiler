@@ -1,5 +1,6 @@
 use crate::ast_node::*;
 use crate::ast_visitor::*;
+use crate::semantic_analysis_common::*;
 use crate::semantic_error::*;
 use crate::symbol_table::*;
 
@@ -115,7 +116,8 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
                     let scope_node_index = ast.get_child(function_node_index, 1);
                     if ast.has_token(scope_node_index) {
                         // It is a member function, check if it is a member variable.
-                        match ast.find_class_symbol_table(ast.get_lexeme(scope_node_index)) {
+                        match get_class_table_index_from_name(ast, ast.get_lexeme(scope_node_index))
+                        {
                             // If it is a member variable, return table entry.
                             Some(class_table_index) => ast
                                 .is_member_variable(class_table_index, &variable_name)
@@ -266,7 +268,8 @@ fn function_call(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_i
                     let scope_node_index = ast.get_child(function_node_index, 1);
                     if ast.has_token(scope_node_index) {
                         // It is a member function, check if it is a member function.
-                        match ast.find_class_symbol_table(ast.get_lexeme(scope_node_index)) {
+                        match get_class_table_index_from_name(ast, ast.get_lexeme(scope_node_index))
+                        {
                             // If it is a member function, return table entry.
                             Some(class_table_index) => ast
                                 .is_member_function(class_table_index, &function_name)
@@ -399,12 +402,14 @@ fn get_symbol_type_and_class_table_from_node(
         // If the symbol type is found, verify if it is a class.
         let symbol_type = ast.get_data_type(node_index);
         match symbol_type {
-            SymbolType::Class(type_name, _) => match get_class_table_from_name(ast, &type_name) {
-                Some(class_table_index) => Ok(Some((symbol_type.clone(), class_table_index))),
-                None => Err(SemanticError::UndefinedClass(
-                    ast.get_leftmost_token(node_index).clone(),
-                )),
-            },
+            SymbolType::Class(type_name, _) => {
+                match get_class_table_index_from_name(ast, &type_name) {
+                    Some(class_table_index) => Ok(Some((symbol_type.clone(), class_table_index))),
+                    None => Err(SemanticError::UndefinedClass(
+                        ast.get_leftmost_token(node_index).clone(),
+                    )),
+                }
+            }
             _ => Err(SemanticError::DotOperatorWithInvalidClass(
                 ast.get_leftmost_token(node_index).clone(),
                 symbol_type.clone(),
@@ -415,17 +420,6 @@ fn get_symbol_type_and_class_table_from_node(
         // Return None so that it can be ignored.
         Ok(None)
     }
-}
-
-// We assume that the class name have all been validated.
-fn get_class_table_from_name(ast: &AST, class_name: &str) -> Option<usize> {
-    ast.get_class_tables_in_table(ast.symbol_table_arena.root.unwrap())
-        .into_iter()
-        .find(|&class_table_index| {
-            ast.symbol_table_arena
-                .get_table(class_table_index)
-                .has_name(class_name)
-        })
 }
 
 fn is_array_type(
@@ -553,7 +547,7 @@ fn check_if_valid_local_variable(
         // If it is a for variable, check if it is in scope.
         For(_) => {
             if !is_for_variable_in_scope(ast, node_index) {
-                return Err(SemanticError::ForVariableUsedOutOfScope(
+                return Err(SemanticError::ForCounterUsedOutOfScope(
                     ast.get_leftmost_token(node_index).clone(),
                     ast.symbol_table_arena
                         .get_table(function_table_index)

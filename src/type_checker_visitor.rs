@@ -12,6 +12,7 @@ pub fn type_checker_visitor(ast: &mut AST) -> Vec<SemanticError> {
     let mut semantic_actions: SemanticActionMap<SemanticError> = HashMap::new();
     semantic_actions.insert(AssignStat, assign_stat);
     semantic_actions.insert(AssignForStat, assign_stat);
+    semantic_actions.insert(ForStat, for_stat);
     semantic_actions.insert(RelExpr, rel_expr);
     semantic_actions.insert(AddOp, add_op);
     semantic_actions.insert(MultOp, mult_op);
@@ -64,6 +65,31 @@ fn assign_stat(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
         }
     }
 }
+
+fn for_stat(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
+    use SymbolType::*;
+
+    if ast.has_symbol_entry_index(node_index) {
+        let symbol_entry_index = ast.get_symbol_entry_index(node_index);
+        let counter_type = ast
+            .symbol_table_arena
+            .get_table_entry(symbol_entry_index)
+            .get_symbol_type();
+        if let Some(counter_type) = counter_type {
+            match counter_type {
+                Integer(_) => {}
+                _ => {
+                    let counter_name = ast.get_child_lexeme(node_index, 1).clone();
+                    semantic_errors.push(SemanticError::ForCounterShouldBeInteger(
+                        ast.get_leftmost_token(node_index).clone(),
+                        counter_name,
+                    ));
+                }
+            }
+        }
+    }
+}
+
 fn rel_expr(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     use SymbolType::*;
 

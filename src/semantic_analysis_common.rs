@@ -64,21 +64,6 @@ impl AST {
         None
     }
 
-    pub fn find_class_symbol_table(&self, name: &str) -> Option<usize> {
-        for class_table_index in
-            self.get_class_tables_in_table(self.symbol_table_arena.root.unwrap())
-        {
-            let class_name = self
-                .symbol_table_arena
-                .get_table(class_table_index)
-                .get_name_clone();
-            if name == class_name {
-                return Some(class_table_index);
-            }
-        }
-        None
-    }
-
     pub fn get_variable_entry_in_class_table(
         &self,
         table_index: usize,
@@ -97,4 +82,14 @@ impl AST {
 
         None
     }
+}
+
+pub fn get_class_table_index_from_name(ast: &AST, class_name: &str) -> Option<usize> {
+    ast.get_class_tables_in_table(ast.symbol_table_arena.root.unwrap())
+        .into_iter()
+        .find(|&class_table_index| {
+            ast.symbol_table_arena
+                .get_table(class_table_index)
+                .has_name(class_name)
+        })
 }

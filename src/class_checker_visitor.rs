@@ -1,5 +1,6 @@
 use crate::ast_node::*;
 use crate::ast_visitor::*;
+use crate::semantic_analysis_common::*;
 use crate::semantic_error::*;
 use crate::symbol_table::*;
 
@@ -12,7 +13,6 @@ pub fn class_checker_visitor(ast: &mut AST) -> Vec<SemanticError> {
     semantic_actions.insert(Prog, prog);
     semantic_actions.insert(ClassDecl, class_decl);
     semantic_actions.insert(Type, node_type);
-    //semantic_actions.insert(VarElementList, var_element_list);
     ast_traversal(ast, &mut semantic_errors, &semantic_actions);
     semantic_errors
 }
@@ -113,7 +113,7 @@ fn class_decl(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_inde
     // Get parents.
     for child_index in ast.get_children_of_child(node_index, 1) {
         let parent_name = ast.get_lexeme(child_index);
-        match ast.find_class_symbol_table(&parent_name) {
+        match get_class_table_index_from_name(ast, parent_name) {
             Some(parent_table_index) => {
                 let entry_index = ast.symbol_table_arena.new_symbol_table_entry(
                     parent_name.clone(),
@@ -132,11 +132,12 @@ fn class_decl(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_inde
         }
     }
 }
+
 fn node_type(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     let type_name = ast.get_lexeme(node_index);
     if type_name != "integer"
         && type_name != "float"
-        && ast.find_class_symbol_table(&type_name).is_none()
+        && get_class_table_index_from_name(ast, type_name).is_none()
     {
         semantic_errors.push(SemanticError::UndefinedClass(
             ast.get_token(node_index).clone(),
@@ -260,7 +261,7 @@ fn get_member_variable_in_table(ast: &AST, class_table_index: usize) -> Vec<usiz
         .filter(|symbol_entry| symbol_entry.is_variable())
         .filter_map(|symbol_entry| {
             if let SymbolType::Class(class_name, _) = symbol_entry.get_symbol_type().unwrap() {
-                ast.find_class_symbol_table(&class_name)
+                get_class_table_index_from_name(ast, class_name)
             } else {
                 None
             }

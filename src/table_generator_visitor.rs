@@ -1,5 +1,6 @@
 use crate::ast_node::*;
 use crate::ast_visitor::*;
+use crate::semantic_analysis_common::*;
 use crate::semantic_error::*;
 use crate::symbol_table::*;
 
@@ -225,23 +226,14 @@ fn f_param(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: 
     ast.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
 }
 fn for_stat(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
-    // FIXME: Check if for variable is integer.
     let symbol_type = make_type_from_child(ast, node_index, 0, Vec::new());
-
     let name = ast.get_child_lexeme(node_index, 1);
-    //let table_index = ast.symbol_table_arena.new_symbol_table(name.clone());
     let entry_index = ast.symbol_table_arena.new_symbol_table_entry(
         name.clone(),
         SymbolKind::For(symbol_type),
         None,
     );
-    //let first_child_index = ast.get_children(node_index)[0];
-
     ast.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
-    // if let Err(error) = add_entry_to_table(ast, table_index, first_child_index) {
-    //     semantic_errors.push(error);
-    // }
-    //ast.get_mut_element(node_index).symbol_table = Some(table_index);
 }
 fn stat_block(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     // Create a table without a name.
@@ -308,7 +300,7 @@ fn add_function(
     if ast.has_token(scope_node_index) {
         // If member function, link it in its class.
         let class_name = ast.get_lexeme(scope_node_index);
-        let class_table_index = match ast.find_class_symbol_table(&class_name) {
+        let class_table_index = match get_class_table_index_from_name(ast, class_name) {
             Some(class_table_index) => class_table_index,
             None => {
                 // There is an UndefinedClass error, but it won't be reported,

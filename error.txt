@@ -1,9 +1,0 @@
-Semantic error at [line:5, column:2]: Variable "integer" index at position 6 must be greater than zero, but found 0.
-Syntactic error at [line:6, column:2] with DimList: not expecting Float. Recovered at [line:6, column:12].
-Semantic error at [line:15, column:7]: Duplicate identifier in scope "": "idx".
-Lexical error at [line:24, column:10]: "@" -> Lexical Error: Invalid Character.
-Semantic error at [line:26, column:9]: Duplicate identifier in scope "": "idx".
-Syntactic error at [line:30, column:4] with StatOrAssignOrVarDeclList: not expecting SemiColon. Recovered at [line:31, column:2].
-Lexical error at [line:37, column:50]: "&" -> Lexical Error: Incomplete And (did you mean '&&'?).
-Syntactic error at [line:37, column:52] with TermPrime: not expecting Not. Recovered at [line:37, column:54].
-Syntactic error at [line:56, column:0]: Token ";" after main function.
