@@ -115,12 +115,16 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
                     let scope_node_index = ast.get_child(function_node_index, 1);
                     if ast.has_token(scope_node_index) {
                         // It is a member function, check if it is a member variable.
-                        let class_table_index = ast
-                            .find_class_symbol_table(ast.get_lexeme(scope_node_index))
-                            .unwrap();
-                        // If it is a member variable, return table entry.
-                        ast.is_member_variable(class_table_index, &variable_name)
-                            .map(|(_, entry_index)| entry_index)
+                        match ast.find_class_symbol_table(ast.get_lexeme(scope_node_index)) {
+                            // If it is a member variable, return table entry.
+                            Some(class_table_index) => ast
+                                .is_member_variable(class_table_index, &variable_name)
+                                .map(|(_, entry_index)| entry_index),
+                            // If the scope node has no lexeme, there was an error, abort.
+                            None => {
+                                return;
+                            }
+                        }
                     } else {
                         // It is a free function.
                         None
@@ -261,13 +265,17 @@ fn function_call(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_i
                 NodeType::FuncDef => {
                     let scope_node_index = ast.get_child(function_node_index, 1);
                     if ast.has_token(scope_node_index) {
-                        // It is a parent member function, check if the called function is also a member.
-                        let class_table_index = ast
-                            .find_class_symbol_table(ast.get_lexeme(scope_node_index))
-                            .unwrap();
-                        // If it is a member variable, return table entry.
-                        ast.is_member_function(class_table_index, &function_name)
-                            .map(|(_, entry_index)| entry_index)
+                        // It is a member function, check if it is a member function.
+                        match ast.find_class_symbol_table(ast.get_lexeme(scope_node_index)) {
+                            // If it is a member function, return table entry.
+                            Some(class_table_index) => ast
+                                .is_member_function(class_table_index, &function_name)
+                                .map(|(_, entry_index)| entry_index),
+                            // If the scope node has no lexeme, there was an error, abort.
+                            None => {
+                                return;
+                            }
+                        }
                     } else {
                         // It is a free function or the main function.
                         None

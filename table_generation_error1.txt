@@ -1,12 +1,11 @@
 class InheritedUtility {
   integer member1;};
 
-class Utility : InheritedUtility, bad_class {
+class Utility : InheritedUtility {
   integer var1[0][5][7][8][9][1][0];
   float var2;
   //integer member1;
-  integer findMax(integer aray[100]);
-  integer findMin(integer array[100]);};
+  integer findMax(integer aray[100]);};
 
 integer Utility::findMax(integer array[100]){
   integer maxValue;
@@ -48,7 +47,6 @@ main {
     sample[t] = (sample[t] * randomize());
   };
   maxValue = utility.findMax(sample);
-  minValue = utility.findMin(sample);
   utility.var1[4][1][0][0][0][0][0] = 10;
   arrayUtility[utility.var1[1][2][3][4][5][6][idx+maxValue]][1][1][1].var2 = 2.5;
   write(maxValue);

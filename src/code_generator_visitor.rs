@@ -28,6 +28,7 @@ pub fn code_generator_visitor(ast: &mut AST) -> Vec<String> {
     semantic_actions.insert(IfStat, if_stat);
     semantic_actions.insert(ForStat, for_stat);
     semantic_actions.insert(WriteStat, write_stat);
+    semantic_actions.insert(ReadStat, read_stat);
     semantic_actions.insert(ReturnStat, return_stat);
 
     // Binary operation
@@ -647,35 +648,74 @@ fn write_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     let child_node_index = ast.get_child(node_index, 0);
     let child_variable_name = get_var_name(ast, child_node_index);
     let function_stack_frame_size = get_current_stack_frame_offset(ast, node_index);
-    // Then, do the processing of this nodes' visitor
-    // create a local variable and allocate a register to this subcomputation
+
     let register1 = ast.register_pool.pop();
-    //generate code
 
     add_comment(moon_code, format!("write({})", child_variable_name,));
 
-    // put the value to be printed into a register
+    // Load value to write.
     load_node(ast, moon_code, register1, child_node_index);
-    add_comment(moon_code, "Put value on stack".to_string());
 
-    // make the stack frame pointer point to the called function's stack frame
-    // FIXME: Not sure about the size to add here.
+    // Move function pointer.
     addi(moon_code, 14, 14, function_stack_frame_size);
-    // copy the value to be printed in the called function's stack frame
+
+    // Put write value on the stack,
+    add_comment(moon_code, "Put value on stack".to_string());
     store_at_offset(moon_code, -8, register1);
+
+    // Copy buffer address on the stack.
     add_comment(moon_code, "Put buffer address on the stack".to_string());
     addi_label(moon_code, register1, 0, "buf".to_string());
     store_at_offset(moon_code, -12, register1);
+
+    // Convert value to string using "intstr".
     add_comment(moon_code, "Convert int to string for output".to_string());
     moon_code.push(format!("{}jl r15,intstr", INDENT));
-    // receive the return value in r13
+
+    // Get result of conversion which is in r13.
     store_at_offset(moon_code, -8, 13);
+
+    // Write value to console using "putstr".
     add_comment(moon_code, "Output to console".to_string());
-    // putstr is expecting the address of the string in r1
     moon_code.push(format!("{}jl r15,putstr", INDENT));
-    // make the stack frame pointer point back to the current function's stack frame
+
+    // Move back function pointer.
     subi(moon_code, 14, 14, function_stack_frame_size);
-    // deallocate local register
+
+    ast.register_pool.push(register1);
+}
+
+fn read_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
+    let child_node_index = ast.get_child(node_index, 0);
+    let child_variable_name = get_var_name(ast, child_node_index);
+    let function_stack_frame_size = get_current_stack_frame_offset(ast, node_index);
+
+    add_comment(moon_code, format!("read({})", child_variable_name,));
+
+    let register1 = ast.register_pool.pop();
+
+    // Move function pointer.
+    addi(moon_code, 14, 14, function_stack_frame_size);
+
+    // Copy buffer address on the stack.
+    add_comment(moon_code, "Put buffer address on the stack".to_string());
+    addi_label(moon_code, register1, 0, "buf".to_string());
+    store_at_offset(moon_code, -8, register1);
+
+    // Get the string with function "getstr"
+    add_comment(moon_code, "Get inpit from console".to_string());
+    moon_code.push(format!("{}jl r15,getstr", INDENT));
+
+    // Convert to integer with function "strint"
+    add_comment(moon_code, "Convert string to int for input".to_string());
+    moon_code.push(format!("{}jl r15,strint", INDENT));
+
+    // Move back function pointer.
+    subi(moon_code, 14, 14, function_stack_frame_size);
+
+    // Get result of conversion which is in r13.
+    store_node(ast, moon_code, child_node_index, 13);
+
     ast.register_pool.push(register1);
 }
 
@@ -1183,6 +1223,7 @@ fn get_offset(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) -> 
     }
 }
 
+/// Load the content of the node to the specified register.
 fn load_node(ast: &mut AST, moon_code: &mut Vec<String>, register_index: usize, node_index: usize) {
     use Offset::*;
 
@@ -1218,6 +1259,7 @@ fn load_from_offset_register(
     ));
 }
 
+/// Load the content of the register to the specified node.
 fn store_node(
     ast: &mut AST,
     moon_code: &mut Vec<String>,

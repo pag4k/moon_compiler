@@ -64,8 +64,6 @@ impl SyntacticAnalyzer {
         let mut derivation: Vec<Symbol> = vec![GrammarSymbol::Variable(VariableType::Prog)];
         let mut derivation_table: DerivationTable = Vec::new();
 
-        let mut construct_ast = true;
-
         'main: while let Some(symbol) = stack.last() {
             match symbol {
                 ParserSymbol::Terminal(terminal) => {
@@ -127,10 +125,10 @@ impl SyntacticAnalyzer {
                                 .skip_while(|(_, &symbol)| !symbol.is_variable())
                                 .next()
                                 .expect("ERROR: No variable found in derivation.");
+
                             //Confirm that it is the same as the LHS of the production.
-                            if construct_ast {
-                                assert!(variable == Variable(production.lhs));
-                            }
+                            assert!(variable == Variable(production.lhs));
+
                             //Remove the first variable.
                             derivation.remove(position);
                             for symbol in production.rhs.iter().rev() {
@@ -149,16 +147,20 @@ impl SyntacticAnalyzer {
                             }
                         }
                         None => {
-                            // If not production is found, error.
+                            // If no production is found, error.
                             // If token is in follow set of the variable on top of the stack.
                             if token_type == FollowType::DollarSign
                                 || self.table.follow_sets[variable].contains(&token_type)
                             {
                                 syntactic_errors
                                     .push(NotInTableButInFollow(token.clone(), *variable));
-                                stack.pop();
-                                // This error prevent valid construction of AST.
-                                construct_ast = false;
+                                // Skip token.
+                                token_type = *token_type_iter.next().unwrap();
+                                if token_type == FollowType::DollarSign {
+                                    continue;
+                                }
+                                last_token = Some(token);
+                                token = token_iter.next().unwrap();
                             } else {
                                 let (start_token, error_variable) = (token.clone(), *variable);
                                 // Otherwise, skip tokens until one that leads to a production is found.
@@ -187,30 +189,24 @@ impl SyntacticAnalyzer {
                 }
                 ParserSymbol::SemanticAction(semantic_action) => {
                     // Handle semantic action.
-                    if construct_ast {
-                        match semantic_action {
-                            // If data action, push on data stack.
-                            NodeType::Data => {
-                                token_stack.push(last_token.clone().unwrap());
+                    match semantic_action {
+                        // If data action, push on data stack.
+                        NodeType::Data => {
+                            token_stack.push(last_token.clone().unwrap());
+                        }
+                        // If end program, but the token is not '$'.
+                        NodeType::EndProgram => {
+                            stack.pop();
+                            if token_type != FollowType::DollarSign {
+                                let mut token_list: Vec<Token> = token_iter.collect();
+                                token_list.push(token.clone());
+                                token_iter = token_list.into_iter();
                             }
-                            // If end program, but the token is not '$'.
-                            NodeType::EndProgram => {
-                                stack.pop();
-                                if token_type != FollowType::DollarSign {
-                                    let mut token_list: Vec<Token> = token_iter.collect();
-                                    token_list.push(token.clone());
-                                    token_iter = token_list.into_iter();
-                                }
-                                break;
-                            }
-                            // Otherwise, try to make a node.
-                            _ => {
-                                ast.make_node(
-                                    &mut semantic_stack,
-                                    &mut token_stack,
-                                    *semantic_action,
-                                )?;
-                            }
+                            break;
+                        }
+                        // Otherwise, try to make a node.
+                        _ => {
+                            ast.make_node(&mut semantic_stack, &mut token_stack, *semantic_action)?;
                         }
                     }
                     stack.pop();

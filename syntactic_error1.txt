@@ -1,16 +1,23 @@
-integer function1() {};
+class my_class {};
 
-//Error 1: Function defition before class declaration
+integer function1() {
+    return(1);
+};
+
+//Error 1: Function definition before class declaration
 //Error 2: Wrong error, it tries to define a function with my_class return type
 class my_class {};
 
 //Recovered using function2 as function id.
-integer function2() {};
+integer function2() {
+  my_class a;
+  return(a);
+};
 
 //Recovered error 1
 main {
   //Error 3: Missing ;
-  integer a
+  integer ac
   //Recovered using the following one.
   class b;
 

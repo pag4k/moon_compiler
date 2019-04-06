@@ -9,6 +9,7 @@ SYMBOL TABLE: NAME: Utility INDEX: 1
 0. Name: var1, Variable: integer[4][5][7][8][9][1][0], Link: None
 1. Name: findMax, Function: Return Type: integer, Parameters: integer[100], Link: Some(2)
 2. Name: findMin, Function: Return Type: integer, Parameters: integer[100], Link: Some(3)
+3. Name: InheritedUtility, Class, Link: Some(0)
 SYMBOL TABLE: NAME: findMax INDEX: 2
 0. Name: maxValue, Variable: integer, Link: None
 1. Name: idx, Variable: integer, Link: None

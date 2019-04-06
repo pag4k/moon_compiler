@@ -69,7 +69,7 @@ impl SyntacticError {
         use SyntacticError::*;
         match self {
             WrongTerminal(_, _, recovery_location) => recovery_location.is_none(),
-            NotInTableButInFollow(_, _) => true,
+            NotInTableButInFollow(_, _) => false,
             NotInTableNorInFollow(_, _, recovery_location) => recovery_location.is_none(),
             TokenAfterMain(_) => false,
         }

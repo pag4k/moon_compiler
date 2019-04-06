@@ -140,8 +140,12 @@ fn combine_errors(
     errors
 }
 
-fn print_errors(errors: &[Error], error_file: &mut File) {
-    println!("Found {} errors:", errors.len());
+fn print_errors(errors: &[Error], error_file: &mut File, warning_count: usize) {
+    println!(
+        "Found {} warning(s) and {} error(s):",
+        warning_count,
+        errors.len() - warning_count
+    );
     for error in errors {
         println!("{}", error);
         error_file
@@ -360,7 +364,8 @@ fn compile(source: &str) -> (Option<Vec<Error>>, Option<bool>) {
         .any(|syntactic_error| syntactic_error.failed_to_recover())
     {
         let errors = combine_errors(lexical_errors, syntactic_errors, Vec::new());
-        print_errors(&errors, &mut error_file);
+        print_errors(&errors, &mut error_file, 0);
+        println!("ERROR: One error could not be recovered. Exiting...",);
         return (Some(errors), None);
     }
 
@@ -370,76 +375,38 @@ fn compile(source: &str) -> (Option<Vec<Error>>, Option<bool>) {
         Err(error) => println!("{}", error),
     };
 
-    //let semantic_errors = ast.generate_symbol_table();
-    let semantic_errors = table_generator_visitor(&mut ast);
+    let mut semantic_errors = table_generator_visitor(&mut ast);
 
     println!("Symbol table generation completed.");
 
-    if !semantic_errors.is_empty() {
-        let errors = combine_errors(lexical_errors, syntactic_errors, semantic_errors);
-        print_errors(&errors, &mut error_file);
-        print_symbol_table(&ast, &mut symbol_table_file);
-        return (Some(errors), None);
-    }
-
-    // let semantic_warning_and_errors = class_checker_visitor(&mut ast);
-    // let (mut semantic_warnings, mut semantic_errors): (Vec<SemanticError>, Vec<SemanticError>) =
-    //     semantic_warning_and_errors
-    //         .into_iter()
-    //         .partition(SemanticError::is_warning);
-    // if !semantic_warnings.is_empty() {
-    //     semantic_warnings.sort_by_key(TokenLocation::get_location);
-    //     println!("Found {} warnings:", semantic_warnings.len());
-    //     for semantic_warning in semantic_warnings {
-    //         println!("{}", semantic_warning);
-    //     }
-    // }
-    let mut semantic_errors: Vec<SemanticError> = class_checker_visitor(&mut ast);
+    semantic_errors.append(&mut class_checker_visitor(&mut ast));
     println!("Semantic class checking completed.");
-
-    // if !semantic_errors.is_empty() {
-    //     let errors = combine_errors(lexical_errors, syntactic_errors, semantic_errors);
-    //     print_errors(&errors, &mut error_file);
-    //     print_symbol_table(&ast, &mut symbol_table_file);
-    //     return (Some(errors), None);
-    // }
 
     semantic_errors.append(&mut function_checker_visitor(&mut ast));
 
-    // let mut semantic_errors = function_checker_visitor(&mut ast);
-
     println!("Semantic function checking completed.");
-
-    // if !semantic_errors.is_empty() {
-    //     let errors = combine_errors(lexical_errors, syntactic_errors, semantic_errors);
-    //     print_errors(&errors, &mut error_file);
-    //     print_symbol_table(&ast, &mut symbol_table_file);
-    //     return (Some(errors), None);
-    // }
 
     semantic_errors.append(&mut type_checker_visitor(&mut ast));
     println!("Type checking completed.");
 
-    if !semantic_errors.is_empty() {
+    if !lexical_errors.is_empty() || !syntactic_errors.is_empty() || !semantic_errors.is_empty() {
+        let warning_count = semantic_errors
+            .iter()
+            .filter(|semantic_error| semantic_error.is_warning())
+            .count();
         let errors = combine_errors(lexical_errors, syntactic_errors, semantic_errors);
-        print_errors(&errors, &mut error_file);
+        print_errors(&errors, &mut error_file, warning_count);
         print_symbol_table(&ast, &mut symbol_table_file);
-        return (Some(errors), None);
-    }
-
-    if !lexical_errors.is_empty() || !syntactic_errors.is_empty() {
-        let errors = combine_errors(lexical_errors, syntactic_errors, semantic_errors);
-        print_errors(&errors, &mut error_file);
-        print_symbol_table(&ast, &mut symbol_table_file);
-        return (Some(errors), None);
+        if warning_count != errors.len() {
+            return (Some(errors), None);
+        }
     }
 
     println!("Compilation completed without errors!");
     print_symbol_table(&ast, &mut symbol_table_file);
 
-    while !memory_table_generator_visitor(&mut ast).is_empty() {
-        println!("Memory pass");
-    }
+    // Traverse the AST untill all classes have been sized.
+    while !memory_table_generator_visitor(&mut ast).is_empty() {}
 
     print_memory_table(&ast, &mut memory_table_file);
 
@@ -507,7 +474,7 @@ mod tests {
     #[test]
     fn syntactic_analyzer() {
         let source_files: Vec<(&str, usize)> =
-            vec![("syntactic_error1.txt", 5), ("syntactic_error2.txt", 9)];
+            vec![("syntactic_error1.txt", 5), ("syntactic_error2.txt", 8)];
 
         for (source_filename, error_count) in source_files.iter() {
             let source = match fs::read_to_string(source_filename) {

@@ -1,3 +1,9 @@
+class parent1 {};
+class parent3 {};
+class scope1 {
+  integer scope2(); 
+};
+
 //Error 1: Invalid parent
 //Recovery using parent3
 class a: parent1, integer, parent3 {
@@ -7,10 +13,14 @@ class a: parent1, integer, parent3 {
 //Error 2: Superfluous scope
 //Recovery using (, but wrong function name
 integer scope1::scope2::function() {
-
+  return(1);
 };
 
 main {
+  integer a;
+  integer b;
+  integer c;
+
   //Error 3: Superfluous *
   //Immediate recovery since 4 is in the follow set of /
   a = 4 / * 4;
@@ -24,7 +34,7 @@ main {
   c = 4 >< 6;
 
   //Error 7: Superfluous ;
-  for (integer a = 5; a < 10; a = a + 1;) {
+  for (integer i = 5; i < 10; i = i + 1;) {
 
   };
 

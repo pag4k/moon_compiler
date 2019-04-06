@@ -311,9 +311,12 @@ fn add_function(
         let class_table_index = match ast.find_class_symbol_table(&class_name) {
             Some(class_table_index) => class_table_index,
             None => {
-                return Err(SemanticError::UndefinedClass(
-                    ast.get_child_token(function_node_index, 1).clone(),
-                ));
+                // There is an UndefinedClass error, but it won't be reported,
+                // since it will be caught later.
+                return Ok(());
+                // return Err(SemanticError::UndefinedClass(
+                //     ast.get_child_token(function_node_index, 1).clone(),
+                // ));
             }
         };
         match ast.find_function_in_table(class_table_index, &function_name) {
