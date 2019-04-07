@@ -176,6 +176,19 @@ fn print_moon_code(code: &[String], moon_code_file: &mut File) {
 }
 
 fn compile(source: &str) -> (Option<Vec<Error>>, Option<bool>) {
+    let token_filename = "token.txt";
+    let path = Path::new(token_filename);
+    let mut token_file = match File::create(&path) {
+        Ok(file) => file,
+        Err(_) => {
+            println!(
+                "ERROR: Something went wrong creating token file: {}. Exiting...",
+                token_filename
+            );
+            return (None, None);
+        }
+    };
+
     let atocc_filename = "atocc.txt";
     let path = Path::new(atocc_filename);
     let mut atocc_file = match File::create(&path) {
@@ -253,6 +266,9 @@ fn compile(source: &str) -> (Option<Vec<Error>>, Option<bool>) {
                     TokenType::Comment(_) => {}
                     _ => tokens.push(token.clone()),
                 }
+                token_file
+                    .write_fmt(format_args!("{}\n", token))
+                    .expect("Could not write to token file.");
                 atocc_file
                     .write_fmt(format_args!("{} ", token.token_type))
                     .expect("Could not write to AtoCC file.");
@@ -366,7 +382,7 @@ fn compile(source: &str) -> (Option<Vec<Error>>, Option<bool>) {
     {
         let errors = combine_errors(lexical_errors, syntactic_errors, Vec::new());
         print_errors(&errors, &mut error_file, 0);
-        println!("ERROR: One error could not be recovered. Exiting...",);
+        println!("ERROR: Some errors could not be recovered. Exiting...",);
         return (Some(errors), None);
     }
 

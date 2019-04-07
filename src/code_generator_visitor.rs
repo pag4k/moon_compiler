@@ -13,7 +13,6 @@ pub fn code_generator_visitor(ast: &mut AST) -> Vec<String> {
     semantic_actions.insert(MainFuncBody, main_func_body);
     semantic_actions.insert(FuncDef, func_def);
     semantic_actions.insert(FunctionCall, function_call);
-
     semantic_actions.insert(DataMember, data_member);
 
     // Statements
@@ -29,11 +28,11 @@ pub fn code_generator_visitor(ast: &mut AST) -> Vec<String> {
     semantic_actions.insert(MultOp, binary_op);
     // Unary operation
     semantic_actions.insert(AssignStat, assign_stat);
-    semantic_actions.insert(AssignForStat, unary_op);
+    semantic_actions.insert(AssignForStat, assign_stat);
     semantic_actions.insert(Not, unary_op);
     semantic_actions.insert(Sign, unary_op);
 
-    // Variables
+    // Literal variables
     semantic_actions.insert(Num, num);
 
     // Marker
@@ -109,8 +108,7 @@ fn func_def(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
 
 fn function_call(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     use Reference::*;
-    // Get function name and unique index.
-    let func_name = get_func_name(ast, node_index);
+    // Get function unique index and label.
     let function_index = get_funtion_symbol_table_index(ast, node_index);
     let func_label = format!("func{}", function_index);
 
@@ -120,9 +118,14 @@ fn function_call(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) 
         get_memory_table_index_from_symbol(ast, node_index).unwrap();
     let (return_var_size, return_var_offset) =
         get_return_var_size_and_offset(ast, called_function_memory_table_index);
+
     add_comment(
         moon_code,
-        format!("Function call to {} ({})", func_name, func_label),
+        format!(
+            "Function call to {} ({})",
+            get_func_name(ast, node_index),
+            func_label
+        ),
     );
 
     let register1 = ast.register_pool.pop();
@@ -161,11 +164,14 @@ fn function_call(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) 
                 get_var_name(ast, argument_node_index)
             ),
         );
+        // Copy parameter.
         copy_var(
             ast,
             moon_code,
-            param_entry.get_size(),
-            Offset(current_stack_frame_size + param_entry.get_offset()),
+            SizeAndOffset(
+                param_entry.get_size(),
+                current_stack_frame_size + param_entry.get_offset(),
+            ),
             Node(argument_node_index),
         );
     }
@@ -198,12 +204,15 @@ fn function_call(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) 
         format!("{} = return value", get_var_name(ast, node_index)),
     );
 
+    // Copy return value to local variable.
     copy_var(
         ast,
         moon_code,
-        return_var_size,
         Node(node_index),
-        Offset(current_stack_frame_size + return_var_offset),
+        SizeAndOffset(
+            return_var_size,
+            current_stack_frame_size + return_var_offset,
+        ),
     );
 
     ast.register_pool.push(register1);
@@ -224,14 +233,6 @@ fn data_member(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
         let dimension_list = symbol_type.get_dimension_list();
         let type_size = get_size(ast, &symbol_type.remove_dimensions()).unwrap();
 
-        // let (dimension_list, type_size) = match &symbol_entry.kind {
-        //     Parameter(symbol_type) | Variable(symbol_type) | For(symbol_type) => (
-        //         symbol_type.get_dimension_list(),
-        //         get_size(ast, &symbol_type.remove_dimensions()).unwrap(),
-        //     ),
-        //     _ => unreachable!(),
-        // };
-
         let register1 = ast.register_pool.pop();
         let register2 = ast.register_pool.pop();
         let register3 = ast.register_pool.pop();
@@ -241,7 +242,6 @@ fn data_member(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
         );
         // Initialize the accumulator register that will hold the array offset.
         subi(moon_code, register1, 0, type_size as isize);
-        //subi(moon_code, register1, 0, 0);
 
         for (position, index_node) in ast.get_children(index_list_node).into_iter().enumerate() {
             // Get the current dimension multiplier.
@@ -274,6 +274,9 @@ fn binary_op(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     use OperatorType::*;
     use Reference::*;
 
+    let lhs_node_index = node_index;
+
+    // Get rhs nodes depending on node type.
     let (rhs_node_index1, op_node_index, rhs_node_index2) = match ast.get_node_type(node_index) {
         RelExpr => (
             ast.get_child(node_index, 0),
@@ -288,144 +291,52 @@ fn binary_op(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
         _ => unreachable!(),
     };
 
-    // Get operation
+    // Get operation.
     let operator = match ast.get_token_type(op_node_index) {
         TokenType::Operator(operator) => *operator,
         _ => unreachable!(),
     };
 
-    let operator_lexeme = ast.get_lexeme(op_node_index).clone();
-
-    // FIXME: Need to allow other operation than +
-    // FIXME: Next 3 lines assume very simple VarElementList.
-    let lhs_node_index = node_index;
-    let lhs_variable_name = get_var_name(ast, lhs_node_index);
-    let rhs_variable_name1 = get_var_name(ast, rhs_node_index1);
-    let rhs_variable_name2 = get_var_name(ast, rhs_node_index2);
-
-    // Then, do the processing of this nodes' visitor
-    // allocate registers to this subcomputation
-    let register1 = ast.register_pool.pop();
-    let register2 = ast.register_pool.pop();
-    let register3 = ast.register_pool.pop();
-    // generate code
-
     add_comment(
         moon_code,
         format!(
             "{} := {} {} {}",
-            lhs_variable_name, rhs_variable_name1, operator_lexeme, rhs_variable_name2,
+            get_var_name(ast, lhs_node_index),
+            get_var_name(ast, rhs_node_index1),
+            ast.get_lexeme(op_node_index),
+            get_var_name(ast, rhs_node_index2),
         ),
     );
 
-    // load the values of the operands into registers
+    let register1 = ast.register_pool.pop();
+    let register2 = ast.register_pool.pop();
+    let register3 = ast.register_pool.pop();
+
+    // Load rhs values in register1 and register2.
     load(ast, moon_code, register1, Node(rhs_node_index1));
     load(ast, moon_code, register2, Node(rhs_node_index2));
 
+    // Do operation and put result in register3.
     match operator {
-        LT => {
-            // < operands
+        LT | LEq | NEq | GT | GEq | Eq | Addition | Subtraction | Multiplication | Division => {
             moon_code.push(format!(
-                "{}clt r{},r{},r{}",
-                INDENT, register3, register1, register2,
+                "{}{} r{},r{},r{}",
+                INDENT,
+                get_instruction(operator),
+                register3,
+                register1,
+                register2,
             ));
         }
-        LEq => {
-            // <= operands
-            moon_code.push(format!(
-                "{}cle r{},r{},r{}",
-                INDENT, register3, register1, register2,
-            ));
-        }
-        NEq => {
-            // != operands
-            moon_code.push(format!(
-                "{}cne r{},r{},r{}",
-                INDENT, register3, register1, register2,
-            ));
-        }
-        GT => {
-            // > operands
-            moon_code.push(format!(
-                "{}cgt r{},r{},r{}",
-                INDENT, register3, register1, register2,
-            ));
-        }
-        GEq => {
-            // >= operands
-            moon_code.push(format!(
-                "{}cge r{},r{},r{}",
-                INDENT, register3, register1, register2,
-            ));
-        }
-        Eq => {
-            // == operands
-            moon_code.push(format!(
-                "{}ceq r{},r{},r{}",
-                INDENT, register3, register1, register2,
-            ));
-        }
-        Addition => {
-            // add operands
-            moon_code.push(format!(
-                "{}add r{},r{},r{}",
-                INDENT, register3, register1, register2,
-            ));
-        }
-        Subtraction => {
-            // substract operands
-            moon_code.push(format!(
-                "{}sub r{},r{},r{}",
-                INDENT, register3, register1, register2,
-            ));
-        }
-        Multiplication => {
-            // multiply operands
-            moon_code.push(format!(
-                "{}mul r{},r{},r{}",
-                INDENT, register3, register1, register2,
-            ));
-        }
-        Division => {
-            // divide operands
-            moon_code.push(format!(
-                "{}div r{},r{},r{}",
-                INDENT, register3, register1, register2,
-            ));
-        }
-        And => {
-            // && operands
-            let and_index = ast.register_pool.get_and();
-            let zero = format!("zeroand{}", and_index);
-            let end = format!("endand{}", and_index);
-            moon_code.push(format!("{}bz r{},{}", INDENT, register1, zero,));
-            moon_code.push(format!("{}bz r{},{}", INDENT, register2, zero,));
-            addi(moon_code, register3, 0, 1);
-            moon_code.push(format!("{}j {}", INDENT, end));
-            add_label(moon_code, zero.clone());
-            addi(moon_code, register3, 0, 0);
-            add_label(moon_code, end.clone());
-        }
-        Or => {
-            // || operands
-            let or_index = ast.register_pool.get_or();
-            let zero = format!("zeroor{}", or_index);
-            let end = format!("endor{}", or_index);
-            moon_code.push(format!("{}bz r{},{}", INDENT, register1, zero,));
-            moon_code.push(format!("{}bz r{},{}", INDENT, register2, zero,));
-            addi(moon_code, register3, 0, 1);
-            moon_code.push(format!("{}j {}", INDENT, end));
-            add_label(moon_code, zero.clone());
-            addi(moon_code, register3, 0, 0);
-            add_label(moon_code, end.clone());
+        And | Or => {
+            add_and_or_not(ast, moon_code, operator, register1, register2, register3);
         }
         _ => unreachable!(),
     }
 
-    // assign the result into a temporary variable (assumed to have been previously created by the symbol table generator)
+    // Store result in temporary variable.
     store(ast, moon_code, Node(lhs_node_index), register3);
 
-    // deallocate the registers
     ast.register_pool.push(register1);
     ast.register_pool.push(register2);
     ast.register_pool.push(register3);
@@ -435,110 +346,73 @@ fn unary_op(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     use OperatorType::*;
     use Reference::*;
 
-    let (lhs_node_index, operator, operator_lexeme, rhs_node_index) =
-        match ast.get_node_type(node_index) {
-            NodeType::AssignStat | NodeType::AssignForStat => (
-                ast.get_child(node_index, 0),
-                Assignment,
-                "".to_string(),
-                ast.get_child(node_index, 1),
-            ),
-            NodeType::Not => (
-                node_index,
-                Not,
-                ast.get_lexeme(node_index).clone(),
-                ast.get_child(node_index, 0),
-            ),
-            NodeType::Sign => (
-                node_index,
-                Subtraction,
-                ast.get_lexeme(node_index).clone(),
-                ast.get_child(node_index, 0),
-            ),
-            _ => unreachable!(),
-        };
+    let lhs_node_index = node_index;
+    let rhs_node_index = ast.get_child(node_index, 0);
 
-    // FIXME: Need to allow other operation than +
-    // FIXME: Next 3 lines assume very simple VarElementList.
-    let lhs_variable_name = get_var_name(ast, lhs_node_index);
-    let rhs_variable_name = get_var_name(ast, rhs_node_index);
-
-    // Then, do the processing of this nodes' visitor
-    // allocate registers to this subcomputation
-    let register1 = ast.register_pool.pop();
-    let register2 = ast.register_pool.pop();
-    let register3 = ast.register_pool.pop();
-    // generate code
+    // Get operation.
+    let operator = match ast.get_token_type(lhs_node_index) {
+        TokenType::Operator(operator) => *operator,
+        _ => unreachable!(),
+    };
 
     add_comment(
         moon_code,
         format!(
             "{} := {} {}",
-            lhs_variable_name, operator_lexeme, rhs_variable_name,
+            get_var_name(ast, lhs_node_index),
+            ast.get_lexeme(lhs_node_index).clone(),
+            get_var_name(ast, rhs_node_index),
         ),
     );
-    // load the values of the operands into registers
+
+    let register1 = ast.register_pool.pop();
+    let register2 = ast.register_pool.pop();
+
+    // Load only value in register1.
     load(ast, moon_code, register1, Node(rhs_node_index));
 
+    // Do operation and put result in register2.
     match operator {
-        Assignment => {
-            // assign the result into a temporary variable (assumed to have been previously created by the symbol table generator)
-            store(ast, moon_code, Node(lhs_node_index), register1);
-        }
         Subtraction => {
-            moon_code.push(format!("{}sub r{},r0,r{}", INDENT, register2, register1,));
-            // assign the result into a temporary variable (assumed to have been previously created by the symbol table generator)
-            store(ast, moon_code, Node(lhs_node_index), register2);
+            moon_code.push(format!(
+                "{}{} r{},r{},r{}",
+                INDENT,
+                get_instruction(operator),
+                register2,
+                0,
+                register1,
+            ));
         }
         Not => {
-            // ! operands
-            let not_index = ast.register_pool.get_not();
-            let zero = format!("zeroor{}", not_index);
-            let end = format!("end0r{}", not_index);
-            moon_code.push(format!("{}not r{},r{}", INDENT, register2, register1));
-            moon_code.push(format!("{}bz r{},{}", INDENT, register2, zero,));
-            addi(moon_code, register3, 0, 1);
-            moon_code.push(format!("{}j {}", INDENT, end));
-            add_label(moon_code, zero.clone());
-            addi(moon_code, register3, 0, 0);
-            add_label(moon_code, end.clone());
-            // assign the result into a temporary variable (assumed to have been previously created by the symbol table generator)
-            store(ast, moon_code, Node(lhs_node_index), register3);
+            add_and_or_not(ast, moon_code, operator, register1, 0, register2);
         }
         _ => unreachable!(),
     }
 
-    // deallocate the registers
+    // Store result in temporary variable.
+    store(ast, moon_code, Node(lhs_node_index), register2);
+
     ast.register_pool.push(register1);
     ast.register_pool.push(register2);
-    ast.register_pool.push(register3);
 }
 
 fn assign_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     use Reference::*;
+
     let lhs_node_index = ast.get_child(node_index, 0);
     let rhs_node_index = ast.get_child(node_index, 1);
 
-    let lhs_variable_name = get_var_name(ast, lhs_node_index);
-    let rhs_variable_name = get_var_name(ast, rhs_node_index);
-
     add_comment(
         moon_code,
-        format!("{} := {}", lhs_variable_name, rhs_variable_name,),
+        format!(
+            "{} := {}",
+            get_var_name(ast, lhs_node_index),
+            get_var_name(ast, rhs_node_index),
+        ),
     );
 
-    let lhs_symbol_type = get_symbol_entry(ast, lhs_node_index)
-        .get_symbol_type()
-        .unwrap();
-    let memory_size = get_size(ast, lhs_symbol_type).unwrap();
-
-    copy_var(
-        ast,
-        moon_code,
-        memory_size,
-        Node(lhs_node_index),
-        Node(rhs_node_index),
-    );
+    // Copy rhs to lhs.
+    copy_var(ast, moon_code, Node(lhs_node_index), Node(rhs_node_index));
 }
 
 fn num(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
@@ -548,21 +422,20 @@ fn num(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     add_if_marker(ast, moon_code, node_index);
     add_for_marker(ast, moon_code, node_index);
 
+    // Get Num data.
     let data = ast.get_lexeme(node_index).clone();
-    // Then, do the processing of this nodes' visitor
-    // create a local variable and allocate a register to this subcomputation
-    let register1 = ast.register_pool.pop();
-    // generate code
+
     add_comment(
         moon_code,
         format!("{} := {}", get_var_name(ast, node_index), data),
     );
+
     // Create a value corresponding to the literal value
-    // TODO: This is a temporary solution for floats.
-    // Their decimal part is just removed.
     let integer = if let Ok(integer) = data.parse::<usize>() {
         integer
     } else if let Ok(float) = data.parse::<f32>() {
+        // FIXME: This is a temporary solution for floats.
+        // Their decimal part is just removed.
         float as usize
     } else {
         // This should never happen since the lexical analysis validated.
@@ -572,11 +445,10 @@ fn num(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     // Clamp since the compiler does not accept immediate value of 16 bits.
     let integer = if integer > 16384 { 16384 } else { integer };
 
+    // Copy litteral value.
+    let register1 = ast.register_pool.pop();
     addi(moon_code, register1, 0, integer as isize);
-    // assign this value to a temporary variable (assumed to have been previously created by the symbol table generator)
     store(ast, moon_code, Node(node_index), register1);
-
-    // deallocate the register for the current node
     ast.register_pool.push(register1);
 }
 
@@ -584,10 +456,8 @@ fn if_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     use Reference::*;
 
     let cond_node_index = ast.get_child(node_index, 0);
-    let cond_variable_name = get_var_name(ast, cond_node_index);
 
-    let register1 = ast.register_pool.pop();
-
+    // Get unique index and labels.
     let if_index = ast.register_pool.get_if();
     let elseif = format!("elseif{}", if_index);
     let endif = format!("endif{}", if_index);
@@ -596,13 +466,17 @@ fn if_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     let mut if_moon_code: Vec<String> = Vec::new();
     add_comment(
         &mut if_moon_code,
-        format!("if({}), index: {}", cond_variable_name, if_index),
+        format!(
+            "if({}), index: {}",
+            get_var_name(ast, cond_node_index),
+            if_index
+        ),
     );
+    let register1 = ast.register_pool.pop();
     load(ast, &mut if_moon_code, register1, Node(cond_node_index));
-
     if_moon_code.push(format!("{}bz r{},{}", INDENT, register1, elseif));
     ast.register_pool.push(register1);
-    /////
+    ////////////////////
 
     push_at(moon_code, if_moon_code, IF_MARKER);
 
@@ -610,10 +484,13 @@ fn if_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     let mut else_moon_code: Vec<String> = Vec::new();
     else_moon_code.push(format!("{}j {}", INDENT, endif));
     add_label(&mut else_moon_code, elseif.clone());
-    /////
+    ////////////////////
 
     push_at(moon_code, else_moon_code, ELSE_MARKER);
+
+    // ADD THIS AFTER IF STATBLOCK
     add_label(moon_code, endif.clone());
+    ////////////////////
 }
 
 fn for_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
@@ -623,8 +500,7 @@ fn for_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     let assign_variable_name = get_var_name(ast, assign_node_index);
     let cond_node_index = ast.get_child(node_index, 3);
 
-    let register1 = ast.register_pool.pop();
-
+    // Get unique index and labels.
     let for_index = ast.register_pool.get_for();
     let condfor = format!("condfor{}", for_index);
     let incrfor = format!("incrfor{}", for_index);
@@ -633,49 +509,40 @@ fn for_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
 
     // ADD THIS BEFORE FOR CONDITION
     let mut cond_moon_code: Vec<String> = Vec::new();
-
     add_comment(
         &mut cond_moon_code,
         format!("for_cond({}), index: {}", assign_variable_name, for_index),
     );
-
     // Assignment
     let rhs_node_index = ast.get_child(node_index, 2);
     let rhs_variable_name = get_var_name(ast, rhs_node_index);
-
     add_comment(
         &mut cond_moon_code,
         format!("{} := {}", assign_variable_name, rhs_variable_name,),
     );
-
+    let register1 = ast.register_pool.pop();
     load(ast, &mut cond_moon_code, register1, Node(rhs_node_index));
-
     store(ast, &mut cond_moon_code, Node(assign_node_index), register1);
-
     // Conditional label
     add_label(&mut cond_moon_code, condfor.clone());
-
     ast.register_pool.push(register1);
+    ////////////////////
 
     push_at(moon_code, cond_moon_code, FOR_COND_MARKER);
 
     // ADD THIS BEFORE FOR INCREMENT
-    let register1 = ast.register_pool.pop();
-
     let mut incr_moon_code: Vec<String> = Vec::new();
-
     add_comment(
         &mut incr_moon_code,
         format!("for_incr({}), index: {}", assign_variable_name, for_index),
     );
-
+    let register1 = ast.register_pool.pop();
     load(ast, &mut incr_moon_code, register1, Node(cond_node_index));
-
     incr_moon_code.push(format!("{}bz r{},{}", INDENT, register1, endfor));
     incr_moon_code.push(format!("{}j {}", INDENT, loopfor));
     add_label(&mut incr_moon_code, incrfor.clone());
-
     ast.register_pool.push(register1);
+    ////////////////////
 
     push_at(moon_code, incr_moon_code, FOR_INCR_MARKER);
 
@@ -683,24 +550,28 @@ fn for_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     let mut loop_moon_code: Vec<String> = Vec::new();
     loop_moon_code.push(format!("{}j {}", INDENT, condfor));
     add_label(&mut loop_moon_code, loopfor.clone());
+    ////////////////////
 
     push_at(moon_code, loop_moon_code, FOR_LOOP_MARKER);
 
     // ADD THIS AFTER THE LOOP.
     moon_code.push(format!("{}j {}", INDENT, incrfor));
     add_label(moon_code, endfor.clone());
+    ////////////////////
 }
 
 fn write_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     use Reference::*;
 
     let child_node_index = ast.get_child(node_index, 0);
-    let child_variable_name = get_var_name(ast, child_node_index);
     let function_stack_frame_size = get_current_stack_frame_offset(ast, node_index);
 
-    let register1 = ast.register_pool.pop();
+    add_comment(
+        moon_code,
+        format!("write({})", get_var_name(ast, child_node_index),),
+    );
 
-    add_comment(moon_code, format!("write({})", child_variable_name,));
+    let register1 = ast.register_pool.pop();
 
     // Load value to write.
     load(ast, moon_code, register1, Node(child_node_index));
@@ -738,10 +609,12 @@ fn read_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     use Reference::*;
 
     let child_node_index = ast.get_child(node_index, 0);
-    let child_variable_name = get_var_name(ast, child_node_index);
     let function_stack_frame_size = get_current_stack_frame_offset(ast, node_index);
 
-    add_comment(moon_code, format!("read({})", child_variable_name,));
+    add_comment(
+        moon_code,
+        format!("read({})", get_var_name(ast, child_node_index),),
+    );
 
     let register1 = ast.register_pool.pop();
 
@@ -773,32 +646,34 @@ fn read_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
 fn return_stat(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {
     use Reference::*;
 
+    let argument_node_index = ast.get_child(node_index, 0);
+
+    //  Get function node and table.
     let (function_node_index, function_memory_table_index) =
         get_function_node_index_and_memory_table_index(ast, node_index).unwrap();
-    let end_func_label = format!(
-        "endfunc{}",
-        get_funtion_symbol_table_index(ast, function_node_index)
-    );
+    // Get return variable size and offset.
     let (return_var_size, return_var_offset) =
         get_return_var_size_and_offset(ast, function_memory_table_index);
 
-    // Setting return value.
-    let argument_node_index = ast.get_child(node_index, 0);
     add_comment(
         moon_code,
         format!("return value = {}", get_var_name(ast, argument_node_index)),
     );
 
+    // Copy temporary variable to return value.
     copy_var(
         ast,
         moon_code,
-        return_var_size,
-        Offset(return_var_offset),
+        SizeAndOffset(return_var_size, return_var_offset),
         Node(argument_node_index),
     );
 
     // Jump at the end of function.
-    moon_code.push(format!("{}j {}", INDENT, end_func_label));
+    moon_code.push(format!(
+        "{}j endfunc{}",
+        INDENT,
+        get_funtion_symbol_table_index(ast, function_node_index)
+    ));
 }
 
 fn leaf(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) {

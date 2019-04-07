@@ -1,0 +1,21 @@
+// NESTER IF
+
+main {
+  integer a;
+
+  if (1<2) then
+    if (1<2) then
+      a = 1;
+    else
+      a = 2;
+    ;
+  else
+    if (1<2) then {
+      a = 3;
+    } else {
+      a = 4;
+    };
+  ;
+
+  write(a);
+};

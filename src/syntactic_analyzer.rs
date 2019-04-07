@@ -39,10 +39,6 @@ impl SyntacticAnalyzer {
         let mut token_iter = tokens.into_iter();
         let mut token_type_iter = parser_symbols.iter();
         let mut token = token_iter.next().unwrap();
-        //         let mut token = match token_iter.next() {
-        //     Some(new_token) => new_token,
-        //     None =>
-        // }
         let mut token_type = *token_type_iter.next().unwrap();
         let mut last_token = None;
 
@@ -149,16 +145,22 @@ impl SyntacticAnalyzer {
                         None => {
                             // If no production is found, error.
                             // If token is in follow set of the variable on top of the stack.
-                            if token_type == FollowType::DollarSign
-                                || self.table.follow_sets[variable].contains(&token_type)
-                            {
-                                syntactic_errors
-                                    .push(NotInTableButInFollow(token.clone(), *variable));
+                            if token_type == FollowType::DollarSign {
+                                // Reached end of program, so cannot recover.
+                                syntactic_errors.push(NotInTableButInFollow(
+                                    token.clone(),
+                                    *variable,
+                                    false,
+                                ));
+                                break;
+                            } else if self.table.follow_sets[variable].contains(&token_type) {
+                                syntactic_errors.push(NotInTableButInFollow(
+                                    token.clone(),
+                                    *variable,
+                                    true,
+                                ));
                                 // Skip token.
                                 token_type = *token_type_iter.next().unwrap();
-                                if token_type == FollowType::DollarSign {
-                                    continue;
-                                }
                                 last_token = Some(token);
                                 token = token_iter.next().unwrap();
                             } else {
@@ -217,8 +219,6 @@ impl SyntacticAnalyzer {
         for new_token in token_iter {
             syntactic_errors.push(TokenAfterMain(new_token.clone()));
         }
-        //assert!(stack.len() == 1);
-        //assert!(semantic_stack.len() == 1);
         ast.root = semantic_stack.pop();
         derivation_table.push((derivation.clone(), None));
         Ok((ast, derivation_table, syntactic_errors))

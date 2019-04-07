@@ -2,14 +2,7 @@ use crate::ast_node::*;
 use crate::memory_table::*;
 use crate::symbol_table::*;
 
-pub enum Offset {
-    Immediate(usize, isize),
-    Register(usize),
-}
-
 pub fn get_class_node_index(ast: &AST, class_name: &str) -> Option<usize> {
-    // println!("{}", class_name);
-    // println!("{:?}", ast.symbol_table_arena.root.unwrap());
     ast.get_children_of_child(ast.root.unwrap(), 0)
         .into_iter()
         .find(|&child_index| {

@@ -1,5 +1,4 @@
 use crate::ast_node::*;
-use crate::ast_visitor::*;
 use crate::code_generation_common::*;
 use crate::language::*;
 
@@ -15,22 +14,90 @@ pub const FOR_LOOP_MARKER: &str = "% FOR LOOP MARKER";
 pub enum Reference {
     Node(usize),
     Offset(isize),
-    OffsetAndRegister(isize, usize),
+    SizeAndOffset(usize, isize),
+    SizeAndOffsetAndRegister(usize, isize, usize),
 }
 
 impl Reference {
-    fn get(self, ast: &mut AST, moon_code: &mut Vec<String>) -> (isize, usize) {
+    fn get(self, ast: &mut AST, moon_code: &mut Vec<String>) -> (usize, isize, usize) {
+        use Reference::*;
         match self {
-            Reference::Node(node_index) => match get_offset(ast, moon_code, node_index) {
-                Offset::Immediate(reference_register, immediate_offset) => {
-                    (immediate_offset, reference_register)
-                }
-                Offset::Register(offset_register) => (0, offset_register),
-            },
-            Reference::Offset(offeset) => (offeset, 14),
-            Reference::OffsetAndRegister(offeset, register) => (offeset, register),
+            Reference::Node(node_index) => {
+                get_reference(ast, moon_code, node_index).get(ast, moon_code)
+            }
+            Offset(offset) => (4, offset, 14),
+            SizeAndOffset(size, offset) => (size, offset, 14),
+            SizeAndOffsetAndRegister(size, offset, register) => (size, offset, register),
         }
     }
+}
+
+pub fn get_instruction(operator: OperatorType) -> String {
+    use OperatorType::*;
+    match operator {
+        LT => String::from("clt"),
+        LEq => String::from("cle"),
+        NEq => String::from("cne"),
+        GT => String::from("cgt"),
+        GEq => String::from("cge"),
+        Eq => String::from("ceq"),
+        Addition => String::from("add"),
+        Subtraction => String::from("sub"),
+        Multiplication => String::from("mul"),
+        Division => String::from("div"),
+        _ => unreachable!(),
+    }
+}
+
+pub fn add_and_or_not(
+    ast: &mut AST,
+    moon_code: &mut Vec<String>,
+    operator: OperatorType,
+    register1: usize,
+    register2: usize,
+    register3: usize,
+) {
+    use OperatorType::*;
+
+    match operator {
+        And => {
+            let and_index = ast.register_pool.get_and();
+            let zero = format!("zeroand{}", and_index);
+            let end = format!("endand{}", and_index);
+            moon_code.push(format!("{}bz r{},{}", INDENT, register1, zero,));
+            moon_code.push(format!("{}bz r{},{}", INDENT, register2, zero,));
+            addi(moon_code, register3, 0, 1);
+            moon_code.push(format!("{}j {}", INDENT, end));
+            add_label(moon_code, zero.clone());
+            addi(moon_code, register3, 0, 0);
+            add_label(moon_code, end.clone());
+        }
+        Or => {
+            let or_index = ast.register_pool.get_or();
+            let notzero = format!("nzeroor{}", or_index);
+            let end = format!("endor{}", or_index);
+            moon_code.push(format!("{}bnz r{},{}", INDENT, register1, notzero,));
+            moon_code.push(format!("{}bnz r{},{}", INDENT, register2, notzero,));
+            addi(moon_code, register3, 0, 0);
+            moon_code.push(format!("{}j {}", INDENT, end));
+            add_label(moon_code, notzero.clone());
+            addi(moon_code, register3, 0, 1);
+            add_label(moon_code, end.clone());
+        }
+        Not => {
+            assert!(register2 == 0);
+            let not_index = ast.register_pool.get_not();
+            let zero = format!("zeroor{}", not_index);
+            let end = format!("end0r{}", not_index);
+            moon_code.push(format!("{}bz r{},{}", INDENT, register1, zero,));
+            addi(moon_code, register3, 0, 0);
+            moon_code.push(format!("{}j {}", INDENT, end));
+            add_label(moon_code, zero.clone());
+            addi(moon_code, register3, 0, 1);
+            add_label(moon_code, end.clone());
+        }
+        _ => unreachable!(),
+    };
 }
 
 pub fn add_entry_marker(ast: &AST, moon_code: &mut Vec<String>, node_index: usize) {
@@ -168,6 +235,7 @@ pub fn load_inst_addresse(ast: &mut AST, moon_code: &mut Vec<String>, node_index
         let inst_addr_offset = get_inst_addr_offset(ast, function_memory_table_index).unwrap();
         let register1 = ast.register_pool.pop();
         add_comment(moon_code, format!("Loading instance address to r{}", 12));
+        // Size is 4 because it is an address.
         load(ast, moon_code, register1, Offset(inst_addr_offset));
 
         moon_code.push(format!("{}add r12,r0,r{}", INDENT, register1));
@@ -175,8 +243,9 @@ pub fn load_inst_addresse(ast: &mut AST, moon_code: &mut Vec<String>, node_index
     }
 }
 
-pub fn get_offset(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) -> Offset {
+pub fn get_reference(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) -> Reference {
     use NodeType::*;
+    use Reference::*;
 
     // If it is a VarElementList, handle differently.
     if let NodeType::VarElementList = ast.get_node_type(node_index) {
@@ -187,6 +256,7 @@ pub fn get_offset(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize)
         let last_node_position = child_nodes.len() - 1;
         let mut reference_register: usize = 14;
         let mut offset: isize = 0;
+        let mut size = 4;
         let mut include_array = false;
         for (position, child_index) in child_nodes.into_iter().enumerate() {
             let child_node_type = ast.get_node_type(child_index);
@@ -256,12 +326,18 @@ pub fn get_offset(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize)
                         ast.register_pool.push(register2);
                     }
 
+                    // Finally, if last element, set the size to output.
+                    // If not, adjust offset.
+                    let symbol_entry = ast.symbol_table_arena.get_table_entry(symbol_entry_index);
+                    let symbol_type = symbol_entry.get_symbol_type().unwrap();
                     if position != last_node_position {
-                        let symbol_entry =
-                            ast.symbol_table_arena.get_table_entry(symbol_entry_index);
-                        let symbol_type = symbol_entry.get_symbol_type().unwrap();
+                        // Here, we correctly assume that since it is not the last element,
+                        // it should not be an array.
+                        assert!(
+                            !symbol_type.get_dimension_list().is_empty()
+                                == ast.has_memory_entry_index(index_list_node)
+                        );
                         let type_size = get_size(ast, &symbol_type.remove_dimensions()).unwrap();
-
                         if include_array {
                             moon_code.push(format!(
                                 "{}addi r{},r{},{}",
@@ -270,6 +346,13 @@ pub fn get_offset(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize)
                         } else {
                             offset += type_size as isize;
                         }
+                    } else {
+                        // The size depends on whether indices are specified.
+                        size = if ast.has_memory_entry_index(index_list_node) {
+                            get_size(ast, &symbol_type.remove_dimensions()).unwrap()
+                        } else {
+                            get_size(ast, &symbol_type).unwrap()
+                        };
                     }
                 }
                 // If it encounters a single function call, return the offset of the return
@@ -279,22 +362,27 @@ pub fn get_offset(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize)
                     let entry_index = ast.get_memory_entry_index(child_index);
                     let memory_entry = ast.memory_table_arena.get_table_entry(entry_index);
                     include_array = false;
+                    size = memory_entry.get_size();
                     offset = memory_entry.get_offset();
                 }
                 _ => unreachable!(),
             }
         }
         if include_array {
-            Offset::Register(register1)
+            SizeAndOffsetAndRegister(size, 0, register1)
+        // Offset::Register(size, register1)
         } else {
             ast.register_pool.push(register1);
-            Offset::Immediate(reference_register, offset)
+            // Offset::Immediate(size, reference_register, offset)
+            SizeAndOffsetAndRegister(size, offset, reference_register)
         }
     } else {
         let entry_index = ast.get_memory_entry_index(node_index);
         let memory_entry = ast.memory_table_arena.get_table_entry(entry_index);
 
-        return Offset::Immediate(14, memory_entry.get_offset());
+        return SizeAndOffsetAndRegister(memory_entry.get_size(), memory_entry.get_offset(), 14);
+
+        //Offset::Immediate(memory_entry.get_size(), 14, memory_entry.get_offset());
     }
 }
 
@@ -305,7 +393,8 @@ pub fn load(
     register_index: usize,
     reference: Reference,
 ) {
-    let (offset, address_register) = reference.get(ast, moon_code);
+    let (size, offset, address_register) = reference.get(ast, moon_code);
+    assert!(size == 4);
     load_from_offset_register(moon_code, register_index, offset, address_register);
     ast.register_pool.push(address_register);
 }
@@ -329,7 +418,8 @@ pub fn store(
     reference: Reference,
     register_index: usize,
 ) {
-    let (offset, address_register) = reference.get(ast, moon_code);
+    let (size, offset, address_register) = reference.get(ast, moon_code);
+    assert!(size == 4);
     store_at_offset_register(moon_code, offset, address_register, register_index);
     ast.register_pool.push(address_register);
 }
@@ -404,16 +494,19 @@ pub fn add_instruction(moon_code: &mut Vec<String>, label: Option<String>, instr
 pub fn copy_var(
     ast: &mut AST,
     moon_code: &mut Vec<String>,
-    size: usize,
     lhs_reference: Reference,
     rhs_reference: Reference,
 ) {
-    let (lhs_offset, lhs_address_register) = lhs_reference.get(ast, moon_code);
-    let (rhs_offset, rhs_address_register) = rhs_reference.get(ast, moon_code);
+    let (lhs_size, lhs_offset, lhs_address_register) = lhs_reference.get(ast, moon_code);
+    let (rhs_size, rhs_offset, rhs_address_register) = rhs_reference.get(ast, moon_code);
+
+    // dbg!(lhs_size);
+    // dbg!(rhs_size);
+    assert!(lhs_size == rhs_size);
 
     let register1 = ast.register_pool.pop();
 
-    for inner_offset in (0..size as isize).step_by(4) {
+    for inner_offset in (0..lhs_size as isize).step_by(4) {
         load_from_offset_register(
             moon_code,
             register1,

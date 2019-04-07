@@ -25,6 +25,7 @@ pub enum SemanticError {
     UndefinedClass(Token),
     MismatchedNumberOfDimension(Token, usize, usize),
     //Type error
+    IOShouldUseInteger(Token, SymbolType),
     ForCounterShouldBeInteger(Token, String),
     InvalidAddOperation(Token, SymbolType, SymbolType),
     InvalidMultOperation(Token, SymbolType, SymbolType),
@@ -161,6 +162,12 @@ impl Display for SemanticError {
                 expected_number,
                 actual_number,
             ),
+            IOShouldUseInteger(token, symbol_type) => write!(
+                f,
+                "Semantic error at {}: Read/Write should used Integer, but is: \"{}\".",
+                token.location,
+                symbol_type,
+            ),
             ForCounterShouldBeInteger(token, counter_name) => write!(
                 f,
                 "Semantic error at {}: For counter \"{}\" should be integer, but it is \"{}\".",
@@ -292,6 +299,7 @@ impl TokenLocation for SemanticError {
             UndefinedMemberFunction(token, _) => token.location,
             UndefinedClass(token) => token.location,
             MismatchedNumberOfDimension(token, _, _) => token.location,
+            IOShouldUseInteger(token, _) => token.location,
             ForCounterShouldBeInteger(token, _) => token.location,
             InvalidAddOperation(token, _, _) => token.location,
             InvalidMultOperation(token, _, _) => token.location,

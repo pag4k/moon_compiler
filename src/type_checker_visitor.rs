@@ -22,6 +22,8 @@ pub fn type_checker_visitor(ast: &mut AST) -> Vec<SemanticError> {
     semantic_actions.insert(DataMember, data_member);
     semantic_actions.insert(FunctionCall, function_call);
     semantic_actions.insert(ReturnStat, return_stat);
+    semantic_actions.insert(ReadStat, io_stat);
+    semantic_actions.insert(WriteStat, io_stat);
 
     ast_traversal(ast, &mut semantic_errors, &semantic_actions);
     semantic_errors
@@ -276,5 +278,22 @@ fn return_stat(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
                 ));
             }
         }
+    }
+}
+
+fn io_stat(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
+    use SymbolType::*;
+    if let Some(argument_type) = ast.get_child_data_type(node_index, 0) {
+        if let Integer(dimension_list) = argument_type {
+            if dimension_list.is_empty() {
+                // If it is an integer without dimensions, it is good.
+                return;
+            }
+        }
+        // Otherwise, error.
+        semantic_errors.push(SemanticError::IOShouldUseInteger(
+            ast.get_leftmost_token(node_index).clone(),
+            argument_type.clone(),
+        ));
     }
 }

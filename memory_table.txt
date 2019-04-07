@@ -1,36 +1,22 @@
-MEMORY TABLE: NAME: pos OFFSET: -12 SYMBOL INDEX: 0 INDEX: 0
-Var: x, integer, 4, -4
-Var: y, integer, 4, -8
-Var: z, integer, 4, -12
-
-MEMORY TABLE: NAME: new OFFSET: -40 SYMBOL INDEX: 1 INDEX: 1
-ReturnVar, pos, 12, -12
-ReturnAddr, integer, 4, -16
-Param: z, integer, 4, -20
-Param: y, integer, 4, -24
-Param: x, integer, 4, -28
-Var: new, pos, 12, -40
-
-MEMORY TABLE: NAME: add OFFSET: -52 SYMBOL INDEX: 2 INDEX: 2
-ReturnVar, pos, 12, -12
-ReturnAddr, integer, 4, -16
-Param: a2, pos, 12, -28
-Param: a1, pos, 12, -40
-TempVar: t0, integer, 4, -44
-TempVar: t1, integer, 4, -48
-TempVar: t2, integer, 4, -52
-
-MEMORY TABLE: NAME: program OFFSET: -84 SYMBOL INDEX: 3 INDEX: 3
-Var: a, pos, 12, -12
-LitVar: t0, integer, 4, -16
+MEMORY TABLE: NAME: program OFFSET: -92 SYMBOL INDEX: 0 INDEX: 0
+LitVar: t0, integer, 4, -4
+Var: a, integer, 12, -16
 LitVar: t1, integer, 4, -20
-LitVar: t2, integer, 4, -24
-TempVar: t3, pos, 12, -36
-Var: b, pos, 12, -48
-LitVar: t4, integer, 4, -52
-LitVar: t5, integer, 4, -56
-LitVar: t6, integer, 4, -60
-TempVar: t7, pos, 12, -72
-TempVar: t8, pos, 12, -84
+TempVar: t2, integer, 4, -24
+LitVar: t3, integer, 4, -28
+LitVar: t4, integer, 4, -32
+TempVar: t5, integer, 4, -36
+LitVar: t6, integer, 4, -40
+LitVar: t7, integer, 4, -44
+TempVar: t8, integer, 4, -48
+LitVar: t9, integer, 4, -52
+LitVar: t10, integer, 4, -56
+Var: b, integer, 12, -68
+LitVar: t11, integer, 4, -72
+TempVar: t12, integer, 4, -76
+LitVar: t13, integer, 4, -80
+TempVar: t14, integer, 4, -84
+LitVar: t15, integer, 4, -88
+TempVar: t16, integer, 4, -92
 
  

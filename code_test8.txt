@@ -1,0 +1,50 @@
+class pos {
+  integer x;
+  integer y;
+  integer z;
+  
+};
+
+pos new(integer x, integer y, integer z) {
+  pos new;
+  new.x = x;
+  new.y = y;
+  new.z = z;
+  return(new);
+};
+
+pos add(pos a1, pos a2) {
+  a1.x = a1.x + a2.x;
+  a1.y = a1.y + a2.y;
+  a1.z = a1.z + a2.z;
+  return(a1);
+};
+
+pos average(pos a[5]) {
+  integer xSum;
+  integer ySum;
+  integer zSum;
+  for (integer i = 0; i < 5; i = i + 1) {
+    xSum = xSum + a[i].x;
+    ySum = ySum + a[i].y;
+    zSum = zSum + a[i].z;
+  };
+  return(new(xSum/5, ySum/5, zSum/5));
+};
+
+main {
+  pos a[5];
+  a[0] = new(1,2,3);
+  a[1] = new(1,2,3);
+  a[2] = new(1,2,3);
+  a[3] = new(1,2,3);
+  a[4] = new(1,2,3);
+
+  pos ave;
+  ave = average(a);
+
+  write(ave.x);
+  write(ave.y);
+  write(ave.z);
+
+};

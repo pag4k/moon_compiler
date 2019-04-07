@@ -6,7 +6,7 @@ use std::fmt::{Display, Formatter};
 #[derive(Clone)]
 pub enum SyntacticError {
     WrongTerminal(Token, TokenType, Option<Location>),
-    NotInTableButInFollow(Token, VariableType),
+    NotInTableButInFollow(Token, VariableType, bool),
     NotInTableNorInFollow(Token, VariableType, Option<Location>),
     TokenAfterMain(Token),
 }
@@ -26,10 +26,17 @@ impl Display for SyntacticError {
                     None => "Could not recover, reached end of program".to_string(),
                 }
             ),
-            NotInTableButInFollow(token, variable) => write!(
+            NotInTableButInFollow(token, variable, recovered) => write!(
                 f,
-                "Syntactic error at {} with {:?}: not expecting {}. Skipping and continuing.",
-                token.location, variable, token.token_type
+                "Syntactic error at {} with {:?}: not expecting {}. {}.",
+                token.location,
+                variable,
+                token.token_type,
+                if *recovered {
+                    "Skipping and continuing"
+                } else {
+                    "Tried to skip, but it is the end of the program"
+                }
             ),
             NotInTableNorInFollow(token, variable, recovery_location) => write!(
                 f,
@@ -57,7 +64,7 @@ impl TokenLocation for SyntacticError {
         use SyntacticError::*;
         match self {
             WrongTerminal(token, _, _) => token.location,
-            NotInTableButInFollow(token, _) => token.location,
+            NotInTableButInFollow(token, _, _) => token.location,
             NotInTableNorInFollow(token, _, _) => token.location,
             TokenAfterMain(token) => token.location,
         }
@@ -69,7 +76,7 @@ impl SyntacticError {
         use SyntacticError::*;
         match self {
             WrongTerminal(_, _, recovery_location) => recovery_location.is_none(),
-            NotInTableButInFollow(_, _) => false,
+            NotInTableButInFollow(_, _, recovered) => !recovered,
             NotInTableNorInFollow(_, _, recovery_location) => recovery_location.is_none(),
             TokenAfterMain(_) => false,
         }
