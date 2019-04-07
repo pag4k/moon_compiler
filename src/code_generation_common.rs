@@ -68,3 +68,111 @@ pub fn get_memory_entry(ast: &AST, node_index: usize) -> &MemoryTableEntry {
     ast.memory_table_arena
         .get_table_entry(ast.get_memory_entry_index(node_index))
 }
+
+pub fn get_memory_from_symbol(ast: &AST, node_index: usize) -> Option<usize> {
+    use NodeType::*;
+    let symbol_entry_index = ast.get_symbol_entry_index(node_index);
+    let symbol_entry = get_symbol_entry(ast, node_index);
+    let symbol_name = &symbol_entry.get_name();
+
+    // Check if it is a member variable.
+    if let Some(class_node_index) = get_class_node_of_symbol_entry(ast, symbol_entry_index) {
+        return find_variable_memory_entry(ast, class_node_index, symbol_name);
+    }
+
+    // If not, it must be a local variable.
+    if let Some((function_node_index, _)) =
+        ast.get_parent_node_of_type(node_index, &[MainFuncBody, FuncDef], &[])
+    {
+        return find_variable_memory_entry(ast, function_node_index, symbol_name);
+    }
+
+    unreachable!();
+}
+
+pub fn get_inst_offset(ast: &AST, node_index: usize) -> Option<isize> {
+    let parent_index = ast.get_parent(node_index).unwrap();
+    let child_nodes = ast.get_children(parent_index);
+    let function_call_position = child_nodes
+        .iter()
+        .position(|&child_index| child_index == node_index)
+        .unwrap();
+    if function_call_position == 0 {
+        let (_, function_memory_table_index) =
+            get_function_node_index_and_memory_table_index(ast, node_index).unwrap();
+        return get_inst_addr_offset(ast, function_memory_table_index);
+    }
+    let mut offset: isize = 0;
+    // Note that contrary to when we acces data member, we return the offset
+    // at the "top" of the instance variable because it is necessarily an object.
+    for child_index in ast.get_children(parent_index) {
+        if child_index == node_index {
+            break;
+        }
+        let memory_entry = ast
+            .memory_table_arena
+            .get_table_entry(get_memory_from_symbol(ast, child_index).unwrap());
+        offset += memory_entry.get_offset() + memory_entry.get_size() as isize;
+    }
+    Some(offset)
+}
+
+pub fn get_inst_addr_offset(ast: &AST, memory_table_index_index: usize) -> Option<isize> {
+    for &entry_index in ast
+        .memory_table_arena
+        .get_table_entries(memory_table_index_index)
+    {
+        let memory_entry = &ast.memory_table_arena.get_table_entry(entry_index);
+        if memory_entry.is_inst_addr() {
+            return Some(memory_entry.get_offset());
+        }
+    }
+    None
+}
+
+pub fn get_function_node_index_and_memory_table_index(
+    ast: &AST,
+    node_index: usize,
+) -> Option<(usize, usize)> {
+    use NodeType::*;
+    if let Some((function_node_index, _)) =
+        ast.get_parent_node_of_type(node_index, &[MainFuncBody, FuncDef], &[])
+    {
+        Some((
+            function_node_index,
+            ast.get_memory_table_index(function_node_index),
+        ))
+    } else {
+        None
+    }
+}
+
+pub fn find_variable_memory_entry(
+    ast: &AST,
+    node_index: usize,
+    variable_name: &str,
+) -> Option<usize> {
+    let memory_table_index = ast.get_memory_table_index(node_index);
+    for &entry_index in ast.memory_table_arena.get_table_entries(memory_table_index) {
+        let memory_entry = ast.memory_table_arena.get_table_entry(entry_index);
+        if memory_entry.is_named_var() && *variable_name == memory_entry.get_name() {
+            return Some(entry_index);
+        }
+    }
+    None
+}
+
+pub fn get_class_node_of_symbol_entry(ast: &AST, symbol_entry_index: usize) -> Option<usize> {
+    for class_node_index in ast.get_children_of_child(ast.root.unwrap(), 0) {
+        let class_table_index = ast.get_symbol_table_index(class_node_index);
+        if ast
+            .symbol_table_arena
+            .get_table_entries(class_table_index)
+            .iter()
+            .any(|&entry_index| entry_index == symbol_entry_index)
+        {
+            return Some(class_node_index);
+        }
+    }
+    None
+}

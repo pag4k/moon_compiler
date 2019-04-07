@@ -23,6 +23,7 @@ mod symbol_table;
 //mod symbol_table_generator;
 mod code_generator_visitor;
 mod memory_table_generator_visitor;
+mod moon_code;
 mod register_pool;
 mod syntactic_analyzer;
 mod syntactic_analyzer_table;
