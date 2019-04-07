@@ -1,15 +1,21 @@
-SYMBOL TABLE: NAME: Global INDEX: 3
-0. Name: a, Class, Link: Some(0)
-1. Name: main, Function: Return Type: None, Parameters: , Link: Some(2)
-SYMBOL TABLE: NAME: a INDEX: 0
-0. Name: g, Variable: integer, Link: None
-1. Name: b, Variable: integer, Link: None
-2. Name: h, Variable: integer, Link: None
-3. Name: func, Function: Return Type: integer, Parameters: integer, Link: Some(1)
-SYMBOL TABLE: NAME: func INDEX: 1
-0. Name: b, Variable: integer, Link: None
-1. Name: n, Parameter: integer, Link: None
-SYMBOL TABLE: NAME: main INDEX: 2
-0. Name: a, Variable: a, Link: None
-1. Name: b, Variable: a, Link: None
+SYMBOL TABLE: NAME: Global INDEX: 4
+0. Name: pos, Class, Link: Some(0)
+1. Name: new, Function: Return Type: pos, Parameters: integer, integer, integer, Link: Some(1)
+2. Name: add, Function: Return Type: pos, Parameters: pos, pos, Link: Some(2)
+3. Name: main, Function: Return Type: None, Parameters: , Link: Some(3)
+SYMBOL TABLE: NAME: pos INDEX: 0
+0. Name: x, Variable: integer, Link: None
+1. Name: y, Variable: integer, Link: None
+2. Name: z, Variable: integer, Link: None
+SYMBOL TABLE: NAME: new INDEX: 1
+0. Name: new, Variable: pos, Link: None
+1. Name: x, Parameter: integer, Link: None
+2. Name: y, Parameter: integer, Link: None
+3. Name: z, Parameter: integer, Link: None
+SYMBOL TABLE: NAME: add INDEX: 2
+0. Name: a1, Parameter: pos, Link: None
+1. Name: a2, Parameter: pos, Link: None
+SYMBOL TABLE: NAME: main INDEX: 3
+0. Name: a, Variable: pos, Link: None
+1. Name: b, Variable: pos, Link: None
  

@@ -198,8 +198,8 @@ impl MemoryTableEntry {
     pub fn get_offset(&self) -> isize {
         self.offset
     }
-    pub fn get_size(&self) -> isize {
-        self.size as isize
+    pub fn get_size(&self) -> usize {
+        self.size
     }
 }
 

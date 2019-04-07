@@ -127,7 +127,7 @@ fn func_def(ast: &mut AST, code_gen_errors: &mut Vec<CodeGenError>, node_index: 
         .new_memory_table(symbol_table_index, class_name.clone());
     ast.set_memory_table_index(node_index, Some(memory_table_index));
 
-    let entry_index = get_symbol_entry_index(ast, node_index);
+    let entry_index = ast.get_symbol_entry_index(node_index);
 
     // Add return variable.
     let return_symbol_type = ast

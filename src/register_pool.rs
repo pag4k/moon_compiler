@@ -40,7 +40,7 @@ impl RegisterPool {
         if self.min <= index && index <= self.max {
             self.registers.insert(index, true);
         } else {
-            unreachable!("Invalid register!")
+            // unreachable!("Invalid register!")
         }
     }
     pub fn get_and(&mut self) -> usize {
