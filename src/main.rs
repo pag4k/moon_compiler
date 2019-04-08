@@ -60,13 +60,43 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     // If there was a first argument, use it as source file, otherwise default.txt.
-    let source_filename = if args.len() < 2 {
-        "default.txt"
+    let (compiler_options, source_filename) = if args.len() == 1 {
+        (
+            CompilerOption {
+                generate_ast: false,
+                execute_program: false,
+                output_derivation: false,
+            },
+            String::from("default.txt"),
+        )
+    } else if args.len() == 2 {
+        (
+            CompilerOption {
+                generate_ast: false,
+                execute_program: false,
+                output_derivation: false,
+            },
+            args[1].clone(),
+        )
+    } else if args.len() == 3 {
+        if args[1].len() < 2 || !args[1].starts_with('-') {
+            println!("ERROR: Invalid options. Form: \"-[a][d][e]\". Exiting...");
+            return;
+        }
+        (
+            CompilerOption {
+                generate_ast: args[1].contains('a'),
+                output_derivation: args[1].contains('d'),
+                execute_program: args[1].contains('e'),
+            },
+            args[2].clone(),
+        )
     } else {
-        &args[1]
+        println!("ERROR: Too many arguments. Exiting...");
+        return;
     };
 
-    let source = match fs::read_to_string(source_filename) {
+    let source = match fs::read_to_string(&source_filename) {
         Ok(file) => file,
         Err(_) => {
             println!(
@@ -77,7 +107,13 @@ fn main() {
         }
     };
 
-    compile(&source);
+    compile(compiler_options, &source);
+}
+
+struct CompilerOption {
+    generate_ast: bool,
+    execute_program: bool,
+    output_derivation: bool,
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -175,7 +211,7 @@ fn print_moon_code(code: &[String], moon_code_file: &mut File) {
     }
 }
 
-fn compile(source: &str) -> (Option<Vec<Error>>, Option<bool>) {
+fn compile(compiler_options: CompilerOption, source: &str) -> (Option<Vec<Error>>, Option<bool>) {
     let token_filename = "token.txt";
     let path = Path::new(token_filename);
     let mut token_file = match File::create(&path) {
@@ -324,45 +360,41 @@ fn compile(source: &str) -> (Option<Vec<Error>>, Option<bool>) {
     };
 
     let (mut ast, syntactic_errors) = match syntactic_analyzer.parse(tokens) {
-        Ok((ast, mut _derivation_table, syntactic_errors)) => {
-            // if tokens
-            //     .iter()
-            //     .map(|token| GrammarSymbol::Terminal(token.token_type))
-            //     .collect::<Vec<GrammarSymbol<VariableType, TokenType, NodeType>>>()
-            //     == derivation_table.pop().unwrap().0
-            // {
-            //     let derivation_filename = "derivation.txt";
-            //     let path = Path::new(derivation_filename);
-            //     let mut derivation_filename = match File::create(&path) {
-            //         Ok(file) => file,
-            //         Err(_) => {
-            //             println!(
-            //                 "ERROR: Something went wrong creating derivation file: {}. Exiting...",
-            //                 error_filename
-            //             );
-            //             return;
-            //         }
-            //     };
-            //     for (derivation, production) in derivation_table.iter() {
-            //         for symbol in derivation.iter() {
-            //             derivation_filename
-            //                 .write_fmt(format_args!("{} ", symbol))
-            //                 .expect("Could not write to derivation file.");
-            //         }
-            //         if let Some(production) = production {
-            //             derivation_filename
-            //                 .write_fmt(format_args!("\nPRODUCTION: {}\n", production))
-            //                 .expect("Could not write to derivation file.");
-            //         } else {
-            //             derivation_filename
-            //                 .write_fmt(format_args!("\n"))
-            //                 .expect("Could not write to derivation file.");
-            //         }
-            //     }
-            //
-            //     println!("Result of derivation is equal to the token stream! Printed in 'derivation.txt.'");
-            // }
-
+        Ok((ast, derivation_table, syntactic_errors)) => {
+            if compiler_options.output_derivation {
+                let derivation_filename = "derivation.txt";
+                let path = Path::new(derivation_filename);
+                let mut derivation_file = match File::create(&path) {
+                    Ok(file) => file,
+                    Err(_) => {
+                        println!(
+                            "ERROR: Something went wrong creating derivation file: {}. Exiting...",
+                            error_filename
+                        );
+                        return (None, None);
+                    }
+                };
+                for (derivation, production) in derivation_table.iter() {
+                    for symbol in derivation.iter() {
+                        derivation_file
+                            .write_fmt(format_args!("{} ", symbol))
+                            .expect("Could not write to derivation file.");
+                    }
+                    if let Some(production) = production {
+                        derivation_file
+                            .write_fmt(format_args!("\nPRODUCTION: {}\n", production))
+                            .expect("Could not write to derivation file.");
+                    } else {
+                        derivation_file
+                            .write_fmt(format_args!("\n"))
+                            .expect("Could not write to derivation file.");
+                    }
+                }
+                println!(
+                    "Succesfully generated derivation file: {}.",
+                    derivation_filename
+                );
+            }
             (ast, syntactic_errors)
         }
         Err(ast_error) => {
@@ -386,11 +418,22 @@ fn compile(source: &str) -> (Option<Vec<Error>>, Option<bool>) {
         return (Some(errors), None);
     }
 
-    let ast_filename = "ast.gv";
-    match ast.print_tree_to(ast_filename) {
-        Ok(()) => println!("Succesfully generated AST graph file: {}.", ast_filename),
-        Err(error) => println!("{}", error),
-    };
+    if compiler_options.generate_ast {
+        let ast_filename = "ast.gv";
+        match ast.print_tree_to(ast_filename) {
+            Ok(()) => println!("Succesfully generated AST graph file: {}.", ast_filename),
+            Err(error) => println!("{}", error),
+        };
+        let png_filename = "ast.png";
+        Command::new("dot")
+            .arg("-Tpng")
+            .arg(ast_filename)
+            .arg("-o")
+            .arg(png_filename)
+            .output()
+            .expect("ERROR: Failed to create AST PNG.");
+        println!("Succesfully generated AST PNG file: {}.", png_filename);
+    }
 
     let mut semantic_errors = table_generator_visitor(&mut ast);
 
@@ -431,32 +474,36 @@ fn compile(source: &str) -> (Option<Vec<Error>>, Option<bool>) {
 
     print_moon_code(&moon_code, &mut moon_code_file);
 
-    println!("Executing program:");
+    if compiler_options.execute_program {
+        println!("Executing program:");
 
-    let output = Command::new("./moon")
-        .arg(moon_code_filename)
-        .arg("lib.m")
-        .output()
-        .expect("failed to execute process");
-    println!("----------------------------------------");
-    println!("Status: {}", output.status);
-    println!("----------------------------------------");
-    println!("stdout");
-    println!("----------------------------------------");
-    io::stdout().write_all(&output.stdout).unwrap();
-    println!("----------------------------------------");
-    println!("stderr");
-    println!("----------------------------------------");
-    io::stderr().write_all(&output.stderr).unwrap();
-    println!("----------------------------------------");
-
-    // The moon processor only uses stderr if there is a code error.
-    // Not if there is a runtime error or if the output is wrong.
-    (None, Some(output.status.success()))
+        let output = Command::new("./moon")
+            .arg(moon_code_filename)
+            .arg("lib.m")
+            .output()
+            .expect("failed to execute process");
+        println!("----------------------------------------");
+        println!("Status: {}", output.status);
+        println!("----------------------------------------");
+        println!("stdout");
+        println!("----------------------------------------");
+        io::stdout().write_all(&output.stdout).unwrap();
+        println!("----------------------------------------");
+        println!("stderr");
+        println!("----------------------------------------");
+        io::stderr().write_all(&output.stderr).unwrap();
+        println!("----------------------------------------");
+        // The moon processor only uses stderr if there is a code error.
+        // Not if there is a runtime error or if the output is wrong.
+        (None, Some(output.status.success()))
+    } else {
+        (None, Some(true))
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use std::fs;
 
     #[test]
@@ -476,7 +523,14 @@ mod tests {
             };
             println!();
             println!("Compiling file: {}", source_filename);
-            match crate::compile(&source) {
+            match crate::compile(
+                CompilerOption {
+                    generate_ast: false,
+                    execute_program: false,
+                    output_derivation: false,
+                },
+                &source,
+            ) {
                 (Some(errors), None) => assert!(*error_count == errors.len()),
                 (None, Some(is_success)) => {
                     assert!(*error_count == 0);
@@ -506,7 +560,14 @@ mod tests {
             };
             println!();
             println!("Compiling file: {}", source_filename);
-            match crate::compile(&source) {
+            match crate::compile(
+                CompilerOption {
+                    generate_ast: false,
+                    execute_program: false,
+                    output_derivation: false,
+                },
+                &source,
+            ) {
                 (Some(errors), None) => assert!(*error_count == errors.len()),
                 (None, Some(is_success)) => {
                     assert!(*error_count == 0);
@@ -546,7 +607,14 @@ mod tests {
             };
             println!();
             println!("Compiling file: {}", source_filename);
-            match crate::compile(&source) {
+            match crate::compile(
+                CompilerOption {
+                    generate_ast: false,
+                    execute_program: false,
+                    output_derivation: false,
+                },
+                &source,
+            ) {
                 (Some(errors), None) => assert!(*error_count == errors.len()),
                 (None, Some(is_success)) => {
                     assert!(*error_count == 0);

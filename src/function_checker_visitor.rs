@@ -6,8 +6,6 @@ use crate::symbol_table::*;
 
 use std::collections::HashMap;
 
-// FIXME: I NEED TO ADD A CHECK FOR THE TYPE OF THE FOR VARIABLE, BUT I'M NOT SURE IF IT CAN BE A SEMANTIC ERROR.
-
 pub fn function_checker_visitor(ast: &mut AST) -> Vec<SemanticError> {
     use NodeType::*;
     let mut semantic_errors: Vec<SemanticError> = Vec::new();
@@ -47,8 +45,6 @@ fn check_return_stat(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, no
 
 fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
     use NodeType::*;
-
-    // FIXME: I think I'm priorizing the member variable before the local one. It should be the opposite.
 
     let variable_name = ast.get_child_lexeme(node_index, 0);
 
@@ -314,7 +310,7 @@ fn function_call(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_i
     // Set symbol type to the function return type.
     ast.set_data_type(node_index, Some(function_return_symbol_type.clone()));
 
-    // FIXME: NOT SURE I WANT TO DO THAT
+    // Copy the function entry index on the FunctionCall.
     ast.get_mut_element(node_index).symbol_table_entry = Some(function_entry_index);
 }
 fn var_element_list(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
@@ -360,7 +356,6 @@ fn is_for_variable_in_scope(ast: &AST, node_index: usize) -> bool {
 
 fn is_variable_declared(ast: &AST, node_index: usize) -> bool {
     use NodeType::*;
-    //FIXME: Add case of for loop
 
     let variable_name = ast.get_child_lexeme(node_index, 0);
 

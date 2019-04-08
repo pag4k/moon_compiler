@@ -1,0 +1,74 @@
+// ALL 5.2 and 5.5
+
+class fclass1 {
+  fclass2 f;
+};
+
+class fclass2 {
+  fclass3 f;
+  integer fib();
+};
+
+class fclass3 {
+  fclass4 f;
+};
+
+class fclass4 {
+  integer n;
+  integer m;
+};
+
+// 5.2.5 recursive function calls-function call stack mechanism
+integer fibonacci(integer n) {
+  if (n<2) then {
+    return(n);
+  } else {
+    return(fibonacci(n-1) + fibonacci(n-2));
+  };
+};
+
+// 5.2.3 pass parameters as local values to the functions code block
+// 5.2.8 passing/returning an array or object to/from a function
+fclass4 newf(integer n, integer m) {
+  fclass4 f;
+  f.n = n;
+  f.m = m;
+  return(f);
+};
+
+// 5.2.2 branch back to a function that has been branched upon
+// 5.2.5 call to member functions
+// 5.2.7 call to deeply nested member function
+integer fclass2::fib() {
+  write(-fibonacci(f.f.n));
+  return(fibonacci(f.f.m));
+};
+
+main {
+  // 5.2.1 branch to a functions code block, execute the code block, branch back to the calling functionupon return
+  write(fibonacci(12));
+  fclass1 f;
+  // 5.2.4 upon function resolution, pass the return value back to the calling function
+  f.f.f.f = newf(13, 14);
+  write(-f.f.fib());
+
+  // 5.5.1 computing the value of an entire complex expression
+  // 5.5.2 expressions involving all of:arithmetic, relational and logic operators in one expression
+  // 5.5.3 expression involving an array factor whose indexes are themselves expressions
+  integer a;
+  integer b;
+  integer array[2];
+  a = 1;
+  b = 2;
+  array[0] = 20;
+  array[1] = 10;
+  // First index evaluate to 1.
+  // Second index evaluate to 0.
+  // So 10 > 20 evaluates to false (1).
+  write( array[(b-a+b+a) && (b*a)] > array[(b/a) - 2*!(0 || 1)] );
+
+  // 5.5.4 expression involving an object factor referring to deeply nested object members
+  write( -array[f.f.f.f.m - f.f.f.f.n] ); 
+
+};
+

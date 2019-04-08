@@ -1,10 +1,15 @@
+// ALL 5.1, 5.3 (except input) and 5.4
+
 class object {
+  integer n1;
   integer id;
+  integer n2;
 };
 
 class world: object{
   integer a;
   rgb pixels[5][5][5];
+  rgb default;
   integer b;
   rgb getAtPos(pos pos);
   integer setAtPos(rgb rgb, pos pos);
@@ -23,6 +28,7 @@ class pos: object {
   integer getid();
 };
 
+// 5.4.6 objects, access to the members of a superclass
 integer pos::getid() {
   return(id);
 };
@@ -36,6 +42,8 @@ integer world::setAtPos(rgb rgb, pos pos) {
   return(0);
 };
 
+// 5.3.3 loop statement: correct implementation of branching mechanism, including for imbricated loop statements
+// 5.4.2 arrays of objects, access to an array’s object elements, single or multidimensiona
 pos world::findBluest() {
   pos max;
   integer maxb;
@@ -78,6 +86,7 @@ rgb newrgb(integer r, integer g, integer b) {
   return(new);
 };
 
+// 5.3.1 assignment statement: assignment of the resulting value of an expression to a variable, independently of what is the complexity of the expression
 pos average(pos a[5]) {
   pos ave;
   for (integer i = 0; i < 5; i = i + 1)
@@ -89,6 +98,9 @@ pos average(pos a[5]) {
   return(ave);
 };
 
+// 5.3.2 conditional statement: implementation of branching mechanism, including for imbricated conditional statement
+// 5.4.1 arrays of basic types (integer and float), access to an array’s elements, single or multidimensional
+// 5.4.4 objects, access to members of array types, as well as the elements of the array
 integer pos::maxCoord() {
   integer max;
   if (coord[0] >= coord[1]) then
@@ -105,6 +117,7 @@ integer pos::maxCoord() {
 };
 
 main {
+  
   pos a[5];
   a[0] = fromCoord(0,1,3);
   a[1] = fromCoord(2,3,2);
@@ -122,13 +135,19 @@ main {
 
   world world;
 
+  // 5.4.3 objects, access to members of basic types
+  // 5.4.5 objects, access to members of objecttypes, as well as the elements of the object
+  world.default.r = 100;
+  world.default.g = 100;
+  world.default.b = 100;
+
   rgb new;
   integer temp;
   for (integer j = 0; j < 5; j = j +1) {
     if (a[j].coord[2] == 2) then {
       new = newrgb(255,255,255);
     } else {
-      new = newrgb(j*5,j*10,j*15);
+      new = world.default;
     };
     temp = world.setAtPos(new, a[j]);
   };
@@ -137,6 +156,7 @@ main {
   max = world.findBluest();
   for (integer k = 0; k < 3; k = k +1)
     write(max.coord[k]);;
+
 
   a[0].id = 0;
   a[1].id = 1;

@@ -196,7 +196,6 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
         })
         .collect();
     for (index, (dimension_index, _)) in invalid_index_position.iter().enumerate() {
-        // FIXME: NOT SURE
         // Fix the type issue to continue and catch more errors.
         ast.set_data_type(
             ast.get_children_of_child(node_index, 1)[*dimension_index],

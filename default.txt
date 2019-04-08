@@ -1,22 +1,5 @@
-class object {
-  integer u;
-  integer id;
-  integer p;
-};
-
-class pos: object {
-  integer g;
-  integer getid();
-  integer h;
-};
-
-integer pos::getid() {
-  return(id);
-};
 
 main {
-  pos a[4];
-  a[3].id = 9;
-  write(a[3].id);
-  write(a[3].getid());
+  integer t0;
+  t0 = 5;
 };

@@ -203,14 +203,9 @@ fn func_def(ast: &mut AST, code_gen_errors: &mut Vec<CodeGenError>, node_index: 
 
 fn var_decl(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_index: usize) {
     if !ast.has_memory_entry_index(node_index) {
-        // FIXME: GET DATA TYPE
         let symbol_entry = get_symbol_entry(ast, node_index);
         let variable_name = symbol_entry.get_name();
         let symbol_type = symbol_entry.get_symbol_type().unwrap();
-        // .kind {
-        //     SymbolKind::Variable(symbol_type) => symbol_type,
-        //     _ => unreachable!(),
-        // };
         let variable_type = symbol_to_variabl_type(&symbol_type);
 
         if let Some(size) = get_size(ast, &symbol_type) {

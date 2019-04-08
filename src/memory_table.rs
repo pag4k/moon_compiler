@@ -49,8 +49,8 @@ impl Display for VariableKind {
             Param(name) => format!("Param: {}", name),
             Var(name) => format!("Var: {}", name),
             ForVar(name) => format!("ForVar: {}", name),
-            TempVar(temp_index) => format!("TempVar: t{}", temp_index),
-            LitVar(temp_index) => format!("LitVar: t{}", temp_index),
+            TempVar(temp_index) => format!("TempVar: _t{}", temp_index),
+            LitVar(temp_index) => format!("LitVar: _t{}", temp_index),
         };
         write!(f, "{}", output)
     }
@@ -120,20 +120,6 @@ impl Display for MemoryTableEntry {
 }
 
 impl MemoryTableEntry {
-    // pub fn is_temp_var(&self) -> bool {
-    //     use VariableKind::*;
-    //     match self.kind {
-    //         TempVar(_) => true,
-    //         _ => false,
-    //     }
-    // }
-    // pub fn is_lit_var(&self) -> bool {
-    //     use VariableKind::*;
-    //     match self.kind {
-    //         LitVar(_) => true,
-    //         _ => false,
-    //     }
-    // }
     pub fn is_return_addr(&self) -> bool {
         use VariableKind::*;
         match self.kind {
@@ -171,16 +157,14 @@ impl MemoryTableEntry {
             _ => false,
         }
     }
-
-    // FIXME: I should probably prevent variable names in the form t#.
     pub fn get_name(&self) -> String {
         use VariableKind::*;
         match &self.kind {
             Param(name) => name.clone(),
             Var(name) => name.clone(),
             ForVar(name) => name.clone(),
-            TempVar(temp_index) => format!("t{}", temp_index),
-            LitVar(temp_index) => format!("t{}", temp_index),
+            TempVar(temp_index) => format!("_t{}", temp_index),
+            LitVar(temp_index) => format!("_t{}", temp_index),
             _ => "%".to_string(),
         }
     }
@@ -242,7 +226,6 @@ impl MemoryTableArena {
         }
 
         self.tables[table_index].offset = offset;
-        // FIXME: Maybe remove the entry from where it came from.
         self.tables[table_index].entries.push(entry_index);
     }
     pub fn print(&self) -> String {
