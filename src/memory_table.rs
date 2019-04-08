@@ -13,17 +13,6 @@ pub enum VariableType {
     Class(String),
 }
 
-// impl VariableType {
-//     pub fn new(memory_type: &str) -> Self {
-//         use VariableType::*;
-//         match memory_type {
-//             "integer" => Integer,
-//             "float" => Float,
-//             _ => Class(memory_type.to_string()),
-//         }
-//     }
-// }
-
 impl Display for VariableType {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         use VariableType::*;

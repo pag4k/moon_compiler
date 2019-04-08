@@ -1,22 +1,22 @@
-// ALL OPERATORS
+class object {
+  integer u;
+  integer id;
+  integer p;
+};
+
+class pos: object {
+  integer g;
+  integer getid();
+  integer h;
+};
+
+integer pos::getid() {
+  return(id);
+};
 
 main {
-  integer a;
-  integer b;
-  a = 0;
-  b = 5;
-  write(a<b);
-  write(a<=b);
-  write(a<>b);
-  write(a>b);
-  write(a>=b);
-  write(a==b);
-  write(a+b);
-  write(a-b);
-  write(a*b);
-  write(a/b);
-  write(a&&b);
-  write(a||b);
-  write(!a);
-  write(-a);
+  pos a[4];
+  a[0].id = 9;
+  write(a[3].id);
+  write(a[3].getid());
 };

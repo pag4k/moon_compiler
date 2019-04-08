@@ -1,50 +1,148 @@
-class pos {
-  integer x;
-  integer y;
-  integer z;
-  
+class object {
+  integer id;
 };
 
-pos new(integer x, integer y, integer z) {
+class world: object{
+  integer a;
+  rgb pixels[5][5][5];
+  integer b;
+  rgb getAtPos(pos pos);
+  integer setAtPos(rgb rgb, pos pos);
+  pos findBluest();
+};
+
+class rgb {
+  integer r;
+  integer g;
+  integer b;
+};
+
+class pos: object {
+  integer coord[3];
+  integer maxCoord();
+  integer getid();
+};
+
+integer pos::getid() {
+  return(id);
+};
+
+rgb world::getAtPos(pos pos) {
+  return(pixels[pos.coord[0]][pos.coord[1]][pos.coord[2]]);
+};
+
+integer world::setAtPos(rgb rgb, pos pos) {
+  pixels[pos.coord[0]][pos.coord[1]][pos.coord[2]] = rgb;
+  return(0);
+};
+
+pos world::findBluest() {
+  pos max;
+  integer maxb;
+  maxb = 0;
+  for (integer i = 0; i < 5; i = i + 1)
+    for (integer j = 0; j < 5; j = j +1)
+      for (integer k = 0; k < 5; k = k +1)
+        if (pixels[i][j][k].b > maxb) then {
+          maxb = pixels[i][j][k].b;
+          max = fromCoord(i, j, k);
+        } else {};;;;
+  return(max);
+};
+
+pos fromCoord(integer x, integer y, integer z) {
   pos new;
-  new.x = x;
-  new.y = y;
-  new.z = z;
+  new.coord[0] = x;
+  new.coord[1] = y;
+  new.coord[2] = z;
+  return(new);
+};
+
+pos fromArray(integer newCoord[3]) {
+  pos new;
+  new.coord = newCoord;
   return(new);
 };
 
 pos add(pos a1, pos a2) {
-  a1.x = a1.x + a2.x;
-  a1.y = a1.y + a2.y;
-  a1.z = a1.z + a2.z;
+  for (integer i = 0; i < 3; i = i +1)
+    a1.coord[i] = a1.coord[i] + a2.coord[i];;
   return(a1);
 };
 
+rgb newrgb(integer r, integer g, integer b) {
+  rgb new;
+  new.r = r;
+  new.g = g;
+  new.b = b;
+  return(new);
+};
+
 pos average(pos a[5]) {
-  integer xSum;
-  integer ySum;
-  integer zSum;
-  for (integer i = 0; i < 5; i = i + 1) {
-    xSum = xSum + a[i].x;
-    ySum = ySum + a[i].y;
-    zSum = zSum + a[i].z;
+  pos ave;
+  for (integer i = 0; i < 5; i = i + 1)
+    for (integer j = 0; j < 3; j = j +1)
+      ave.coord[j] = ave.coord[j] + a[i].coord[j];;;
+  for (integer k = 0; k < 3; k = k +1) {
+      ave.coord[k] = ave.coord[k] /5;
   };
-  return(new(xSum/5, ySum/5, zSum/5));
+  return(ave);
+};
+
+integer pos::maxCoord() {
+  integer max;
+  if (coord[0] >= coord[1]) then
+    if (coord[0] >= coord[2]) then
+      max = coord[0];
+    else
+      max = coord[2];;
+  else
+    if (coord[1] >= coord[2]) then
+      max = coord[1];
+    else
+      max = coord[2];;;
+  return(max);
 };
 
 main {
   pos a[5];
-  a[0] = new(1,2,3);
-  a[1] = new(1,2,3);
-  a[2] = new(1,2,3);
-  a[3] = new(1,2,3);
-  a[4] = new(1,2,3);
+  a[0] = fromCoord(0,1,3);
+  a[1] = fromCoord(2,3,2);
+  a[2] = fromCoord(2,3,3);
+  a[3] = fromCoord(2,4,3);
+  a[4] = fromCoord(4,4,4);
 
   pos ave;
   ave = average(a);
 
-  write(ave.x);
-  write(ave.y);
-  write(ave.z);
+  for (integer i = 0; i < 3; i = i +1)
+    write(ave.coord[i]);;
+
+  write(ave.maxCoord());
+
+  world world;
+
+  rgb new;
+  integer temp;
+  for (integer j = 0; j < 5; j = j +1) {
+    if (a[j].coord[2] == 2) then {
+      new = newrgb(255,255,255);
+    } else {
+      new = newrgb(j*5,j*10,j*15);
+    };
+    temp = world.setAtPos(new, a[j]);
+  };
+
+  pos max;
+  max = world.findBluest();
+  for (integer k = 0; k < 3; k = k +1)
+    write(max.coord[k]);;
+
+  a[0].id = 0;
+  a[1].id = 1;
+  a[2].id = 2;
+  a[3].id = 3;
+  a[4].id = 4;
+  write(a[3].getid());
 
 };

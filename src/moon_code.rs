@@ -357,7 +357,9 @@ pub fn get_reference(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usi
                 }
                 // If it encounters a single function call, return the offset of the return
                 // value TempVar.
-                // FIXME: So this code assumes that this is the last element.
+                // We know this is the last element of the VarElementList.
+                // If it is not the first, then it is a member function and
+                // the current reference points to the instance.
                 FunctionCall => {
                     let entry_index = ast.get_memory_entry_index(child_index);
                     let memory_entry = ast.memory_table_arena.get_table_entry(entry_index);

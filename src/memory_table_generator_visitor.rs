@@ -11,15 +11,16 @@ pub fn memory_table_generator_visitor(ast: &mut AST) -> Vec<CodeGenError> {
     use NodeType::*;
     let mut code_gen_errors: Vec<CodeGenError> = Vec::new();
     let mut semantic_actions: SemanticActionMap<CodeGenError> = HashMap::new();
+    // Table
     semantic_actions.insert(ClassDecl, class_decl);
     semantic_actions.insert(MainFuncBody, main_func_body);
     semantic_actions.insert(FuncDef, func_def);
+    // Var
     semantic_actions.insert(VarDecl, var_decl);
-    //semantic_actions.insert(DataMember, var_element);
-    semantic_actions.insert(FunctionCall, var_element);
     // ForVar
     semantic_actions.insert(ForStat, for_var);
     // TempVar
+    semantic_actions.insert(FunctionCall, function_call);
     semantic_actions.insert(IndexList, index_list);
     semantic_actions.insert(RelExpr, temp_var);
     semantic_actions.insert(AddOp, temp_var);
@@ -223,7 +224,7 @@ fn var_decl(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_index:
     }
 }
 
-fn var_element(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_index: usize) {
+fn function_call(ast: &mut AST, _code_gen_errors: &mut Vec<CodeGenError>, node_index: usize) {
     if !ast.has_memory_entry_index(node_index) {
         let data_type = ast.get_data_type(node_index);
         let variable_type = symbol_to_variabl_type(&data_type);
