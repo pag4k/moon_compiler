@@ -34,7 +34,7 @@ fclass4 newf(integer n, integer m) {
 };
 
 integer fclass2::fib() {
-  write(fibonacci(f.f.n));
+  write(-fibonacci(f.f.n));
   return(fibonacci(f.f.m));
 };
 
@@ -42,6 +42,6 @@ main {
   write(fibonacci(12));
   fclass1 f;
   f.f.f.f = newf(13, 14);
-  write(f.f.fib());
+  write(-f.f.fib());
 };
 

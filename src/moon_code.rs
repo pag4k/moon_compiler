@@ -358,8 +358,6 @@ pub fn get_reference(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usi
                 // If it encounters a single function call, return the offset of the return
                 // value TempVar.
                 // We know this is the last element of the VarElementList.
-                // If it is not the first, then it is a member function and
-                // the current reference points to the instance.
                 FunctionCall => {
                     let entry_index = ast.get_memory_entry_index(child_index);
                     let memory_entry = ast.memory_table_arena.get_table_entry(entry_index);
@@ -372,19 +370,14 @@ pub fn get_reference(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usi
         }
         if include_array {
             SizeAndOffsetAndRegister(size, 0, register1)
-        // Offset::Register(size, register1)
         } else {
             ast.register_pool.push(register1);
-            // Offset::Immediate(size, reference_register, offset)
             SizeAndOffsetAndRegister(size, offset, reference_register)
         }
     } else {
         let entry_index = ast.get_memory_entry_index(node_index);
         let memory_entry = ast.memory_table_arena.get_table_entry(entry_index);
-
         return SizeAndOffsetAndRegister(memory_entry.get_size(), memory_entry.get_offset(), 14);
-
-        //Offset::Immediate(memory_entry.get_size(), 14, memory_entry.get_offset());
     }
 }
 
@@ -502,8 +495,6 @@ pub fn copy_var(
     let (lhs_size, lhs_offset, lhs_address_register) = lhs_reference.get(ast, moon_code);
     let (rhs_size, rhs_offset, rhs_address_register) = rhs_reference.get(ast, moon_code);
 
-    // dbg!(lhs_size);
-    // dbg!(rhs_size);
     assert!(lhs_size == rhs_size);
 
     let register1 = ast.register_pool.pop();
@@ -527,4 +518,128 @@ pub fn copy_var(
     ast.register_pool.push(rhs_address_register);
 
     ast.register_pool.push(register1);
+}
+
+pub fn get_inst_reference(
+    ast: &mut AST,
+    moon_code: &mut Vec<String>,
+    node_index: usize,
+) -> Reference {
+    use Reference::*;
+
+    let parent_index = ast.get_parent(node_index).unwrap();
+    let child_nodes = ast.get_children(parent_index);
+
+    // Find the position of the FunctionCall in the VarElementList.
+    let function_call_position = child_nodes
+        .iter()
+        .position(|&child_index| child_index == node_index)
+        .unwrap();
+
+    // If there is no DataMember, return the address of the current instance.
+    if function_call_position == 0 {
+        let (_, function_memory_table_index) =
+            get_function_node_index_and_memory_table_index(ast, node_index).unwrap();
+        return Offset(get_inst_addr_offset(ast, function_memory_table_index).unwrap());
+    }
+
+    // FIXME: This is a partial copy of the get_reference() function.
+    // Maybe there is a better way to do this.
+    let register1 = ast.register_pool.pop();
+    let mut reference_register: usize = 14;
+    let mut offset: isize = 0;
+    let mut include_array = false;
+    for (position, child_index) in child_nodes.into_iter().enumerate() {
+        // If get at the FunctionCall, break.
+        if position == function_call_position {
+            break;
+        }
+        // We can assume we have a DataMember.
+        // Get symbol entry associated with DataMember.
+        let symbol_entry_index = ast.get_symbol_entry_index(child_index);
+        if position == 0 {
+            //  Check if symbol entry is a member variable.
+            if get_class_node_of_symbol_entry(ast, symbol_entry_index).is_some() {
+                // Set register to instance variable.
+                load_inst_addresse(ast, moon_code, node_index);
+                reference_register = 12;
+            }
+        }
+
+        let memory_entry = ast
+            .memory_table_arena
+            .get_table_entry(get_memory_from_symbol(ast, child_index).unwrap());
+        if include_array {
+            moon_code.push(format!(
+                "{}addi r{},r{},{}",
+                INDENT,
+                register1,
+                register1,
+                memory_entry.get_offset()
+            ));
+        } else {
+            offset += memory_entry.get_offset();
+        }
+
+        let index_list_node = ast.get_child(child_index, 1);
+
+        if ast.has_memory_entry_index(index_list_node) {
+            let memory_entry_index = ast.get_memory_entry_index(index_list_node);
+            if !include_array {
+                add_comment(
+                    moon_code,
+                    "Array -> Switching to offset register.".to_string(),
+                );
+                moon_code.push(format!(
+                    "{}addi r{},r{},{}",
+                    INDENT, register1, reference_register, offset
+                ));
+                include_array = true;
+            }
+            moon_code.push(format!(
+                "{}addi r{},r{},{}",
+                INDENT,
+                register1,
+                register1,
+                memory_entry.get_size()
+            ));
+            let index_list_memory_entry =
+                ast.memory_table_arena.get_table_entry(memory_entry_index);
+            let register2 = ast.register_pool.pop();
+            moon_code.push(format!(
+                "{}lw r{},{}(r14)",
+                INDENT,
+                register2,
+                index_list_memory_entry.get_offset()
+            ));
+            moon_code.push(format!(
+                "{}add r{},r{},r{}",
+                INDENT, register1, register1, register2
+            ));
+            ast.register_pool.push(register2);
+        }
+
+        let symbol_entry = ast.symbol_table_arena.get_table_entry(symbol_entry_index);
+        let symbol_type = symbol_entry.get_symbol_type().unwrap();
+        // Here, we correctly assume that no element should be an array.
+        assert!(
+            !symbol_type.get_dimension_list().is_empty()
+                == ast.has_memory_entry_index(index_list_node)
+        );
+        let type_size = get_size(ast, &symbol_type.remove_dimensions()).unwrap();
+        if include_array {
+            moon_code.push(format!(
+                "{}addi r{},r{},{}",
+                INDENT, register1, register1, type_size as isize
+            ));
+        } else {
+            offset += type_size as isize;
+        }
+    }
+    if include_array {
+        SizeAndOffsetAndRegister(4, 0, register1)
+    } else {
+        ast.register_pool.push(register1);
+        SizeAndOffsetAndRegister(4, offset, reference_register)
+    }
 }

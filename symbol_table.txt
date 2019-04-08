@@ -1,17 +1,78 @@
-SYMBOL TABLE: NAME: Global INDEX: 4
+SYMBOL TABLE: NAME: Global INDEX: 15
 0. Name: object, Class, Link: Some(0)
-1. Name: pos, Class, Link: Some(1)
-2. Name: main, Function: Return Type: None, Parameters: , Link: Some(3)
+1. Name: world, Class, Link: Some(1)
+2. Name: rgb, Class, Link: Some(2)
+3. Name: pos, Class, Link: Some(3)
+4. Name: fromCoord, Function: Return Type: pos, Parameters: integer, integer, integer, Link: Some(8)
+5. Name: fromArray, Function: Return Type: pos, Parameters: integer[3], Link: Some(9)
+6. Name: add, Function: Return Type: pos, Parameters: pos, pos, Link: Some(10)
+7. Name: newrgb, Function: Return Type: rgb, Parameters: integer, integer, integer, Link: Some(11)
+8. Name: average, Function: Return Type: pos, Parameters: pos[5], Link: Some(12)
+9. Name: main, Function: Return Type: None, Parameters: , Link: Some(14)
 SYMBOL TABLE: NAME: object INDEX: 0
-0. Name: u, Variable: integer, Link: None
-1. Name: id, Variable: integer, Link: None
-2. Name: p, Variable: integer, Link: None
-SYMBOL TABLE: NAME: pos INDEX: 1
-0. Name: g, Variable: integer, Link: None
-1. Name: getid, Function: Return Type: integer, Parameters: , Link: Some(2)
-2. Name: h, Variable: integer, Link: None
+0. Name: id, Variable: integer, Link: None
+SYMBOL TABLE: NAME: world INDEX: 1
+0. Name: a, Variable: integer, Link: None
+1. Name: pixels, Variable: rgb[5][5][5], Link: None
+2. Name: b, Variable: integer, Link: None
+3. Name: getAtPos, Function: Return Type: rgb, Parameters: pos, Link: Some(5)
+4. Name: setAtPos, Function: Return Type: integer, Parameters: rgb, pos, Link: Some(6)
+5. Name: findBluest, Function: Return Type: pos, Parameters: , Link: Some(7)
+6. Name: object, Class, Link: Some(0)
+SYMBOL TABLE: NAME: getAtPos INDEX: 5
+0. Name: pos, Parameter: pos, Link: None
+SYMBOL TABLE: NAME: setAtPos INDEX: 6
+0. Name: rgb, Parameter: rgb, Link: None
+1. Name: pos, Parameter: pos, Link: None
+SYMBOL TABLE: NAME: findBluest INDEX: 7
+0. Name: max, Variable: pos, Link: None
+1. Name: maxb, Variable: integer, Link: None
+2. Name: k, For: integer, Link: None
+3. Name: j, For: integer, Link: None
+4. Name: i, For: integer, Link: None
+SYMBOL TABLE: NAME: rgb INDEX: 2
+0. Name: r, Variable: integer, Link: None
+1. Name: g, Variable: integer, Link: None
+2. Name: b, Variable: integer, Link: None
+SYMBOL TABLE: NAME: pos INDEX: 3
+0. Name: coord, Variable: integer[3], Link: None
+1. Name: maxCoord, Function: Return Type: integer, Parameters: , Link: Some(13)
+2. Name: getid, Function: Return Type: integer, Parameters: , Link: Some(4)
 3. Name: object, Class, Link: Some(0)
-SYMBOL TABLE: NAME: getid INDEX: 2
-SYMBOL TABLE: NAME: main INDEX: 3
-0. Name: a, Variable: pos[4], Link: None
+SYMBOL TABLE: NAME: maxCoord INDEX: 13
+0. Name: max, Variable: integer, Link: None
+SYMBOL TABLE: NAME: getid INDEX: 4
+SYMBOL TABLE: NAME: fromCoord INDEX: 8
+0. Name: new, Variable: pos, Link: None
+1. Name: x, Parameter: integer, Link: None
+2. Name: y, Parameter: integer, Link: None
+3. Name: z, Parameter: integer, Link: None
+SYMBOL TABLE: NAME: fromArray INDEX: 9
+0. Name: new, Variable: pos, Link: None
+1. Name: newCoord, Parameter: integer[3], Link: None
+SYMBOL TABLE: NAME: add INDEX: 10
+0. Name: i, For: integer, Link: None
+1. Name: a1, Parameter: pos, Link: None
+2. Name: a2, Parameter: pos, Link: None
+SYMBOL TABLE: NAME: newrgb INDEX: 11
+0. Name: new, Variable: rgb, Link: None
+1. Name: r, Parameter: integer, Link: None
+2. Name: g, Parameter: integer, Link: None
+3. Name: b, Parameter: integer, Link: None
+SYMBOL TABLE: NAME: average INDEX: 12
+0. Name: ave, Variable: pos, Link: None
+1. Name: j, For: integer, Link: None
+2. Name: i, For: integer, Link: None
+3. Name: k, For: integer, Link: None
+4. Name: a, Parameter: pos[5], Link: None
+SYMBOL TABLE: NAME: main INDEX: 14
+0. Name: a, Variable: pos[5], Link: None
+1. Name: ave, Variable: pos, Link: None
+2. Name: world, Variable: world, Link: None
+3. Name: new, Variable: rgb, Link: None
+4. Name: temp, Variable: integer, Link: None
+5. Name: max, Variable: pos, Link: None
+6. Name: i, For: integer, Link: None
+7. Name: j, For: integer, Link: None
+8. Name: k, For: integer, Link: None
  

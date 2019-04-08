@@ -83,33 +83,6 @@ pub fn get_memory_from_symbol(ast: &AST, node_index: usize) -> Option<usize> {
     unreachable!();
 }
 
-pub fn get_inst_offset(ast: &AST, node_index: usize) -> Option<isize> {
-    let parent_index = ast.get_parent(node_index).unwrap();
-    let child_nodes = ast.get_children(parent_index);
-    let function_call_position = child_nodes
-        .iter()
-        .position(|&child_index| child_index == node_index)
-        .unwrap();
-    if function_call_position == 0 {
-        let (_, function_memory_table_index) =
-            get_function_node_index_and_memory_table_index(ast, node_index).unwrap();
-        return get_inst_addr_offset(ast, function_memory_table_index);
-    }
-    let mut offset: isize = 0;
-    // Note that contrary to when we acces data member, we return the offset
-    // at the "top" of the instance variable because it is necessarily an object.
-    for child_index in ast.get_children(parent_index) {
-        if child_index == node_index {
-            break;
-        }
-        let memory_entry = ast
-            .memory_table_arena
-            .get_table_entry(get_memory_from_symbol(ast, child_index).unwrap());
-        offset += memory_entry.get_offset() + memory_entry.get_size() as isize;
-    }
-    Some(offset)
-}
-
 pub fn get_inst_addr_offset(ast: &AST, memory_table_index_index: usize) -> Option<isize> {
     for &entry_index in ast
         .memory_table_arena

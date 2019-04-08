@@ -16,7 +16,7 @@ integer pos::getid() {
 
 main {
   pos a[4];
-  a[0].id = 9;
+  a[3].id = 9;
   write(a[3].id);
   write(a[3].getid());
 };

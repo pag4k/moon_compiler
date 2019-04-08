@@ -129,14 +129,21 @@ fn function_call(ast: &mut AST, moon_code: &mut Vec<String>, node_index: usize) 
     );
 
     let register1 = ast.register_pool.pop();
-
     // If member function, set instance address.
     if let Some(inst_addr_var_offset) =
         get_inst_addr_offset(ast, called_function_memory_table_index)
     {
         add_comment(moon_code, "Setting instance address".to_string());
-        let inst_offset = get_inst_offset(ast, node_index).unwrap();
-        addi(moon_code, register1, 14, inst_offset);
+        match get_inst_reference(ast, moon_code, node_index) {
+            Offset(offset) => {
+                addi(moon_code, register1, 14, offset);
+            }
+            SizeAndOffsetAndRegister(_, offset, address_register) => {
+                addi(moon_code, register1, address_register, offset);
+                ast.register_pool.push(address_register);
+            }
+            _ => unreachable!(),
+        }
         store(
             ast,
             moon_code,

@@ -143,6 +143,6 @@ main {
   a[2].id = 2;
   a[3].id = 3;
   a[4].id = 4;
-  write(a[3].getid());
+  write(-a[3].getid());
 
 };

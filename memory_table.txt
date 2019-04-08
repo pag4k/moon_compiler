@@ -1,28 +1,287 @@
-MEMORY TABLE: NAME: object OFFSET: -12 SYMBOL INDEX: 0 INDEX: 0
-Var: u, integer, 4, -4
-Var: id, integer, 4, -8
-Var: p, integer, 4, -12
+MEMORY TABLE: NAME: object OFFSET: -4 SYMBOL INDEX: 0 INDEX: 0
+Var: id, integer, 4, -4
 
-MEMORY TABLE: NAME: pos OFFSET: -20 SYMBOL INDEX: 1 INDEX: 1
-Inherited, object, 12, -12
-Var: g, integer, 4, -16
-Var: h, integer, 4, -20
+MEMORY TABLE: NAME: rgb OFFSET: -12 SYMBOL INDEX: 2 INDEX: 1
+Var: r, integer, 4, -4
+Var: g, integer, 4, -8
+Var: b, integer, 4, -12
 
-MEMORY TABLE: NAME: getid OFFSET: -12 SYMBOL INDEX: 2 INDEX: 2
+MEMORY TABLE: NAME: pos OFFSET: -16 SYMBOL INDEX: 3 INDEX: 2
+Inherited, object, 4, -4
+Var: coord, integer, 12, -16
+
+MEMORY TABLE: NAME: world OFFSET: -1512 SYMBOL INDEX: 1 INDEX: 3
+Inherited, object, 4, -4
+Var: a, integer, 4, -8
+Var: pixels, rgb, 1500, -1508
+Var: b, integer, 4, -1512
+
+MEMORY TABLE: NAME: getid OFFSET: -12 SYMBOL INDEX: 4 INDEX: 4
 ReturnVar, integer, 4, -4
 ReturnAddr, integer, 4, -8
 InstAddr, pos, 4, -12
 
-MEMORY TABLE: NAME: program OFFSET: -116 SYMBOL INDEX: 3 INDEX: 3
+MEMORY TABLE: NAME: getAtPos OFFSET: -72 SYMBOL INDEX: 5 INDEX: 5
+ReturnVar, rgb, 12, -12
+ReturnAddr, integer, 4, -16
+InstAddr, world, 12, -28
+Param: pos, pos, 16, -44
+LitVar: t0, integer, 4, -48
+TempVar: t1, integer, 4, -52
+LitVar: t2, integer, 4, -56
+TempVar: t3, integer, 4, -60
+LitVar: t4, integer, 4, -64
+TempVar: t5, integer, 4, -68
+TempVar: t6, integer, 4, -72
+
+MEMORY TABLE: NAME: setAtPos OFFSET: -72 SYMBOL INDEX: 6 INDEX: 6
+ReturnVar, integer, 4, -4
+ReturnAddr, integer, 4, -8
+InstAddr, world, 4, -12
+Param: pos, pos, 16, -28
+Param: rgb, rgb, 12, -40
+LitVar: t0, integer, 4, -44
+TempVar: t1, integer, 4, -48
+LitVar: t2, integer, 4, -52
+TempVar: t3, integer, 4, -56
+LitVar: t4, integer, 4, -60
+TempVar: t5, integer, 4, -64
+TempVar: t6, integer, 4, -68
+LitVar: t7, integer, 4, -72
+
+MEMORY TABLE: NAME: findBluest OFFSET: -160 SYMBOL INDEX: 7 INDEX: 7
+ReturnVar, pos, 16, -16
+ReturnAddr, integer, 4, -20
+InstAddr, world, 16, -36
+Var: max, pos, 16, -52
+Var: maxb, integer, 4, -56
+LitVar: t0, integer, 4, -60
+LitVar: t1, integer, 4, -64
+LitVar: t2, integer, 4, -68
+TempVar: t3, integer, 4, -72
+LitVar: t4, integer, 4, -76
+TempVar: t5, integer, 4, -80
+LitVar: t6, integer, 4, -84
+LitVar: t7, integer, 4, -88
+TempVar: t8, integer, 4, -92
+LitVar: t9, integer, 4, -96
+TempVar: t10, integer, 4, -100
+LitVar: t11, integer, 4, -104
+LitVar: t12, integer, 4, -108
+TempVar: t13, integer, 4, -112
+LitVar: t14, integer, 4, -116
+TempVar: t15, integer, 4, -120
+TempVar: t16, integer, 4, -124
+TempVar: t17, integer, 4, -128
+TempVar: t18, integer, 4, -132
+TempVar: t19, pos, 16, -148
+ForVar: k, integer, 4, -152
+ForVar: j, integer, 4, -156
+ForVar: i, integer, 4, -160
+
+MEMORY TABLE: NAME: fromCoord OFFSET: -72 SYMBOL INDEX: 8 INDEX: 8
+ReturnVar, pos, 16, -16
+ReturnAddr, integer, 4, -20
+Param: z, integer, 4, -24
+Param: y, integer, 4, -28
+Param: x, integer, 4, -32
+Var: new, pos, 16, -48
+LitVar: t0, integer, 4, -52
+TempVar: t1, integer, 4, -56
+LitVar: t2, integer, 4, -60
+TempVar: t3, integer, 4, -64
+LitVar: t4, integer, 4, -68
+TempVar: t5, integer, 4, -72
+
+MEMORY TABLE: NAME: fromArray OFFSET: -48 SYMBOL INDEX: 9 INDEX: 9
+ReturnVar, pos, 16, -16
+ReturnAddr, integer, 4, -20
+Param: newCoord, integer, 12, -32
+Var: new, pos, 16, -48
+
+MEMORY TABLE: NAME: add OFFSET: -92 SYMBOL INDEX: 10 INDEX: 10
+ReturnVar, pos, 16, -16
+ReturnAddr, integer, 4, -20
+Param: a2, pos, 16, -36
+Param: a1, pos, 16, -52
+LitVar: t0, integer, 4, -56
+LitVar: t1, integer, 4, -60
+TempVar: t2, integer, 4, -64
+LitVar: t3, integer, 4, -68
+TempVar: t4, integer, 4, -72
+TempVar: t5, integer, 4, -76
+TempVar: t6, integer, 4, -80
+TempVar: t7, integer, 4, -84
+TempVar: t8, integer, 4, -88
+ForVar: i, integer, 4, -92
+
+MEMORY TABLE: NAME: newrgb OFFSET: -40 SYMBOL INDEX: 11 INDEX: 11
+ReturnVar, rgb, 12, -12
+ReturnAddr, integer, 4, -16
+Param: b, integer, 4, -20
+Param: g, integer, 4, -24
+Param: r, integer, 4, -28
+Var: new, rgb, 12, -40
+
+MEMORY TABLE: NAME: average OFFSET: -224 SYMBOL INDEX: 12 INDEX: 12
+ReturnVar, pos, 16, -16
+ReturnAddr, integer, 4, -20
+Param: a, pos, 80, -100
+Var: ave, pos, 16, -116
+LitVar: t0, integer, 4, -120
+LitVar: t1, integer, 4, -124
+TempVar: t2, integer, 4, -128
+LitVar: t3, integer, 4, -132
+TempVar: t4, integer, 4, -136
+LitVar: t5, integer, 4, -140
+LitVar: t6, integer, 4, -144
+TempVar: t7, integer, 4, -148
+LitVar: t8, integer, 4, -152
+TempVar: t9, integer, 4, -156
+TempVar: t10, integer, 4, -160
+TempVar: t11, integer, 4, -164
+TempVar: t12, integer, 4, -168
+TempVar: t13, integer, 4, -172
+TempVar: t14, integer, 4, -176
+ForVar: j, integer, 4, -180
+ForVar: i, integer, 4, -184
+LitVar: t15, integer, 4, -188
+LitVar: t16, integer, 4, -192
+TempVar: t17, integer, 4, -196
+LitVar: t18, integer, 4, -200
+TempVar: t19, integer, 4, -204
+TempVar: t20, integer, 4, -208
+TempVar: t21, integer, 4, -212
+LitVar: t22, integer, 4, -216
+TempVar: t23, integer, 4, -220
+ForVar: k, integer, 4, -224
+
+MEMORY TABLE: NAME: maxCoord OFFSET: -108 SYMBOL INDEX: 13 INDEX: 13
+ReturnVar, integer, 4, -4
+ReturnAddr, integer, 4, -8
+InstAddr, pos, 4, -12
+Var: max, integer, 4, -16
+LitVar: t0, integer, 4, -20
+TempVar: t1, integer, 4, -24
+LitVar: t2, integer, 4, -28
+TempVar: t3, integer, 4, -32
+TempVar: t4, integer, 4, -36
+LitVar: t5, integer, 4, -40
+TempVar: t6, integer, 4, -44
+LitVar: t7, integer, 4, -48
+TempVar: t8, integer, 4, -52
+TempVar: t9, integer, 4, -56
+LitVar: t10, integer, 4, -60
+TempVar: t11, integer, 4, -64
+LitVar: t12, integer, 4, -68
+TempVar: t13, integer, 4, -72
+LitVar: t14, integer, 4, -76
+TempVar: t15, integer, 4, -80
+LitVar: t16, integer, 4, -84
+TempVar: t17, integer, 4, -88
+TempVar: t18, integer, 4, -92
+LitVar: t19, integer, 4, -96
+TempVar: t20, integer, 4, -100
+LitVar: t21, integer, 4, -104
+TempVar: t22, integer, 4, -108
+
+MEMORY TABLE: NAME: program OFFSET: -2104 SYMBOL INDEX: 14 INDEX: 14
 LitVar: t0, integer, 4, -4
 Var: a, pos, 80, -84
 LitVar: t1, integer, 4, -88
 TempVar: t2, integer, 4, -92
 LitVar: t3, integer, 4, -96
 LitVar: t4, integer, 4, -100
-TempVar: t5, integer, 4, -104
-LitVar: t6, integer, 4, -108
-TempVar: t7, integer, 4, -112
-TempVar: t8, integer, 4, -116
+LitVar: t5, integer, 4, -104
+TempVar: t6, pos, 16, -120
+LitVar: t7, integer, 4, -124
+TempVar: t8, integer, 4, -128
+LitVar: t9, integer, 4, -132
+LitVar: t10, integer, 4, -136
+LitVar: t11, integer, 4, -140
+TempVar: t12, pos, 16, -156
+LitVar: t13, integer, 4, -160
+TempVar: t14, integer, 4, -164
+LitVar: t15, integer, 4, -168
+LitVar: t16, integer, 4, -172
+LitVar: t17, integer, 4, -176
+TempVar: t18, pos, 16, -192
+LitVar: t19, integer, 4, -196
+TempVar: t20, integer, 4, -200
+LitVar: t21, integer, 4, -204
+LitVar: t22, integer, 4, -208
+LitVar: t23, integer, 4, -212
+TempVar: t24, pos, 16, -228
+LitVar: t25, integer, 4, -232
+TempVar: t26, integer, 4, -236
+LitVar: t27, integer, 4, -240
+LitVar: t28, integer, 4, -244
+LitVar: t29, integer, 4, -248
+TempVar: t30, pos, 16, -264
+Var: ave, pos, 16, -280
+TempVar: t31, pos, 16, -296
+LitVar: t32, integer, 4, -300
+LitVar: t33, integer, 4, -304
+TempVar: t34, integer, 4, -308
+LitVar: t35, integer, 4, -312
+TempVar: t36, integer, 4, -316
+TempVar: t37, integer, 4, -320
+ForVar: i, integer, 4, -324
+TempVar: t38, integer, 4, -328
+Var: world, world, 1512, -1840
+Var: new, rgb, 12, -1852
+Var: temp, integer, 4, -1856
+LitVar: t39, integer, 4, -1860
+LitVar: t40, integer, 4, -1864
+TempVar: t41, integer, 4, -1868
+LitVar: t42, integer, 4, -1872
+TempVar: t43, integer, 4, -1876
+TempVar: t44, integer, 4, -1880
+LitVar: t45, integer, 4, -1884
+TempVar: t46, integer, 4, -1888
+LitVar: t47, integer, 4, -1892
+TempVar: t48, integer, 4, -1896
+LitVar: t49, integer, 4, -1900
+LitVar: t50, integer, 4, -1904
+LitVar: t51, integer, 4, -1908
+TempVar: t52, rgb, 12, -1920
+LitVar: t53, integer, 4, -1924
+TempVar: t54, integer, 4, -1928
+LitVar: t55, integer, 4, -1932
+TempVar: t56, integer, 4, -1936
+LitVar: t57, integer, 4, -1940
+TempVar: t58, integer, 4, -1944
+TempVar: t59, rgb, 12, -1956
+TempVar: t60, integer, 4, -1960
+TempVar: t61, integer, 4, -1964
+ForVar: j, integer, 4, -1968
+Var: max, pos, 16, -1984
+TempVar: t62, pos, 16, -2000
+LitVar: t63, integer, 4, -2004
+LitVar: t64, integer, 4, -2008
+TempVar: t65, integer, 4, -2012
+LitVar: t66, integer, 4, -2016
+TempVar: t67, integer, 4, -2020
+TempVar: t68, integer, 4, -2024
+ForVar: k, integer, 4, -2028
+LitVar: t69, integer, 4, -2032
+TempVar: t70, integer, 4, -2036
+LitVar: t71, integer, 4, -2040
+LitVar: t72, integer, 4, -2044
+TempVar: t73, integer, 4, -2048
+LitVar: t74, integer, 4, -2052
+LitVar: t75, integer, 4, -2056
+TempVar: t76, integer, 4, -2060
+LitVar: t77, integer, 4, -2064
+LitVar: t78, integer, 4, -2068
+TempVar: t79, integer, 4, -2072
+LitVar: t80, integer, 4, -2076
+LitVar: t81, integer, 4, -2080
+TempVar: t82, integer, 4, -2084
+LitVar: t83, integer, 4, -2088
+LitVar: t84, integer, 4, -2092
+TempVar: t85, integer, 4, -2096
+TempVar: t86, integer, 4, -2100
+TempVar: t87, integer, 4, -2104
 
  
