@@ -36,7 +36,6 @@ fn prog(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, _node_index: us
                     .clone(),
                     function_name,
                 ));
-                return;
             }
         }
     }
@@ -207,7 +206,7 @@ fn check_circular_dependency_in_class(
         }
         return Err(SemanticError::CircularClassDependency(
             ast.get_leftmost_token(
-                get_node_index_with_entry_index(ast, ast.root.unwrap(), new_class_table_index)
+                get_node_index_with_table_index(ast, ast.root.unwrap(), new_class_table_index)
                     .unwrap(),
             )
             .clone(),
@@ -246,6 +245,25 @@ fn get_node_index_with_entry_index(
     }
     for node_child_index in ast.get_children(node_index) {
         let node_index = get_node_index_with_entry_index(ast, node_child_index, entry_index);
+        if node_index.is_some() {
+            return node_index;
+        }
+    }
+    None
+}
+
+fn get_node_index_with_table_index(
+    ast: &AST,
+    node_index: usize,
+    table_index: usize,
+) -> Option<usize> {
+    if let Some(current_table_index) = ast.get_element(node_index).symbol_table {
+        if current_table_index == table_index {
+            return Some(node_index);
+        }
+    }
+    for node_child_index in ast.get_children(node_index) {
+        let node_index = get_node_index_with_table_index(ast, node_child_index, table_index);
         if node_index.is_some() {
             return node_index;
         }

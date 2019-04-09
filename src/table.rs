@@ -25,9 +25,6 @@ where
     pub fn get_table(&self, index: usize) -> &T {
         &self.tables[index]
     }
-    pub fn get_mut_table(&mut self, index: usize) -> &mut T {
-        &mut self.tables[index]
-    }
     pub fn get_table_entries(&self, index: usize) -> &[usize] {
         self.tables[index].get_entries()
     }

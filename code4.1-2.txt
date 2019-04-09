@@ -1,0 +1,110 @@
+// ALL 4.2 and 4.3
+
+// 4.2.9 undefined function: declaring a member function that does not have a corresponding function definition
+class class1: class10 {
+    integer a;
+    class11 c;
+    integer member1();
+};
+
+class class10 {
+    integer aa;
+};
+
+class class11: class10 {
+    integer a;
+};
+
+// 4.2.5 circular class dependencies (through data members or inheritance) aredetected and not allowed
+class class2: class3 {};
+class class3: class2 {};
+class class4 {
+    class4 c;
+};
+
+
+// 4.2.1 type checking on expressions, assignment and return statements
+integer function1(float c, float d) {
+    class1 a;
+    a = 1;
+    a = c;
+    integer b;
+    b = (1 * a) + (1 - a);
+    b = c;
+    return(a);
+};
+
+// 4.2.2 checking of type and number of parameters upon a function call
+integer function2() {
+    class1 a;
+    integer b;
+    b = function1(1, a);
+    b = function1(1.0, 1.0);
+    b = function1(a, 1.0);
+    b = function1(1.0);
+    return(0);
+};
+
+// 4.2.3 use of an array variable made using the same number of dimensions as declared in the variable declaration
+// 4.2.4 expressions used as an index must be of integer type
+integer function3() {
+    class1 d;
+    integer a[1][2][3];
+    integer c;
+    c = a[0][0];
+    c = a[d][a][1];
+    return(0);
+};
+
+// 4.2.6 the . operator used only on variables of a class type
+integer function6() {
+    class1 a;
+    integer b;
+    float c;
+    b = a.a;
+    a.a = b.a;
+    a.a = c.a;
+    return(0);
+};
+
+// 4.2.7 forward references for classes/free functions
+// 4.2.8 undeclared function: call to a function that is not declared (free function or member function)
+integer class1::member2() {
+    return(0);
+};
+integer function7() {
+    unknownClass a;
+    integer b;
+    b = unknownFunction();
+    class1 c;
+    b = c.member0();
+    return(0);
+};
+
+// 4.2.10 undeclared variable: use of a local variable name for which there is no declaration
+// 4.2.11 undeclared data member: reference to a data member that is not declared (including in superclasses or deeply nested)
+integer function10() {
+    a = 0;
+    integer a;
+    b = 0;
+    class1 c;
+    a = c.a;
+    a = c.aa;
+    a = c.b;
+    a = c.c.a;
+    a = c.c.aa;
+    a = c.c.b;
+    return(0);
+};
+
+// 4.2.12 multiply declared variable: an identifier cannot be declared twice in the same scope
+integer function12(integer a) {
+    integer a;
+    integer b;
+    integer b;
+    return(0);
+};
+
+main {
+
+};

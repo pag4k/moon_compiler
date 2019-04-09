@@ -508,7 +508,7 @@ mod tests {
 
     #[test]
     fn lexical_analyzer() {
-        let source_files: Vec<(&str, usize)> = vec![("lexical_error1.txt", 26)];
+        let source_files: Vec<(&str, usize)> = vec![("code2.1-2.txt", 26)];
 
         for (source_filename, error_count) in source_files.iter() {
             let source = match fs::read_to_string(source_filename) {
@@ -544,8 +544,7 @@ mod tests {
 
     #[test]
     fn syntactic_analyzer() {
-        let source_files: Vec<(&str, usize)> =
-            vec![("syntactic_error1.txt", 5), ("syntactic_error2.txt", 8)];
+        let source_files: Vec<(&str, usize)> = vec![("code3.2a.txt", 5), ("code3.2b.txt", 8)];
 
         for (source_filename, error_count) in source_files.iter() {
             let source = match fs::read_to_string(source_filename) {
@@ -582,6 +581,7 @@ mod tests {
     #[test]
     fn semantic_analyzer() {
         let source_files: Vec<(&str, usize)> = vec![
+            ("code1.3.txt", 9),
             ("table_generation_error1.txt", 4),
             ("table_generation_error2.txt", 1),
             ("table_generation_error3.txt", 2),
@@ -591,7 +591,7 @@ mod tests {
             ("class_checker_error4.txt", 2),
             ("function_checker_error1.txt", 8),
             ("type_checker_error1.txt", 11),
-            ("combined_error1.txt", 9),
+            ("code4.1-2.txt", 28),
         ];
 
         for (source_filename, error_count) in source_files.iter() {

@@ -17,8 +17,6 @@ pub fn table_generator_visitor(ast: &mut AST) -> Vec<SemanticError> {
     semantic_actions.insert(VarDecl, var_decl);
     semantic_actions.insert(FParam, f_param);
     semantic_actions.insert(ForStat, for_stat);
-    semantic_actions.insert(MainFuncBody, stat_block);
-    semantic_actions.insert(FuncBody, stat_block);
 
     ast_traversal(ast, &mut semantic_errors, &semantic_actions);
     semantic_errors
@@ -48,17 +46,22 @@ fn prog(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usi
         }
     }
 
-    // Rename table from StatBlock
-    let name = "main".to_string();
+    // Create a table for main.
     let stat_block_node_index = ast.get_children(node_index)[2];
-    let program_table_index = ast.get_element(stat_block_node_index).symbol_table.unwrap();
-    ast.symbol_table_arena
-        .get_mut_table(program_table_index)
-        .set_name(name.clone());
+    let program_table_index = ast.symbol_table_arena.new_symbol_table("main".to_string());
+    ast.get_mut_element(stat_block_node_index).symbol_table = Some(program_table_index);
+
+    // Add StatBlock variables.
+    add_variables_to_table(
+        ast,
+        semantic_errors,
+        stat_block_node_index,
+        program_table_index,
+    );
 
     // Create main function entry and add it to the global scope.
     let entry_index = ast.symbol_table_arena.new_symbol_table_entry(
-        name,
+        "main".to_string(),
         SymbolKind::Function(None, Vec::new()),
         Some(program_table_index),
     );
@@ -93,11 +96,9 @@ fn func_def(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index:
     // Function Definition has an entry and a table.
     let name = ast.get_child_lexeme(node_index, 2).clone();
 
-    // Take table from StatBlock
-    let table_index = transfer_symbol_table(ast, ast.get_child(node_index, 4), node_index);
-    ast.symbol_table_arena
-        .get_mut_table(table_index)
-        .set_name(name.clone());
+    // Create a table.
+    let table_index = ast.symbol_table_arena.new_symbol_table(name.clone());
+    ast.get_mut_element(node_index).symbol_table = Some(table_index);
 
     let return_type = make_type_from_child(ast, node_index, 0, Vec::new());
 
@@ -113,18 +114,20 @@ fn func_def(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index:
             .get_table_entry(entry_index)
             .get_symbol_type()
             .unwrap();
-        //     .kind
-        //     .clone()
-        // {
-        //     SymbolKind::Parameter(parameter_type) => parameter_type,
-        //     _ => unreachable!(),
-        // };
 
         parameters.push(parameter_type.clone());
         if let Err(error) = add_entry_to_table(ast, table_index, parameter_index) {
             semantic_errors.push(error);
         }
     }
+
+    // Add StatBlock variables.
+    add_variables_to_table(
+        ast,
+        semantic_errors,
+        ast.get_child(node_index, 4),
+        table_index,
+    );
 
     let entry_index = ast.symbol_table_arena.new_symbol_table_entry(
         name.clone(),
@@ -235,36 +238,6 @@ fn for_stat(ast: &mut AST, _semantic_errors: &mut Vec<SemanticError>, node_index
     );
     ast.get_mut_element(node_index).symbol_table_entry = Some(entry_index);
 }
-fn stat_block(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_index: usize) {
-    // Create a table without a name.
-    let table_index = ast.symbol_table_arena.new_symbol_table(String::new());
-    ast.get_mut_element(node_index).symbol_table = Some(table_index);
-
-    // Get variables
-    for variable_index in ast.get_children(node_index).to_vec() {
-        if ast
-            .get_mut_element(variable_index)
-            .symbol_table_entry
-            .is_some()
-        {
-            if let NodeType::ForStat = ast.get_node_type(variable_index) {
-                continue;
-            }
-            if let Err(error) = add_entry_to_table(ast, table_index, variable_index) {
-                semantic_errors.push(error);
-            }
-        }
-    }
-
-    let mut for_node_indices: Vec<usize> = Vec::new();
-    get_for_node_indices(ast, node_index, &mut for_node_indices);
-    //println!("{}", for_node_indices.len());
-    for for_node_index in for_node_indices {
-        if let Err(error) = add_entry_to_table(ast, table_index, for_node_index) {
-            semantic_errors.push(error);
-        }
-    }
-}
 
 fn make_type_from_child(
     ast: &AST,
@@ -354,17 +327,6 @@ fn add_function(
     Ok(())
 }
 
-fn transfer_symbol_table(
-    ast: &mut AST,
-    origin_node_index: usize,
-    destination_node_index: usize,
-) -> usize {
-    let table_index = ast.get_element(origin_node_index).symbol_table.unwrap();
-    ast.get_mut_element(origin_node_index).symbol_table = None;
-    ast.get_mut_element(destination_node_index).symbol_table = Some(table_index);
-    table_index
-}
-
 fn add_entry_to_table(
     ast: &mut AST,
     table_index: usize,
@@ -410,6 +372,37 @@ fn get_for_node_indices(ast: &mut AST, node_index: usize, for_node_indices: &mut
     if let NodeType::ForStat = ast.get_node_type(node_index) {
         if ast.get_element(node_index).symbol_table_entry.is_some() {
             for_node_indices.push(node_index);
+        }
+    }
+}
+
+fn add_variables_to_table(
+    ast: &mut AST,
+    semantic_errors: &mut Vec<SemanticError>,
+    node_index: usize,
+    table_index: usize,
+) {
+    // Get variables
+    for variable_index in ast.get_children(node_index).to_vec() {
+        if ast
+            .get_mut_element(variable_index)
+            .symbol_table_entry
+            .is_some()
+        {
+            if let NodeType::ForStat = ast.get_node_type(variable_index) {
+                continue;
+            }
+            if let Err(error) = add_entry_to_table(ast, table_index, variable_index) {
+                semantic_errors.push(error);
+            }
+        }
+    }
+
+    let mut for_node_indices: Vec<usize> = Vec::new();
+    get_for_node_indices(ast, node_index, &mut for_node_indices);
+    for for_node_index in for_node_indices {
+        if let Err(error) = add_entry_to_table(ast, table_index, for_node_index) {
+            semantic_errors.push(error);
         }
     }
 }

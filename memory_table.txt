@@ -1,5 +1,0 @@
-MEMORY TABLE: NAME: program OFFSET: -8 SYMBOL INDEX: 0 INDEX: 0
-Var: t0, integer, 4, -4
-LitVar: _t0, integer, 4, -8
-
- 

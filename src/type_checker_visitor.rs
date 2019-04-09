@@ -191,7 +191,7 @@ fn data_member(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_ind
             (dimension_index, ast.get_data_type(*child_index).clone())
         })
         .filter(|(_, data_type)| match data_type {
-            SymbolType::Integer(_) => false,
+            SymbolType::Integer(dimension_list) => !dimension_list.is_empty(),
             _ => true,
         })
         .collect();
@@ -239,7 +239,7 @@ fn function_call(ast: &mut AST, semantic_errors: &mut Vec<SemanticError>, node_i
                 if argument_parameter == function_parameter {
                     None
                 } else {
-                    Some((position, argument_parameter, function_parameter))
+                    Some((position, function_parameter, argument_parameter))
                 }
             })
             .collect();

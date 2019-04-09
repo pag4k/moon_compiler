@@ -171,9 +171,6 @@ impl SymbolTable {
     pub fn has_name(&self, other_name: &str) -> bool {
         self.name == other_name
     }
-    pub fn set_name(&mut self, name: String) {
-        self.name = name;
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
