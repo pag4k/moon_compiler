@@ -1,131 +1,45 @@
 Prog 
 PRODUCTION: Prog -> ClassDeclList 'ClassDeclList' FuncDefList 'FuncDefList' 'Main' FuncBody 'MainFuncBody' 'SemiColon' 'Prog' 'EndProgram'
 ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: ClassDeclList -> ClassDecl ClassDeclList
-ClassDecl ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: ClassDecl -> 'Class' 'id' 'Data' 'Id' InherListOp 'InheritList' 'LeftCurlyBracket' MemberList 'RightCurlyBracket' 'MemberList' 'SemiColon' 'ClassDecl'
-'Class' 'id' InherListOp 'LeftCurlyBracket' MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: InherListOp -> EPSILON
-'Class' 'id' 'LeftCurlyBracket' MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: MemberList -> MemberDecl MemberList
-'Class' 'id' 'LeftCurlyBracket' MemberDecl MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: MemberDecl -> Type 'id' 'Data' 'Id' MemberDeclPrime
-'Class' 'id' 'LeftCurlyBracket' Type 'id' MemberDeclPrime MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: Type -> 'Integer' 'Data' 'Type'
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' MemberDeclPrime MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: MemberDeclPrime -> DimList 'DimList' 'SemiColon' 'VarDecl'
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' DimList 'SemiColon' MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: DimList -> EPSILON
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: MemberList -> MemberDecl MemberList
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' MemberDecl MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: MemberDecl -> Type 'id' 'Data' 'Id' MemberDeclPrime
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' Type 'id' MemberDeclPrime MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: Type -> 'Integer' 'Data' 'Type'
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' MemberDeclPrime MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: MemberDeclPrime -> DimList 'DimList' 'SemiColon' 'VarDecl'
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' DimList 'SemiColon' MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: DimList -> EPSILON
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: MemberList -> MemberDecl MemberList
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' MemberDecl MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: MemberDecl -> Type 'id' 'Data' 'Id' MemberDeclPrime
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' Type 'id' MemberDeclPrime MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: Type -> 'Integer' 'Data' 'Type'
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' MemberDeclPrime MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: MemberDeclPrime -> DimList 'DimList' 'SemiColon' 'VarDecl'
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' DimList 'SemiColon' MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: DimList -> EPSILON
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: MemberList -> EPSILON
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: ClassDeclList -> ClassDecl ClassDeclList
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' ClassDecl ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: ClassDecl -> 'Class' 'id' 'Data' 'Id' InherListOp 'InheritList' 'LeftCurlyBracket' MemberList 'RightCurlyBracket' 'MemberList' 'SemiColon' 'ClassDecl'
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' InherListOp 'LeftCurlyBracket' MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: InherListOp -> 'Colon' 'id' 'Data' 'Idi' InherList
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' InherList 'LeftCurlyBracket' MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: InherList -> EPSILON
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: MemberList -> MemberDecl MemberList
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' MemberDecl MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: MemberDecl -> Type 'id' 'Data' 'Id' MemberDeclPrime
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' Type 'id' MemberDeclPrime MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: Type -> 'Integer' 'Data' 'Type'
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' MemberDeclPrime MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: MemberDeclPrime -> DimList 'DimList' 'SemiColon' 'VarDecl'
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' DimList 'SemiColon' MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: DimList -> EPSILON
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: MemberList -> MemberDecl MemberList
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' MemberDecl MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: MemberDecl -> Type 'id' 'Data' 'Id' MemberDeclPrime
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' Type 'id' MemberDeclPrime MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: Type -> 'Integer' 'Data' 'Type'
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' MemberDeclPrime MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: MemberDeclPrime -> 'LeftParenthesis' FParamList 'FParamList' 'RightParenthesis' 'SemiColon' 'FuncDecl'
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' FParamList 'RightParenthesis' 'SemiColon' MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: FParamList -> EPSILON
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: MemberList -> MemberDecl MemberList
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' MemberDecl MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: MemberDecl -> Type 'id' 'Data' 'Id' MemberDeclPrime
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' Type 'id' MemberDeclPrime MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: Type -> 'Integer' 'Data' 'Type'
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' MemberDeclPrime MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: MemberDeclPrime -> DimList 'DimList' 'SemiColon' 'VarDecl'
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' DimList 'SemiColon' MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: DimList -> EPSILON
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' 'SemiColon' MemberList 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: MemberList -> EPSILON
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' ClassDeclList FuncDefList 'Main' FuncBody 'SemiColon' 
 PRODUCTION: ClassDeclList -> EPSILON
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: FuncDefList -> FuncDef FuncDefList
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' FuncDef FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: FuncDef -> FuncHead FuncBody 'FuncBody' 'SemiColon' 'FuncDef'
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' FuncHead FuncBody 'SemiColon' FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: FuncHead -> Type 'id' ScopeOp 'LeftParenthesis' FParamList 'FParamList' 'RightParenthesis'
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' Type 'id' ScopeOp 'LeftParenthesis' FParamList 'RightParenthesis' FuncBody 'SemiColon' FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: Type -> 'Integer' 'Data' 'Type'
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Integer' 'id' ScopeOp 'LeftParenthesis' FParamList 'RightParenthesis' FuncBody 'SemiColon' FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: ScopeOp -> 'Data' 'Type' 'SR' 'id' 'Data' 'Id'
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Integer' 'id' 'SR' 'id' 'LeftParenthesis' FParamList 'RightParenthesis' FuncBody 'SemiColon' FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: FParamList -> EPSILON
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Integer' 'id' 'SR' 'id' 'LeftParenthesis' 'RightParenthesis' FuncBody 'SemiColon' FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: FuncBody -> 'LeftCurlyBracket' StatOrAssignOrVarDeclList 'RightCurlyBracket'
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Integer' 'id' 'SR' 'id' 'LeftParenthesis' 'RightParenthesis' 'LeftCurlyBracket' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: StatOrAssignOrVarDeclList -> StatOrAssignOrVarDecl StatOrAssignOrVarDeclList
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Integer' 'id' 'SR' 'id' 'LeftParenthesis' 'RightParenthesis' 'LeftCurlyBracket' StatOrAssignOrVarDecl StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: StatOrAssignOrVarDecl -> Statement 'SemiColon'
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Integer' 'id' 'SR' 'id' 'LeftParenthesis' 'RightParenthesis' 'LeftCurlyBracket' Statement 'SemiColon' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: Statement -> 'Return' 'LeftParenthesis' Expr 'RightParenthesis' 'ReturnStat'
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Integer' 'id' 'SR' 'id' 'LeftParenthesis' 'RightParenthesis' 'LeftCurlyBracket' 'Return' 'LeftParenthesis' Expr 'RightParenthesis' 'SemiColon' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: Expr -> ArithExpr ExprPrime
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Integer' 'id' 'SR' 'id' 'LeftParenthesis' 'RightParenthesis' 'LeftCurlyBracket' 'Return' 'LeftParenthesis' ArithExpr ExprPrime 'RightParenthesis' 'SemiColon' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: ArithExpr -> Term ArithExprPrime
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Integer' 'id' 'SR' 'id' 'LeftParenthesis' 'RightParenthesis' 'LeftCurlyBracket' 'Return' 'LeftParenthesis' Term ArithExprPrime ExprPrime 'RightParenthesis' 'SemiColon' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: Term -> Factor TermPrime
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Integer' 'id' 'SR' 'id' 'LeftParenthesis' 'RightParenthesis' 'LeftCurlyBracket' 'Return' 'LeftParenthesis' Factor TermPrime ArithExprPrime ExprPrime 'RightParenthesis' 'SemiColon' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: Factor -> 'id' 'Data' 'Id' FactorPrime IdnestRep 'VarElementList'
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Integer' 'id' 'SR' 'id' 'LeftParenthesis' 'RightParenthesis' 'LeftCurlyBracket' 'Return' 'LeftParenthesis' 'id' FactorPrime IdnestRep TermPrime ArithExprPrime ExprPrime 'RightParenthesis' 'SemiColon' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: FactorPrime -> IndexList 'IndexList' 'DataMember'
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Integer' 'id' 'SR' 'id' 'LeftParenthesis' 'RightParenthesis' 'LeftCurlyBracket' 'Return' 'LeftParenthesis' 'id' IndexList IdnestRep TermPrime ArithExprPrime ExprPrime 'RightParenthesis' 'SemiColon' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: IndexList -> EPSILON
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Integer' 'id' 'SR' 'id' 'LeftParenthesis' 'RightParenthesis' 'LeftCurlyBracket' 'Return' 'LeftParenthesis' 'id' IdnestRep TermPrime ArithExprPrime ExprPrime 'RightParenthesis' 'SemiColon' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: IdnestRep -> EPSILON
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Integer' 'id' 'SR' 'id' 'LeftParenthesis' 'RightParenthesis' 'LeftCurlyBracket' 'Return' 'LeftParenthesis' 'id' TermPrime ArithExprPrime ExprPrime 'RightParenthesis' 'SemiColon' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: TermPrime -> EPSILON
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Integer' 'id' 'SR' 'id' 'LeftParenthesis' 'RightParenthesis' 'LeftCurlyBracket' 'Return' 'LeftParenthesis' 'id' ArithExprPrime ExprPrime 'RightParenthesis' 'SemiColon' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: ArithExprPrime -> EPSILON
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Integer' 'id' 'SR' 'id' 'LeftParenthesis' 'RightParenthesis' 'LeftCurlyBracket' 'Return' 'LeftParenthesis' 'id' ExprPrime 'RightParenthesis' 'SemiColon' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: ExprPrime -> EPSILON
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Integer' 'id' 'SR' 'id' 'LeftParenthesis' 'RightParenthesis' 'LeftCurlyBracket' 'Return' 'LeftParenthesis' 'id' 'RightParenthesis' 'SemiColon' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' FuncDefList 'Main' FuncBody 'SemiColon' 
-PRODUCTION: StatOrAssignOrVarDeclList -> EPSILON
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Integer' 'id' 'SR' 'id' 'LeftParenthesis' 'RightParenthesis' 'LeftCurlyBracket' 'Return' 'LeftParenthesis' 'id' 'RightParenthesis' 'SemiColon' 'RightCurlyBracket' 'SemiColon' FuncDefList 'Main' FuncBody 'SemiColon' 
+FuncDefList 'Main' FuncBody 'SemiColon' 
 PRODUCTION: FuncDefList -> EPSILON
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Integer' 'id' 'SR' 'id' 'LeftParenthesis' 'RightParenthesis' 'LeftCurlyBracket' 'Return' 'LeftParenthesis' 'id' 'RightParenthesis' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Main' FuncBody 'SemiColon' 
+'Main' FuncBody 'SemiColon' 
 PRODUCTION: FuncBody -> 'LeftCurlyBracket' StatOrAssignOrVarDeclList 'RightCurlyBracket'
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Integer' 'id' 'SR' 'id' 'LeftParenthesis' 'RightParenthesis' 'LeftCurlyBracket' 'Return' 'LeftParenthesis' 'id' 'RightParenthesis' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Main' 'LeftCurlyBracket' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' 
+'Main' 'LeftCurlyBracket' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' 
+PRODUCTION: StatOrAssignOrVarDeclList -> StatOrAssignOrVarDecl StatOrAssignOrVarDeclList
+'Main' 'LeftCurlyBracket' StatOrAssignOrVarDecl StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' 
+PRODUCTION: StatOrAssignOrVarDecl -> NumVarDecl 'SemiColon'
+'Main' 'LeftCurlyBracket' NumVarDecl 'SemiColon' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' 
+PRODUCTION: NumVarDecl -> 'Integer' 'Data' 'Type' 'id' 'Data' 'Id' DimList 'DimList' 'VarDecl'
+'Main' 'LeftCurlyBracket' 'Integer' 'id' DimList 'SemiColon' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' 
+PRODUCTION: DimList -> EPSILON
+'Main' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' 
+PRODUCTION: StatOrAssignOrVarDeclList -> StatOrAssignOrVarDecl StatOrAssignOrVarDeclList
+'Main' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' StatOrAssignOrVarDecl StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' 
+PRODUCTION: StatOrAssignOrVarDecl -> 'id' StatOrAssignOrVarDeclPrime
+'Main' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'id' StatOrAssignOrVarDeclPrime StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' 
+PRODUCTION: StatOrAssignOrVarDeclPrime -> 'Data' 'Id' IndexList 'IndexList' 'DataMember' IdnestRep 'VarElementList' AssignOp Expr 'AssignStat' 'SemiColon'
+'Main' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'id' IndexList IdnestRep AssignOp Expr 'SemiColon' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' 
+PRODUCTION: IndexList -> EPSILON
+'Main' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'id' IdnestRep AssignOp Expr 'SemiColon' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' 
+PRODUCTION: IdnestRep -> EPSILON
+'Main' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'id' AssignOp Expr 'SemiColon' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' 
+PRODUCTION: AssignOp -> 'Assignment'
+'Main' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'id' 'Assignment' Expr 'SemiColon' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' 
+PRODUCTION: Expr -> ArithExpr ExprPrime
+'Main' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'id' 'Assignment' ArithExpr ExprPrime 'SemiColon' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' 
+PRODUCTION: ArithExpr -> Term ArithExprPrime
+'Main' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'id' 'Assignment' Term ArithExprPrime ExprPrime 'SemiColon' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' 
+PRODUCTION: Term -> Factor TermPrime
+'Main' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'id' 'Assignment' Factor TermPrime ArithExprPrime ExprPrime 'SemiColon' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' 
+PRODUCTION: Factor -> 'intNum' 'Data' 'Num'
+'Main' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'id' 'Assignment' 'intNum' TermPrime ArithExprPrime ExprPrime 'SemiColon' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' 
+PRODUCTION: TermPrime -> EPSILON
+'Main' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'id' 'Assignment' 'intNum' ArithExprPrime ExprPrime 'SemiColon' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' 
+PRODUCTION: ArithExprPrime -> EPSILON
+'Main' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'id' 'Assignment' 'intNum' ExprPrime 'SemiColon' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' 
+PRODUCTION: ExprPrime -> EPSILON
+'Main' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'id' 'Assignment' 'intNum' 'SemiColon' StatOrAssignOrVarDeclList 'RightCurlyBracket' 'SemiColon' 
 PRODUCTION: StatOrAssignOrVarDeclList -> EPSILON
-'Class' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Class' 'id' 'Colon' 'id' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'Integer' 'id' 'LeftParenthesis' 'RightParenthesis' 'SemiColon' 'Integer' 'id' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Integer' 'id' 'SR' 'id' 'LeftParenthesis' 'RightParenthesis' 'LeftCurlyBracket' 'Return' 'LeftParenthesis' 'id' 'RightParenthesis' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 'Main' 'LeftCurlyBracket' 'RightCurlyBracket' 'SemiColon' 
+'Main' 'LeftCurlyBracket' 'Integer' 'id' 'SemiColon' 'id' 'Assignment' 'intNum' 'SemiColon' 'RightCurlyBracket' 'SemiColon' 

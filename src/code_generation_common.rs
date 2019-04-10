@@ -57,7 +57,7 @@ pub fn get_symbol_entry(ast: &AST, node_index: usize) -> &SymbolTableEntry {
         .get_table_entry(ast.get_symbol_entry_index(node_index))
 }
 
-pub fn get_memory_entry(ast: &AST, node_index: usize) -> &MemoryTableEntry {
+pub fn _get_memory_entry(ast: &AST, node_index: usize) -> &MemoryTableEntry {
     ast.memory_table_arena
         .get_table_entry(ast.get_memory_entry_index(node_index))
 }

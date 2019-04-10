@@ -323,7 +323,7 @@ impl AST {
     pub fn get_symbol_table_index(&self, node_index: usize) -> usize {
         self.get_element(node_index).symbol_table.unwrap()
     }
-    pub fn has_symbol_table_index(&self, node_index: usize) -> bool {
+    pub fn _has_symbol_table_index(&self, node_index: usize) -> bool {
         self.get_element(node_index).symbol_table.is_some()
     }
     pub fn get_symbol_entry_index(&self, node_index: usize) -> usize {

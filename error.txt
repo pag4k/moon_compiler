@@ -1,1 +1,28 @@
-Semantic error at [line:10, column:0]: Member function "findMax" does not have a declation.
+Semantic error at [line:7, column:4]: Member function "member1" does not have a definition.
+Semantic error at [line:19, column:6]: Class circular dependency: class2-class3-class2.
+Semantic error at [line:21, column:6]: Class circular dependency: class4-class4.
+Semantic error at [line:29, column:4]: Mismatched type with variable "a": expected type class1, but found integer.
+Semantic error at [line:30, column:4]: Mismatched type with variable "a": expected type class1, but found float.
+Semantic error at [line:32, column:11]: Invalid mutliply operation with types integer and class1.
+Semantic error at [line:32, column:21]: Invalid add operation with types integer and class1.
+Semantic error at [line:33, column:4]: Mismatched type with variable "b": expected type integer, but found float.
+Semantic error at [line:34, column:11]: Return type is invalid: expected type integer, but found class1.
+Semantic error at [line:41, column:8]: In function "function1", argument at position 0 has invalid type: expecting float, but found integer.
+Semantic error at [line:41, column:8]: In function "function1", argument at position 1 has invalid type: expecting float, but found class1.
+Semantic error at [line:43, column:8]: In function "function1", argument at position 0 has invalid type: expecting float, but found class1.
+Semantic error at [line:44, column:8]: Function "function1" is expecting 2 arguments, but found 1.
+Semantic error at [line:54, column:8]: Variable "a" is expecting 3 dimensions, but found 2.
+Semantic error at [line:55, column:8]: Variable "a" index at position 0 must be integer, but found class1.
+Semantic error at [line:55, column:8]: Variable "a" index at position 1 must be integer, but found integer[1][2][3].
+Semantic error at [line:65, column:10]: Invalid dot operator since type "integer" is not a valid class.
+Semantic error at [line:66, column:10]: Invalid dot operator since type "float" is not a valid class.
+Semantic error at [line:72, column:0]: Member function "member2" does not have a declation.
+Semantic error at [line:76, column:4]: Undefined class: "unknownClass".
+Semantic error at [line:78, column:8]: Function "unknownFunction" is not defined.
+Semantic error at [line:80, column:10]: Function "member0" is not a member of class class1.
+Semantic error at [line:88, column:4]: Varible "a" is used before being declared in scope "function10".
+Semantic error at [line:90, column:4]: Variable "b" is not defined in scope "function10".
+Semantic error at [line:94, column:10]: Variable "b" is not a member of class class1.
+Semantic error at [line:97, column:12]: Variable "b" is not a member of class class11.
+Semantic error at [line:103, column:4]: Duplicate identifier in scope "function12": "a".
+Semantic error at [line:105, column:4]: Duplicate identifier in scope "function12": "b".

@@ -78,6 +78,7 @@ integer function7() {
     b = unknownFunction();
     class1 c;
     b = c.member0();
+    b = function10();
     return(0);
 };
 

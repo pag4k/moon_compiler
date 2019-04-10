@@ -1,28 +1,58 @@
-SYMBOL TABLE: NAME: Global INDEX: 5
-0. Name: InheritedUtility, Class, Link: Some(0)
-1. Name: Utility, Class, Link: Some(1)
-2. Name: randomize, Function: Return Type: integer, Parameters: , Link: Some(4)
-3. Name: main, Function: Return Type: None, Parameters: , Link: Some(6)
-SYMBOL TABLE: NAME: InheritedUtility INDEX: 0
-0. Name: member1, Variable: integer, Link: None
-SYMBOL TABLE: NAME: Utility INDEX: 1
-0. Name: var1, Variable: integer[4][5][7][8][9][1][1], Link: None
-1. Name: var2, Variable: float, Link: None
-2. Name: findMin, Function: Return Type: integer, Parameters: integer[100], Link: Some(3)
-3. Name: InheritedUtility, Class, Link: Some(0)
-SYMBOL TABLE: NAME: findMin INDEX: 3
-0. Name: array, Parameter: integer[100], Link: None
-1. Name: minValue, Variable: integer, Link: None
-2. Name: idx, For: integer, Link: None
-SYMBOL TABLE: NAME: randomize INDEX: 4
-0. Name: value, Variable: integer, Link: None
-1. Name: utility, Variable: Utility, Link: None
-SYMBOL TABLE: NAME: main INDEX: 6
-0. Name: sample, Variable: integer[100], Link: None
-1. Name: idx, Variable: integer, Link: None
-2. Name: maxValue, Variable: integer, Link: None
-3. Name: minValue, Variable: integer, Link: None
-4. Name: utility, Variable: Utility, Link: None
-5. Name: arrayUtility, Variable: Utility[2][3][6][7], Link: None
-6. Name: t, For: integer, Link: None
+SYMBOL TABLE: NAME: Global INDEX: 14
+0. Name: class1, Class, Link: Some(0)
+1. Name: class10, Class, Link: Some(1)
+2. Name: class11, Class, Link: Some(2)
+3. Name: class2, Class, Link: Some(3)
+4. Name: class3, Class, Link: Some(4)
+5. Name: class4, Class, Link: Some(5)
+6. Name: function1, Function: Return Type: integer, Parameters: float, float, Link: Some(6)
+7. Name: function2, Function: Return Type: integer, Parameters: , Link: Some(7)
+8. Name: function3, Function: Return Type: integer, Parameters: , Link: Some(8)
+9. Name: function6, Function: Return Type: integer, Parameters: , Link: Some(9)
+10. Name: function7, Function: Return Type: integer, Parameters: , Link: Some(11)
+11. Name: function10, Function: Return Type: integer, Parameters: , Link: Some(12)
+12. Name: function12, Function: Return Type: integer, Parameters: integer, Link: Some(13)
+13. Name: main, Function: Return Type: None, Parameters: , Link: Some(15)
+SYMBOL TABLE: NAME: class1 INDEX: 0
+0. Name: a, Variable: integer, Link: None
+1. Name: c, Variable: class11, Link: None
+2. Name: member1, Function: Return Type: integer, Parameters: , Link: None
+3. Name: class10, Class, Link: Some(1)
+SYMBOL TABLE: NAME: class10 INDEX: 1
+0. Name: aa, Variable: integer, Link: None
+SYMBOL TABLE: NAME: class11 INDEX: 2
+0. Name: a, Variable: integer, Link: None
+1. Name: class10, Class, Link: Some(1)
+SYMBOL TABLE: NAME: class2 INDEX: 3
+0. Name: class3, Class, Link: Some(4)
+SYMBOL TABLE: NAME: class3 INDEX: 4
+0. Name: class2, Class, Link: None
+SYMBOL TABLE: NAME: class4 INDEX: 5
+SYMBOL TABLE: NAME: function1 INDEX: 6
+0. Name: c, Parameter: float, Link: None
+1. Name: d, Parameter: float, Link: None
+2. Name: a, Variable: class1, Link: None
+3. Name: b, Variable: integer, Link: None
+SYMBOL TABLE: NAME: function2 INDEX: 7
+0. Name: a, Variable: class1, Link: None
+1. Name: b, Variable: integer, Link: None
+SYMBOL TABLE: NAME: function3 INDEX: 8
+0. Name: d, Variable: class1, Link: None
+1. Name: a, Variable: integer[1][2][3], Link: None
+2. Name: c, Variable: integer, Link: None
+SYMBOL TABLE: NAME: function6 INDEX: 9
+0. Name: a, Variable: class1, Link: None
+1. Name: b, Variable: integer, Link: None
+2. Name: c, Variable: float, Link: None
+SYMBOL TABLE: NAME: function7 INDEX: 11
+0. Name: a, Variable: unknownClass, Link: None
+1. Name: b, Variable: integer, Link: None
+2. Name: c, Variable: class1, Link: None
+SYMBOL TABLE: NAME: function10 INDEX: 12
+0. Name: a, Variable: integer, Link: None
+1. Name: c, Variable: class1, Link: None
+SYMBOL TABLE: NAME: function12 INDEX: 13
+0. Name: a, Parameter: integer, Link: None
+1. Name: b, Variable: integer, Link: None
+SYMBOL TABLE: NAME: main INDEX: 15
  

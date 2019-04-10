@@ -625,4 +625,44 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn code_generation() {
+        let source_files: Vec<(&str, usize)> = vec![
+            ("code5.1-3-4.txt", 0),
+            ("code5.2-5.txt", 0),
+            ("code5.3.4.txt", 0),
+        ];
+
+        for (source_filename, error_count) in source_files.iter() {
+            let source = match fs::read_to_string(source_filename) {
+                Ok(file) => file,
+                Err(_) => {
+                    println!(
+                        "ERROR: Something went wrong reading source file: {}. Exiting...",
+                        source_filename
+                    );
+                    return;
+                }
+            };
+            println!();
+            println!("Compiling file: {}", source_filename);
+            match crate::compile(
+                CompilerOption {
+                    generate_ast: false,
+                    execute_program: false,
+                    output_derivation: false,
+                },
+                &source,
+            ) {
+                (Some(errors), None) => assert!(*error_count == errors.len()),
+                (None, Some(is_success)) => {
+                    assert!(*error_count == 0);
+                    assert!(is_success);
+                }
+                (Some(_), Some(_)) => unreachable!(),
+                (None, None) => assert!(*error_count == 0),
+            }
+        }
+    }
 }
