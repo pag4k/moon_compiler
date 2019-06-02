@@ -1,7 +1,6 @@
 # Moon-Compiler
 Compiler for the Moon Processor (COMP442)
 Pierre-André Gagnon - 40067198
-Assignment 3 - March 18, 2019
 
 ## Execution instructions
 - Go to (https://rustup.rs/)[https://rustup.rs/] and follow the instruction to install rustup, an installer for
